@@ -1,0 +1,40 @@
+using UnityEngine;
+using HairRemovalSim.UI;
+
+namespace HairRemovalSim.Core
+{
+    public class EconomyManager : Singleton<EconomyManager>
+    {
+        public int CurrentMoney { get; private set; } = 10000; // Starting money
+        public int CurrentDebt { get; private set; } = 0;
+
+        // No need to override Awake if just calling base, but Singleton handles it.
+        // If we want to keep it simple, we can rely on base.Awake.
+
+        public void AddMoney(int amount)
+        {
+            CurrentMoney += amount;
+            Debug.Log($"Money Added: {amount}. Total: {CurrentMoney}");
+            GameEvents.TriggerMoneyChanged(CurrentMoney);
+        }
+
+        public bool SpendMoney(int amount)
+        {
+            if (CurrentMoney >= amount)
+            {
+                CurrentMoney -= amount;
+                Debug.Log($"Money Spent: {amount}. Total: {CurrentMoney}");
+                GameEvents.TriggerMoneyChanged(CurrentMoney);
+                return true;
+            }
+            return false;
+        }
+
+        public void TakeLoan(int amount)
+        {
+            CurrentMoney += amount;
+            CurrentDebt += amount;
+            GameEvents.TriggerMoneyChanged(CurrentMoney);
+        }
+    }
+}
