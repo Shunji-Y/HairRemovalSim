@@ -10,7 +10,8 @@ namespace HairRemovalSim.Customer
         public GameObject customerPrefab;
         public Transform spawnPoint;
         public Transform exitPoint;
-        public Transform receptionPoint;
+        public Transform receptionPoint; // Pre-treatment reception
+        public Transform cashRegisterPoint; // Post-treatment payment
         public float spawnInterval = 30f; // Seconds
         public int maxCustomers = 3;
 
@@ -75,28 +76,42 @@ namespace HairRemovalSim.Customer
                         break;
                 }
                 
-                customer.Initialize(data, exitPoint, receptionPoint);
+                customer.Initialize(data, exitPoint, receptionPoint, cashRegisterPoint);
                 
-                // Find a free bed
-                var beds = FindObjectsOfType<Environment.BedController>();
-                Environment.BedController freeBed = null;
-                foreach (var bed in beds)
+                // Generate random requested body parts (1-3 parts) from actual BodyPart components
+                var allBodyParts = new System.Collections.Generic.List<Core.BodyPart>(customer.GetComponentsInChildren<Core.BodyPart>());
+                
+                if (allBodyParts.Count > 0)
                 {
-                    if (!bed.IsOccupied)
+                    int partCount = Random.Range(1, Mathf.Min(4, allBodyParts.Count + 1)); // 1 to min(3, totalParts)
+                    
+                    // Shuffle and take first N
+                    for (int i = 0; i < partCount; i++)
                     {
-                        freeBed = bed;
-                        break;
+                        if (allBodyParts.Count > 0)
+                        {
+                            int randomIndex = Random.Range(0, allBodyParts.Count);
+                            data.requestedBodyParts.Add(allBodyParts[randomIndex]);
+                            allBodyParts.RemoveAt(randomIndex); // Avoid duplicates
+                        }
                     }
-                }
-
-                if (freeBed != null)
-                {
-                    customer.GoToBed(freeBed);
+                    
+                    Debug.Log($"[CustomerSpawner] {data.customerName} requesting {data.requestedBodyParts.Count} parts: {string.Join(", ", data.requestedBodyParts.ConvertAll(bp => bp.partName))}");
                 }
                 else
                 {
-                    // Fallback to reception if no bed
+                    Debug.LogWarning($"[CustomerSpawner] {data.customerName} has no BodyPart components! Cannot assign requested parts.");
+                }
+                
+                // Send customer to reception first (not directly to bed)
+                if (receptionPoint != null)
+                {
                     customer.GoToReception(receptionPoint);
+                    Debug.Log($"[CustomerSpawner] {data.customerName} heading to reception");
+                }
+                else
+                {
+                    Debug.LogWarning("[CustomerSpawner] No reception point set!");
                 }
                 
                 activeCustomers.Add(customer);

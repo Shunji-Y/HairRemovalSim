@@ -21,12 +21,16 @@ namespace HairRemovalSim.Customer
         [Header("Status")]
         public float currentPain = 0f;
         public float maxPain = 100f;
+        public bool IsCompleted = false; // Track if treatment is complete
 
         private CustomerState currentState;
+        public CustomerState CurrentState => currentState; // Public read-only access
+        
         private Transform targetBed;
         private Environment.BedController assignedBed; // Track which bed this customer is using
         private Transform exitPoint;
-        private Transform receptionPoint;
+        private Transform receptionPoint; // Pre-treatment reception
+        private Transform cashRegisterPoint; // Post-treatment payment
         
         [Header("Payment Settings")]
         public float paymentDelay = 2.0f;
@@ -40,6 +44,7 @@ namespace HairRemovalSim.Customer
         private bool isRotating = false;
         private Quaternion targetRotation;
         public float rotationDuration = 1.0f;
+        private float rotationElapsed = 0f;
 
         private void Awake()
         {
@@ -59,11 +64,12 @@ namespace HairRemovalSim.Customer
         
 
 
-        public void Initialize(CustomerData newData, Transform exit, Transform reception = null)
+        public void Initialize(CustomerData newData, Transform exit, Transform reception, Transform cashRegister)
         {
             data = newData;
             exitPoint = exit;
             receptionPoint = reception;
+            cashRegisterPoint = cashRegister;
         }
 
         public void GoToReception(Transform receptionPoint)
@@ -97,6 +103,29 @@ namespace HairRemovalSim.Customer
         {
             EconomyManager.Instance.AddMoney(amount);
             Debug.Log($"{data.customerName} paid ${amount}.");
+        }
+        
+        /// <summary>
+        /// Calculate final payment based on completed requested parts only
+        /// </summary>
+        public int CalculateFinalPayment()
+        {
+            int completedCount = 0;
+            
+            // Count requested parts that are completed
+            foreach (var requestedPart in data.requestedBodyParts)
+            {
+                if (requestedPart != null && requestedPart.CompletionPercentage >= 100f)
+                {
+                    completedCount++;
+                }
+            }
+            
+            // Calculate payment: completed parts only
+            int payment = completedCount * data.pricePerBodyPart;
+            Debug.Log($"[CustomerController] Payment calculation: {completedCount}/{data.requestedBodyParts.Count} parts completed = ${payment}");
+            
+            return payment;
         }
         
         public void CompleteTreatment()
@@ -135,16 +164,16 @@ namespace HairRemovalSim.Customer
                 transform.rotation = Quaternion.Euler(0, transform.rotation.eulerAngles.y, 0);
             }
             
-            // Walk to reception
-            if (receptionPoint != null)
+            // Walk to cash register (not reception!)
+            if (cashRegisterPoint != null)
             {
-                agent.SetDestination(receptionPoint.position);
+                agent.SetDestination(cashRegisterPoint.position);
                 currentState = CustomerState.WalkingToReception;
-                Debug.Log($"{data.customerName} walking to reception...");
+                Debug.Log($"{data.customerName} walking to cash register...");
             }
             else
             {
-                Debug.LogWarning("No reception point set. Customer leaving directly.");
+                Debug.LogWarning("No cash register point set. Customer leaving directly.");
                 LeaveShop();
             }
         }
@@ -153,7 +182,7 @@ namespace HairRemovalSim.Customer
         {
             currentState = CustomerState.Paying;
             paymentTimer = 0f;
-            Debug.Log($"{data.customerName} arrived at reception. Processing payment...");
+            Debug.Log($"{data.customerName} arrived at cash register. Ready for payment...");
         }
         
         private void GoToExit()
@@ -336,6 +365,8 @@ namespace HairRemovalSim.Customer
             }
             else if (currentState == CustomerState.Paying)
             {
+                // Auto-payment disabled - payment now happens via CashRegister interaction
+                /* OLD AUTO-PAYMENT CODE:
                 paymentTimer += Time.deltaTime;
                 if (paymentTimer >= paymentDelay)
                 {
@@ -344,6 +375,8 @@ namespace HairRemovalSim.Customer
                     Pay(payment);
                     GoToExit();
                 }
+                */
+                // Customer waits at cash register until player interacts
             }
             else if (currentState == CustomerState.Leaving)
             {

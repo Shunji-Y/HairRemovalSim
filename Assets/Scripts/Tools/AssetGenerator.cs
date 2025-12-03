@@ -36,6 +36,76 @@ namespace HairRemovalSim.Tools
             Debug.Log("Door Placeholder Created!");
         }
 
+        [ContextMenu("Create Cash Register")]
+        public void CreateCashRegister()
+        {
+            GameObject cashRegister = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cashRegister.name = "CashRegister";
+            cashRegister.transform.localScale = new Vector3(0.5f, 0.8f, 0.4f);
+            cashRegister.tag = GameConstants.Tags.Interactable;
+            cashRegister.layer = LayerMask.NameToLayer(GameConstants.Layers.Interactable);
+            
+            var renderer = cashRegister.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.sharedMaterial = new Material(Shader.Find("Standard"));
+                renderer.sharedMaterial.color = new Color(0.7f, 0.7f, 0.7f); // Gray
+            }
+            
+            // Add BoxCollider as trigger for customer detection
+            var boxCollider = cashRegister.GetComponent<BoxCollider>();
+            if (boxCollider != null)
+            {
+                boxCollider.isTrigger = true;
+                boxCollider.size = new Vector3(2f, 2f, 2f); // Larger trigger area
+            }
+            
+            cashRegister.AddComponent<UI.CashRegister>();
+            cashRegister.AddComponent<Effects.OutlineHighlighter>();
+            
+            Debug.Log("Cash Register created with CashRegister component!");
+        }
+
+        [ContextMenu("Create Reception Desk")]
+        public void CreateReceptionDesk()
+        {
+            GameObject reception = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            reception.name = "ReceptionDesk";
+            reception.transform.localScale = new Vector3(2f, 1f, 1f);
+            reception.tag = GameConstants.Tags.Interactable;
+            reception.layer = LayerMask.NameToLayer(GameConstants.Layers.Interactable);
+            
+            var renderer = reception.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.sharedMaterial = new Material(Shader.Find("Standard"));
+                renderer.sharedMaterial.color = new Color(0.8f, 0.6f, 0.4f); // Wood color
+            }
+            
+            // Add BoxCollider as trigger for customer detection
+            var boxCollider = reception.GetComponent<BoxCollider>();
+            if (boxCollider != null)
+            {
+                boxCollider.isTrigger = true;
+                boxCollider.size = new Vector3(2.5f, 2f, 2.5f); // Larger trigger area
+            }
+            
+            var receptionManager = reception.AddComponent<UI.ReceptionManager>();
+            reception.AddComponent<Effects.OutlineHighlighter>();
+            
+            // Find and assign beds
+            var beds = FindObjectsOfType<BedController>();
+            if (beds.Length > 0)
+            {
+                receptionManager.beds = beds;
+                Debug.Log($"Reception Desk created with {beds.Length} beds assigned!");
+            }
+            else
+            {
+                Debug.LogWarning("Reception Desk created but no beds found. Assign beds manually in Inspector.");
+            }
+        }
+
         [ContextMenu("Create Bed Placeholder")]
         public void CreateBedPlaceholder()
         {

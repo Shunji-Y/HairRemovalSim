@@ -19,7 +19,16 @@ namespace HairRemovalSim.Treatment
         public TreatmentSession(CustomerController customer)
         {
             Customer = customer;
-            TargetBodyParts = new List<Core.BodyPart>(customer.GetComponentsInChildren<Core.BodyPart>());
+            
+            // Directly use requested body parts (no filtering needed!)
+            TargetBodyParts = new List<Core.BodyPart>(customer.data.requestedBodyParts);
+            
+            Debug.Log($"[TreatmentSession] Created for {customer.data.customerName} with {TargetBodyParts.Count} target body parts:");
+            foreach (var part in TargetBodyParts)
+            {
+                Debug.Log($"[TreatmentSession]   - {part.partName}");
+            }
+            
             StartTime = Time.time;
             IsActive = true;
             OverallProgress = 0f;
@@ -29,7 +38,8 @@ namespace HairRemovalSim.Treatment
         {
             if (TargetBodyParts.Count == 0)
             {
-                OverallProgress = 100f;
+                Debug.LogWarning("[TreatmentSession] No target body parts! Check customer spawning logic.");
+                OverallProgress = 0f;
                 return;
             }
 

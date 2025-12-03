@@ -18,13 +18,22 @@ namespace HairRemovalSim.Customer
         public int baseBudget;
 
         [Header("Request")]
-        public BodyPart requestedBodyPart; // Enum: Leg, Face, Chest, Arm
+        public System.Collections.Generic.List<HairRemovalSim.Core.BodyPart> requestedBodyParts = new System.Collections.Generic.List<HairRemovalSim.Core.BodyPart>(); 
         
-
+        [Header("Pricing")]
+        public int pricePerBodyPart = 5000; // Base price per body part
 
         public CustomerData()
         {
             // Random generation logic can go here or in a factory
+        }
+        
+        /// <summary>
+        /// Calculate total price based on requested body parts
+        /// </summary>
+        public int GetTotalPrice()
+        {
+            return requestedBodyParts.Count * pricePerBodyPart;
         }
     }
 

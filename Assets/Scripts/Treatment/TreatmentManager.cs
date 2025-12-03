@@ -57,6 +57,15 @@ namespace HairRemovalSim.Treatment
             }
         }
 
+        public TreatmentSession GetSessionForCustomer(CustomerController customer)
+        {
+            if (activeSessions.ContainsKey(customer))
+            {
+                return activeSessions[customer];
+            }
+            return null;
+        }
+
         public void EndSession()
         {
             if (CurrentSession == null || !CurrentSession.IsActive) return;
@@ -165,10 +174,10 @@ namespace HairRemovalSim.Treatment
                 {
                     session.UpdateProgress();
                     
-                    // Check for completion
+                    // Check for completion and auto-complete
                     if (session.OverallProgress >= 100f)
                     {
-                        Debug.Log($"Treatment complete for {session.Customer.name}! Customer will now go to reception.");
+                        Debug.Log($"[TreatmentManager] Treatment complete for {session.Customer.data.customerName}! Customer will now go to reception.");
                         
                         // Trigger customer to leave bed and go to reception
                         if (session.Customer != null)

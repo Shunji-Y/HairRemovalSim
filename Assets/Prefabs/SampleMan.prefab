@@ -201,10 +201,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: RightCalr
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 889500
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &1038941113181128005 stripped
@@ -246,10 +246,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: LeftLowerArm
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 895000
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &1688955129606180130 stripped
@@ -291,10 +291,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: RightLowerArm
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 895000
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &1836943846223751699 stripped
@@ -336,10 +336,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: Chest
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 905000
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &2412015869019751628 stripped
@@ -381,10 +381,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: LeftArmpit
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 1010000
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &3281270799392937760 stripped
@@ -426,10 +426,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: RightUpperArm
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 895000
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &5212785818868438425 stripped
@@ -471,10 +471,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: LeftCalf
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 903500
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &5232924528457525802 stripped
@@ -551,12 +551,16 @@ MonoBehaviour:
     painTolerance: 0
     patience: 0
     baseBudget: 0
-    requestedBodyPart: 0
+    requestedBodyParts: 
+    pricePerBodyPart: 5000
   agent: {fileID: 0}
   currentPain: 0
   maxPain: 100
+  IsCompleted: 0
   paymentDelay: 2
   animator: {fileID: 0}
+  isSupine: 1
+  rotationDuration: 1
 --- !u!1 &5573199293815166102 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 943791241712589524, guid: b4e380144ab6f474688164e555113352, type: 3}
@@ -596,10 +600,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: Abs
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 914000
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &5790362256025867471 stripped
@@ -641,10 +645,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: LeftUpperArm
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 895000
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &6347603766679618395 stripped
@@ -686,10 +690,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: LeftThigh
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 940000
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &6622105383090763556 stripped
@@ -731,10 +735,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: Back
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 792000
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &6792717285771174725 stripped
@@ -776,10 +780,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: RightThigh
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 900000
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &8623654445549135089 stripped
@@ -821,10 +825,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: RightArmpit
   skinSensitivity: 1
   hairCount: 100
-  targetWhitePixelCount: 1010000
+  targetWhitePixelCount: 0
   completionPercentage: 0
   treatmentController: {fileID: 0}
 --- !u!1 &8693282388012686972 stripped
@@ -866,7 +870,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b7b4625d5a69342a45092fe2951d7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partName: Unknown
+  partName: Beard
   skinSensitivity: 1
   hairCount: 100
   targetWhitePixelCount: 0
