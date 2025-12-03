@@ -6,7 +6,6 @@
 *.shader    text eol=lf
 *.meta      text eol=lf
 *.mat       text eol=lf
-*.unity     text eol=lf merge=unityyamlmerge
 *.prefab    text eol=lf merge=unityyamlmerge
 *.anim      text eol=lf merge=unityyamlmerge
 *.asset     text eol=lf
