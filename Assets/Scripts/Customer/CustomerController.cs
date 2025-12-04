@@ -31,6 +31,10 @@ namespace HairRemovalSim.Customer
         private Transform exitPoint;
         private Transform receptionPoint; // Pre-treatment reception
         private Transform cashRegisterPoint; // Post-treatment payment
+        private CustomerSpawner spawner; // Reference to spawner for pool return
+        
+        [Header("Initialization")]
+        public bool isInitialized = false; // Track if BodyParts are initialized
         
         [Header("Payment Settings")]
         public float paymentDelay = 2.0f;
@@ -52,24 +56,42 @@ namespace HairRemovalSim.Customer
             if (animator == null) animator = GetComponentInChildren<Animator>();
         }
 
+
         private void Start()
         {
-            // Initialize BodyParts
+            // Initialize BodyParts over multiple frames to avoid frame rate drop
+            StartCoroutine(InitializeBodyPartsAsync());
+        }
+        
+        private System.Collections.IEnumerator InitializeBodyPartsAsync()
+        {
             HairRemovalSim.Core.BodyPart[] bodyParts = GetComponentsInChildren<HairRemovalSim.Core.BodyPart>();
+            Debug.Log($"[CustomerController] Initializing {bodyParts.Length} body parts over {bodyParts.Length} frames...");
+            
+            int count = 0;
             foreach (HairRemovalSim.Core.BodyPart part in bodyParts)
             {
                 part.Initialize();
+                count++;
+                
+                // Wait one frame between each initialization to spread the load
+                yield return null;
             }
+            
+            isInitialized = true; // Mark as initialized
+            Debug.Log($"[CustomerController] Finished initializing {count} body parts for {(data != null ? data.customerName : "pooled customer")}");
         }
         
 
 
-        public void Initialize(CustomerData newData, Transform exit, Transform reception, Transform cashRegister)
+
+        public void Initialize(CustomerData newData, Transform exit, Transform reception, Transform cashRegister, CustomerSpawner spawnerRef)
         {
             data = newData;
             exitPoint = exit;
             receptionPoint = reception;
             cashRegisterPoint = cashRegister;
+            spawner = spawnerRef;
         }
 
         public void GoToReception(Transform receptionPoint)
@@ -107,6 +129,7 @@ namespace HairRemovalSim.Customer
         
         /// <summary>
         /// Calculate final payment based on completed requested parts only
+        /// Uses baseBudget as price per body part
         /// </summary>
         public int CalculateFinalPayment()
         {
@@ -121,9 +144,9 @@ namespace HairRemovalSim.Customer
                 }
             }
             
-            // Calculate payment: completed parts only
-            int payment = completedCount * data.pricePerBodyPart;
-            Debug.Log($"[CustomerController] Payment calculation: {completedCount}/{data.requestedBodyParts.Count} parts completed = ${payment}");
+            // Calculate payment: baseBudget × completed parts
+            int payment = completedCount * data.baseBudget;
+            Debug.Log($"[CustomerController] Payment calculation: {completedCount}/{data.requestedBodyParts.Count} parts completed × ${data.baseBudget}/part = ${payment}");
             
             return payment;
         }
@@ -383,10 +406,21 @@ namespace HairRemovalSim.Customer
                 if (agent != null && !agent.pathPending && agent.remainingDistance < 0.5f)
                 {
                     Debug.Log($"{data.customerName} has left the shop.");
-                    Destroy(gameObject);
+                    
+                    // Return to pool instead of Destroy
+                    if (spawner != null)
+                    {
+                        spawner.ReturnToPool(this);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[CustomerController] No spawner reference! Destroying instead.");
+                        Destroy(gameObject);
+                    }
                 }
             }
         }
+        
         
         private int CalculatePayment()
         {

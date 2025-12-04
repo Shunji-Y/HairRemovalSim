@@ -14,19 +14,66 @@ namespace HairRemovalSim.Customer
         public Transform cashRegisterPoint; // Post-treatment payment
         public float spawnInterval = 30f; // Seconds
         public int maxCustomers = 3;
+        
+        [Header("Object Pool")]
+        public int poolSize = 3; // Pre-initialized customers
 
+        private List<CustomerController> customerPool = new List<CustomerController>();
         private List<CustomerController> activeCustomers = new List<CustomerController>();
 
         private float timer;
+        private bool poolInitialized = false;
 
         private void Start()
         {
-            // Initialize timer so the first customer spawns immediately when the shop opens
+            // Initialize timer so the first customer spawns after opening
             timer = spawnInterval;
+            
+            // Initialize customer pool at scene start
+            StartCoroutine(InitializePool());
+        }
+        
+        private System.Collections.IEnumerator InitializePool()
+        {
+            Debug.Log($"[CustomerSpawner] Initializing customer pool with {poolSize} customers...");
+            
+            for (int i = 0; i < poolSize; i++)
+            {
+                GameObject obj = Instantiate(customerPrefab, Vector3.zero, Quaternion.identity);
+                obj.name = $"Customer_Pooled_{i}";
+                CustomerController customer = obj.GetComponent<CustomerController>();
+                
+                if (customer != null)
+                {
+                    // IMPORTANT: Activate to trigger Start() and initialization
+                    customer.gameObject.SetActive(true);
+                    Debug.Log($"[CustomerSpawner] Pre-initializing customer {i + 1}/{poolSize} (activated)...");
+                    
+                    // Wait for initialization to complete
+                    while (!customer.isInitialized)
+                    {
+                        yield return null;
+                    }
+                    
+                    Debug.Log($"[CustomerSpawner] Customer {i + 1}/{poolSize} initialization complete, deactivating...");
+                    
+                    // Now deactivate and add to pool
+                    customer.gameObject.SetActive(false);
+                    customerPool.Add(customer);
+                }
+                
+                // Already waited during initialization, no extra frame needed
+            }
+            
+            poolInitialized = true;
+            Debug.Log($"[CustomerSpawner] Customer pool initialization complete!");
         }
 
         private void Update()
         {
+            // Only spawn if pool is initialized
+            if (!poolInitialized) return;
+            
             if (GameManager.Instance.CurrentState == GameManager.GameState.Day)
             {
                 timer += Time.deltaTime;
@@ -43,13 +90,43 @@ namespace HairRemovalSim.Customer
                 }
             }
         }
+        
+        private CustomerController GetFromPool()
+        {
+            foreach (var customer in customerPool)
+            {
+                if (!customer.gameObject.activeInHierarchy)
+                {
+                    return customer;
+                }
+            }
+            
+            Debug.LogWarning("[CustomerSpawner] No available customers in pool! Consider increasing pool size.");
+            return null;
+        }
+        
+        public void ReturnToPool(CustomerController customer)
+        {
+            if (customer == null) return;
+            
+            Debug.Log($"[CustomerSpawner] Returning {customer.data.customerName} to pool");
+            customer.gameObject.SetActive(false);
+            customer.transform.position = Vector3.zero;
+            activeCustomers.Remove(customer);
+        }
 
         private void SpawnCustomer()
         {
             if (customerPrefab == null || spawnPoint == null) return;
 
-            GameObject obj = Instantiate(customerPrefab, spawnPoint.position, spawnPoint.rotation);
-            CustomerController customer = obj.GetComponent<CustomerController>();
+            // Get customer from pool instead of Instantiate
+            CustomerController customer = GetFromPool();
+            if (customer == null) return;
+            
+            // Reset position and activate
+            customer.transform.position = spawnPoint.position;
+            customer.transform.rotation = spawnPoint.rotation;
+            customer.gameObject.SetActive(true);
             
             if (customer != null)
             {
@@ -76,7 +153,7 @@ namespace HairRemovalSim.Customer
                         break;
                 }
                 
-                customer.Initialize(data, exitPoint, receptionPoint, cashRegisterPoint);
+                customer.Initialize(data, exitPoint, receptionPoint, cashRegisterPoint, this);
                 
                 // Generate random requested body parts (1-3 parts) from actual BodyPart components
                 var allBodyParts = new System.Collections.Generic.List<Core.BodyPart>(customer.GetComponentsInChildren<Core.BodyPart>());

@@ -15,13 +15,10 @@ namespace HairRemovalSim.Customer
         public WealthLevel wealth; // Enum: Poor, Average, Rich, Tycoon
         public float painTolerance; // 0.0 - 1.0
         public float patience; // 0.0 - 1.0
-        public int baseBudget;
+        public int baseBudget; // Used as price per body part
 
         [Header("Request")]
         public System.Collections.Generic.List<HairRemovalSim.Core.BodyPart> requestedBodyParts = new System.Collections.Generic.List<HairRemovalSim.Core.BodyPart>(); 
-        
-        [Header("Pricing")]
-        public int pricePerBodyPart = 5000; // Base price per body part
 
         public CustomerData()
         {
@@ -30,10 +27,11 @@ namespace HairRemovalSim.Customer
         
         /// <summary>
         /// Calculate total price based on requested body parts
+        /// Uses baseBudget as price per body part
         /// </summary>
         public int GetTotalPrice()
         {
-            return requestedBodyParts.Count * pricePerBodyPart;
+            return requestedBodyParts.Count * baseBudget;
         }
     }
 
