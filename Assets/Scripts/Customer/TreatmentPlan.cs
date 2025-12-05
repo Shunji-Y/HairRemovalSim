@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace HairRemovalSim.Customer
 {
@@ -7,6 +8,7 @@ namespace HairRemovalSim.Customer
     /// </summary>
     public enum TreatmentPlan
     {
+        None = -1,          // No plan selected (default)
         UpperArms,          // 0: Left + Right Upper Arms
         LowerArms,          // 1: Left + Right Lower Arms
         FullArms,           // 2: All 4 arm parts
@@ -34,6 +36,7 @@ namespace HairRemovalSim.Customer
         {
             switch (plan)
             {
+                case TreatmentPlan.None: return "未選択";
                 case TreatmentPlan.UpperArms: return "上腕脱毛";
                 case TreatmentPlan.LowerArms: return "下腕脱毛";
                 case TreatmentPlan.FullArms: return "腕全体脱毛";
@@ -58,6 +61,9 @@ namespace HairRemovalSim.Customer
         {
             switch (plan)
             {
+                case TreatmentPlan.None:
+                    return new List<string>();
+                    
                 case TreatmentPlan.UpperArms:
                     return new List<string> { "LeftUpperArm", "RightUpperArm" };
                 
@@ -109,6 +115,37 @@ namespace HairRemovalSim.Customer
                 default:
                     return new List<string>();
             }
+        }
+        
+        /// <summary>
+        /// Get mask values for shader highlighting from BodyPartsDatabase
+        /// Returns up to 12 mask values (0.0-1.0)
+        /// </summary>
+        public static float[] GetMaskValues(this TreatmentPlan plan, Core.BodyPartsDatabase database)
+        {
+            if (database == null)
+            {
+                Debug.LogError("[TreatmentPlan] BodyPartsDatabase is null!");
+                return new float[0];
+            }
+            
+            var partNames = plan.GetBodyPartNames();
+            var maskValues = new List<float>();
+            
+            foreach (var partName in partNames)
+            {
+                var partDef = database.GetPartByName(partName);
+                if (partDef != null)
+                {
+                    maskValues.Add(partDef.maskValue);
+                }
+                else
+                {
+                    Debug.LogWarning($"[TreatmentPlan] Body part '{partName}' not found in database");
+                }
+            }
+            
+            return maskValues.ToArray();
         }
     }
 }

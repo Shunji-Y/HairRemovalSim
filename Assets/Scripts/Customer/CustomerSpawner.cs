@@ -13,6 +13,7 @@ namespace HairRemovalSim.Customer
         public Transform receptionPoint; // Pre-treatment reception
         public Transform cashRegisterPoint; // Post-treatment payment
         public UI.ReceptionManager receptionManager; // Reference to reception for queue registration
+        public Core.BodyPartsDatabase bodyPartsDatabase; // UV-based body part system
         
         [Header("Spawn Intervals")]
         public float spawnInterval = 30f; // Seconds
@@ -159,6 +160,9 @@ namespace HairRemovalSim.Customer
             
             if (customer != null)
             {
+                // Assign BodyPartsDatabase
+                customer.bodyPartsDatabase = bodyPartsDatabase;
+                
                 // Generate random data
                 CustomerData data = new CustomerData();
                 data.customerName = "Guest " + Random.Range(100, 999);
@@ -184,44 +188,11 @@ namespace HairRemovalSim.Customer
                 
                 customer.Initialize(data, exitPoint, receptionPoint, cashRegisterPoint, this);
                 
-                // Select a random treatment plan instead of random individual parts
+                // Select a random treatment plan
                 TreatmentPlan selectedPlan = (TreatmentPlan)Random.Range(0, System.Enum.GetValues(typeof(TreatmentPlan)).Length);
+                data.selectedTreatmentPlan = selectedPlan;
                 
-                // Clear previous requested parts
-                data.requestedBodyParts.Clear();
-                
-                // Get body part names for this plan
-                var requiredPartNames = selectedPlan.GetBodyPartNames();
-                
-                // Find matching BodyPart components by GameObject name
-                var allBodyParts = customer.GetComponentsInChildren<Core.BodyPart>(true); // Include inactive
-                
-                foreach (var partName in requiredPartNames)
-                {
-                    // Find BodyPart whose GameObject name matches
-                    var matchingPart = System.Array.Find(allBodyParts, bp => bp.gameObject.name == partName);
-                    
-                    if (matchingPart != null)
-                    {
-                        data.requestedBodyParts.Add(matchingPart);
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"[CustomerSpawner] Could not find BodyPart with GameObject name '{partName}' for plan {selectedPlan}");
-                    }
-                }
-                
-                // Fallback: if no parts found, assign all parts (FullBody)
-                if (data.requestedBodyParts.Count == 0)
-                {
-                    Debug.LogWarning($"[CustomerSpawner] No body parts found for {selectedPlan}, assigning all available parts");
-                    foreach (var part in allBodyParts)
-                    {
-                        data.requestedBodyParts.Add(part);
-                    }
-                }
-                
-                Debug.Log($"[CustomerSpawner] {data.customerName} selected plan: {selectedPlan.GetDisplayName()} ({data.requestedBodyParts.Count} parts)");
+                Debug.Log($"[CustomerSpawner] {data.customerName} selected plan: {selectedPlan.GetDisplayName()}");
                 
                 // Register with reception to get queue position
                 if (receptionManager != null)

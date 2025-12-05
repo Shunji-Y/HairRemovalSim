@@ -9,7 +9,7 @@ namespace HairRemovalSim.Treatment
     public class TreatmentSession
     {
         public CustomerController Customer { get; private set; }
-        public List<Core.BodyPart> TargetBodyParts { get; private set; }
+        public Core.BodyPart TargetBodyPart { get; private set; } // Single body part for UV mask system
         public float StartTime { get; private set; }
         public bool IsActive { get; private set; }
 
@@ -20,13 +20,16 @@ namespace HairRemovalSim.Treatment
         {
             Customer = customer;
             
-            // Directly use requested body parts (no filtering needed!)
-            TargetBodyParts = new List<Core.BodyPart>(customer.data.requestedBodyParts);
+            // Find the single BodyPart component (should be on Body child object)
+            TargetBodyPart = customer.GetComponentInChildren<Core.BodyPart>();
             
-            Debug.Log($"[TreatmentSession] Created for {customer.data.customerName} with {TargetBodyParts.Count} target body parts:");
-            foreach (var part in TargetBodyParts)
+            if (TargetBodyPart == null)
             {
-                Debug.Log($"[TreatmentSession]   - {part.partName}");
+                Debug.LogError($"[TreatmentSession] No BodyPart found for {customer.data.customerName}!");
+            }
+            else
+            {
+                Debug.Log($"[TreatmentSession] Created for {customer.data.customerName} - Target: {TargetBodyPart.partName}, Plan: {customer.data.selectedTreatmentPlan.GetDisplayName()}");
             }
             
             StartTime = Time.time;
@@ -36,26 +39,20 @@ namespace HairRemovalSim.Treatment
 
         public void UpdateProgress()
         {
-            if (TargetBodyParts.Count == 0)
+            if (TargetBodyPart == null)
             {
-                Debug.LogWarning("[TreatmentSession] No target body parts! Check customer spawning logic.");
+                Debug.LogWarning("[TreatmentSession] No target body part!");
                 OverallProgress = 0f;
                 return;
             }
 
-            float totalCompletion = 0f;
-            foreach (var part in TargetBodyParts)
-            {
-                totalCompletion += part.CompletionPercentage;
-            }
-
-            OverallProgress = totalCompletion / TargetBodyParts.Count;
+            // Overall progress is the single body part's completion
+            OverallProgress = TargetBodyPart.CompletionPercentage;
         }
 
         public bool IsComplete()
         {
             // Consider complete if overall progress is effectively 100%
-            // Individual parts clamp to 100, so average should reach 100
             return OverallProgress >= 99.9f;
         }
 

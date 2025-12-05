@@ -16,7 +16,7 @@ namespace HairRemovalSim.Treatment
         [Range(0f, 10f)]
         public float completionBuffer = 5f;
 
-        private RenderTexture maskTexture;
+        private RenderTexture[] maskTextures; // Array of masks, one per material
         private Material paintMaterial;
         private Material[] targetMaterials;
         private Renderer meshRenderer;
@@ -37,18 +37,23 @@ namespace HairRemovalSim.Treatment
             bodyPart = GetComponent<HairRemovalSim.Core.BodyPart>();
             targetMaterials = meshRenderer.materials;
             
-            maskTexture = new RenderTexture(maskResolution, maskResolution, 0, RenderTextureFormat.R8);
-            maskTexture.wrapMode = TextureWrapMode.Clamp; // Prevent tiling/ghost hair at edges
-            maskTexture.Create();
-            ClearMask();
-            
-            foreach (var mat in targetMaterials)
+            // Initialize mask array
+            maskTextures = new RenderTexture[targetMaterials.Length];
+
+            for (int i = 0; i < targetMaterials.Length; i++)
             {
-                if (mat != null)
+                // Use ARGB32 instead of R8 for broader platform support
+                maskTextures[i] = new RenderTexture(maskResolution, maskResolution, 0, RenderTextureFormat.ARGB32);
+                maskTextures[i].wrapMode = TextureWrapMode.Repeat; // Repeat for tiled UVs (0-1, 1-2, 2-3, etc.)
+                maskTextures[i].Create();
+                
+                if (targetMaterials[i] != null)
                 {
-                    mat.SetTexture("_MaskMap", maskTexture);
+                    targetMaterials[i].SetTexture("_MaskMap", maskTextures[i]);
                 }
             }
+            
+            ClearMask();
 
             if (paintShader == null)
             {
@@ -63,11 +68,8 @@ namespace HairRemovalSim.Treatment
                 Debug.LogError("PaintShader not found!");
             }
             
-            
             // Delay initial pixel count until after first render
             StartCoroutine(InitializePixelCount());
-
-
             
             // Initial update
             UpdateCompletion();
@@ -87,12 +89,23 @@ namespace HairRemovalSim.Treatment
 
         public void ClearMask()
         {
-            // Step 1: Clear to black (no hair anywhere)
-            RenderTexture.active = maskTexture;
-            GL.Clear(false, true, Color.black);
-            RenderTexture.active = null;
+            // Step 1: Clear all masks to WHITE (hair everywhere by default)
+            // This ensures that if UV layout rendering fails or doesn't cover everything, we still have hair.
+            for (int i = 0; i < maskTextures.Length; i++)
+            {
+                RenderTexture.active = maskTextures[i];
+                GL.Clear(false, true, Color.white);
+                RenderTexture.active = null;
+            }
             
             // Step 2: Paint white only where mesh exists (using GPU rendering)
+            // Actually, since we want hair everywhere initially, we might not need UVLayout for initialization
+            // unless we want to restrict hair ONLY to the mesh UV islands (to avoid texture bleeding).
+            // But if the background is black, hair won't show.
+            // If we clear to white, hair shows everywhere on the texture.
+            // Let's try clearing to white first. If that causes bleeding, we can revisit UVLayout.
+            
+            /*
             Mesh meshToRender = null;
             
             if (useUVMasking)
@@ -120,13 +133,16 @@ namespace HairRemovalSim.Treatment
                 if (uvLayoutMat != null)
                 {
                     // Render mesh into mask texture using UV layout shader
-                    // This maps UVs to screen space and outputs white
                     CommandBuffer cmd = new CommandBuffer();
-                    cmd.SetRenderTarget(maskTexture);
                     
-                    // Draw all submeshes
-                    for (int i = 0; i < meshToRender.subMeshCount; i++)
+                    // Draw each submesh to its corresponding mask texture
+                    // Assuming submesh index matches material index
+                    for (int i = 0; i < Mathf.Min(maskTextures.Length, meshToRender.subMeshCount); i++)
                     {
+                        // Clear to black first if we are strictly using UV layout
+                        cmd.SetRenderTarget(maskTextures[i]);
+                        cmd.ClearRenderTarget(false, true, Color.black);
+                        
                         cmd.DrawMesh(meshToRender, Matrix4x4.identity, uvLayoutMat, i);
                     }
                     
@@ -135,143 +151,147 @@ namespace HairRemovalSim.Treatment
                     
                     Destroy(uvLayoutMat);
                 }
-                else
-                {
-                    Debug.LogError("Hidden/UVLayout shader not found! Falling back to full white.");
-                    RenderTexture.active = maskTexture;
-                    GL.Clear(false, true, Color.white);
-                    RenderTexture.active = null;
-                }
             }
-            else
+            */
+        }
+
+        // Update decal position on the mask
+        public void UpdateDecal(Vector2 uvPosition, float angle, Vector2 size, Color color, int subMeshIndex)
+        {
+            if (subMeshIndex < 0 || subMeshIndex >= targetMaterials.Length) return;
+            if (targetMaterials[subMeshIndex] == null) return;
+            
+            // Only update the material corresponding to the hit submesh
+            Material mat = targetMaterials[subMeshIndex];
+            mat.SetFloat("_DecalEnabled", 1.0f);
+            mat.SetVector("_DecalUVCenter", new Vector4(uvPosition.x, uvPosition.y, 0, 0));
+            mat.SetVector("_DecalUVSize", new Vector4(size.x, size.y, 0, 0));
+            mat.SetColor("_DecalColor", color);
+            mat.SetFloat("_DecalUVAngle", angle);
+        }
+
+        public void HideDecal()
+        {
+            foreach (var mat in targetMaterials)
             {
-                if (useUVMasking)
-                {
-                    Debug.LogWarning("[HairTreatmentController] No MeshFilter or SkinnedMeshRenderer found. Cannot generate UV mask.");
-                }
-                
-                // Fallback to full white if no mesh found or masking disabled
-                RenderTexture.active = maskTexture;
-                GL.Clear(false, true, Color.white);
-                RenderTexture.active = null;
+                if (mat != null) mat.SetFloat("_DecalEnabled", 0.0f);
+            }
+        }
+
+        // Apply treatment (remove hair) at UV position
+        public void ApplyTreatment(Vector2 uvPosition, Vector2 size, float angle, int subMeshIndex)
+        {
+            if (paintMaterial == null)
+            {
+                Debug.LogError("[HairTreatmentController] PaintMaterial is null!");
+                return;
+            }
+            if (subMeshIndex < 0 || subMeshIndex >= maskTextures.Length)
+            {
+                Debug.LogError($"[HairTreatmentController] SubMeshIndex {subMeshIndex} out of range (Length: {maskTextures.Length})");
+                return;
+            }
+
+            Debug.Log($"[HairTreatmentController] Applying treatment at {uvPosition}, Size: {size}, Angle: {angle}, SubMesh: {subMeshIndex}");
+
+            // Setup paint material to draw a rectangle (tape shape)
+            // Shader properties: _BrushMode (1=Rect), _BrushRect (x,y,w,h), _BrushAngle, _BrushColor
+            paintMaterial.SetFloat("_BrushMode", 1.0f); // Rect mode
+            paintMaterial.SetVector("_BrushRect", new Vector4(uvPosition.x, uvPosition.y, size.x, size.y));
+            paintMaterial.SetFloat("_BrushAngle", angle);
+            paintMaterial.SetColor("_BrushColor", Color.black); // Paint black to remove hair
+            
+            // Draw black shape on the specific mask texture
+            RenderTexture.active = maskTextures[subMeshIndex];
+            GL.PushMatrix();
+            GL.LoadOrtho();
+            
+            // Use Graphics.Blit with shader to handle brush shape
+            RenderTexture temp = RenderTexture.GetTemporary(maskTextures[subMeshIndex].width, maskTextures[subMeshIndex].height, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(maskTextures[subMeshIndex], temp);
+            Graphics.Blit(temp, maskTextures[subMeshIndex], paintMaterial);
+            RenderTexture.ReleaseTemporary(temp);
+            
+            GL.PopMatrix();
+            RenderTexture.active = null;
+            
+            UpdateCompletion();
+        }
+
+        private void UpdateCompletion()
+        {
+            if (isCompleted || bodyPart == null) return;
+
+            int currentWhitePixels = CountWhitePixels();
+            
+            // Calculate percentage based on initial white pixels
+            // If initial is 0 (error or no mesh), avoid divide by zero
+            float percentage = 0f;
+            if (initialWhitePixels > 0)
+            {
+                // Inverted: We want % removed (black), so (Initial - Current) / Initial
+                percentage = (float)(initialWhitePixels - currentWhitePixels) / initialWhitePixels * 100f;
             }
             
-            isCompleted = false;
+            // Clamp and add buffer
+            percentage = Mathf.Clamp(percentage + completionBuffer, 0f, 100f);
+            
+            bodyPart.UpdateCompletion(percentage);
+
+            if (percentage >= 100f)
+            {
+                isCompleted = true;
+                HideDecal(); // Ensure decal is hidden
+                Debug.Log($"[HairTreatmentController] Treatment completed for {name}!");
+            }
         }
 
-        public void RemoveHairAt(Vector2 uv)
-        {
-            if (maskTexture == null || paintMaterial == null) return;
-
-            paintMaterial.SetVector("_BrushPos", new Vector4(uv.x, uv.y, 0, 0));
-            paintMaterial.SetFloat("_BrushSize", brushSize);
-            paintMaterial.SetColor("_BrushColor", Color.black);
-            
-            RenderTexture temp = RenderTexture.GetTemporary(maskTexture.width, maskTexture.height, 0, RenderTextureFormat.R8);
-            Graphics.Blit(maskTexture, temp);
-            Graphics.Blit(temp, maskTexture, paintMaterial);
-            RenderTexture.ReleaseTemporary(temp);
-            
-            // Note: We do NOT call UpdateCompletion here to avoid lag during drag.
-            // It should be called by the tool on UseUp or periodically.
-       }
-
-        public void RemoveHairInRect(Vector2 uvCenter, Vector2 uvSize, float angleRadians = 0f)
-        {
-            if (maskTexture == null || paintMaterial == null) return;
-
-            paintMaterial.SetVector("_BrushRect", new Vector4(uvCenter.x, uvCenter.y, uvSize.x, uvSize.y));
-            paintMaterial.SetFloat("_BrushAngle", angleRadians);
-            paintMaterial.SetFloat("_BrushMode", 1);
-            paintMaterial.SetColor("_BrushColor", Color.black);
-            
-            RenderTexture temp = RenderTexture.GetTemporary(maskTexture.width, maskTexture.height, 0, RenderTextureFormat.R8);
-            Graphics.Blit(maskTexture, temp);
-            Graphics.Blit(temp, maskTexture, paintMaterial);
-            RenderTexture.ReleaseTemporary(temp);
-        }
-        
         private int CountWhitePixels()
         {
-            if (maskTexture == null) return 0;
+            // This is slow, should be optimized for production (e.g. Compute Shader or async GPU readback)
+            // For prototype, we'll sample a low-res version or just do it less frequently
             
-            RenderTexture.active = maskTexture;
-            Texture2D tempTexture = new Texture2D(maskTexture.width, maskTexture.height, TextureFormat.R8, false);
-            tempTexture.ReadPixels(new Rect(0, 0, maskTexture.width, maskTexture.height), 0, 0);
-            tempTexture.Apply();
-            RenderTexture.active = null;
+            // Optimization: Only check every N frames or use a smaller texture for counting
+            // For now, let's just sum up all masks
             
-            Color[] pixels = tempTexture.GetPixels();
-            int whitePixels = 0;
+            int totalWhite = 0;
             
-            foreach (Color pixel in pixels)
+            foreach (var mask in maskTextures)
             {
-                if (pixel.r > 0.5f) whitePixels++;
+                if (mask == null) continue;
+                
+                // Create a small temporary texture to read from (downsample for speed)
+                int smallSize = 64; 
+                RenderTexture smallRT = RenderTexture.GetTemporary(smallSize, smallSize, 0, RenderTextureFormat.ARGB32);
+                Graphics.Blit(mask, smallRT);
+                
+                Texture2D tex = new Texture2D(smallSize, smallSize, TextureFormat.ARGB32, false);
+                RenderTexture.active = smallRT;
+                tex.ReadPixels(new Rect(0, 0, smallSize, smallSize), 0, 0);
+                tex.Apply();
+                RenderTexture.active = null;
+                
+                Color[] pixels = tex.GetPixels();
+                foreach (Color p in pixels)
+                {
+                    if (p.r > 0.5f) totalWhite++;
+                }
+                
+                Destroy(tex);
+                RenderTexture.ReleaseTemporary(smallRT);
             }
-            
-            Destroy(tempTexture);
-            return whitePixels;
-        }
-        
-        [ContextMenu("Set Current Pixels as Target (100%)")]
-        public void SetCurrentAsTarget()
-        {
-            if (bodyPart != null)
-            {
-                bodyPart.targetWhitePixelCount = CountWhitePixels();
-                Debug.Log($"[HairTreatmentController] Set targetWhitePixelCount to {bodyPart.targetWhitePixelCount} for {bodyPart.partName}");
-                UpdateCompletion();
-            }
-        }
 
-        public void UpdateCompletion()
-        {
-            if (bodyPart == null || initialWhitePixels == 0) return;
-            
-            int currentWhite = CountWhitePixels();
-            
-            // Calculate percentage based on range [Initial, Target]
-            // Progress = (Initial - Current) / (Initial - Target)
-            
-            float range = initialWhitePixels - bodyPart.targetWhitePixelCount;
-            if (range <= 0) range = 1; // Avoid division by zero
-            
-            float removed = initialWhitePixels - currentWhite;
-            float rawPercentage = (removed / range) * 100f;
-            
-            float threshold = 100f - completionBuffer;
-            float finalPercentage = rawPercentage >= threshold ? 100f : Mathf.Clamp(rawPercentage, 0f, 100f);
-            
-            Debug.Log($"[Completion] {bodyPart.partName}: White {currentWhite} (Target: {bodyPart.targetWhitePixelCount}) -> {rawPercentage:F1}%");
-            
-            bodyPart.SetCompletion(finalPercentage);
-
-            // If 100% reached, remove all remaining hair visually
-            if (finalPercentage >= 100f && !isCompleted)
-            {
-                RemoveAllHair();
-                isCompleted = true;
-                Debug.Log($"[Completion] {bodyPart.partName}: Reached 100%, removing all remaining hair.");
-            }
-            else if (finalPercentage < 100f)
-            {
-                isCompleted = false;
-            }
-        }
-
-        public void RemoveAllHair()
-        {
-            if (maskTexture == null) return;
-            RenderTexture.active = maskTexture;
-            GL.Clear(false, true, Color.black); // Black removes hair
-            RenderTexture.active = null;
+            return totalWhite;
         }
 
         private void OnDestroy()
         {
-            if (maskTexture != null)
+            if (maskTextures != null)
             {
-                maskTexture.Release();
+                foreach (var mask in maskTextures)
+                {
+                    if (mask != null) mask.Release();
+                }
             }
         }
     }

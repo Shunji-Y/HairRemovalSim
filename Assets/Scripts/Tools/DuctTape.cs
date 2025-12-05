@@ -2,6 +2,7 @@ using UnityEngine;
 using HairRemovalSim.Interaction;
 using HairRemovalSim.Player;
 using HairRemovalSim.Core;
+using HairRemovalSim.Treatment;
 
 namespace HairRemovalSim.Tools
 {
@@ -59,66 +60,116 @@ namespace HairRemovalSim.Tools
 
             if (Physics.Raycast(ray, out hit, 10f))
             {
-                // Debug.Log($"Raycast Hit: {hit.collider.name}");
-                BodyPart bodyPart = hit.collider.GetComponent<BodyPart>();
-                if (bodyPart != null)
+                // Try to get HairTreatmentController directly (it should be on the same object as BodyPart)
+                HairTreatmentController treatmentController = hit.collider.GetComponent<HairTreatmentController>();
+                
+                // If not found, try BodyPart and get controller from it
+                if (treatmentController == null)
+                {
+                    BodyPart bodyPart = hit.collider.GetComponent<BodyPart>();
+                    if (bodyPart != null)
+                    {
+                        treatmentController = bodyPart.GetComponent<HairTreatmentController>();
+                    }
+                }
+
+                if (treatmentController != null)
                 {
                     // Check if we switched to a different BodyPart
-                    if (currentBodyPart != null && currentBodyPart != bodyPart && currentMaterials != null)
+                    if (currentBodyPart != null && currentBodyPart != treatmentController.GetComponent<BodyPart>())
                     {
-                        // Disable decal on the previous BodyPart
-                        foreach (var mat in currentMaterials)
-                        {
-                            if (mat != null) mat.SetFloat("_DecalEnabled", 0);
-                        }
+                        // Hide decal on previous controller if needed
+                        // Ideally we should track the previous controller, but for now we rely on HideDecal being called elsewhere or frame update
                     }
 
                     isHoveringBodyPart = true;
-                    currentBodyPart = bodyPart;
+                    currentBodyPart = treatmentController.GetComponent<BodyPart>();
                     currentHit = hit;
 
-                    Renderer renderer = bodyPart.GetComponent<Renderer>();
+                    Renderer renderer = treatmentController.GetComponent<Renderer>();
                     if (renderer != null && renderer.materials != null)
                     {
                         currentMaterials = renderer.materials;
 
                         // Calculate UV rect for decal display
                         UVRect uvRect = CalculateUVRect(hit, decalWidth, decalHeight);
-
-                        // Set UV-based decal parameters on ALL materials
-                        foreach (var mat in currentMaterials)
-                        {
-                            if (mat == null) continue;
-                            mat.SetVector("_DecalUVCenter", uvRect.center);
-                            mat.SetVector("_DecalUVSize", uvRect.size);
-                            mat.SetFloat("_DecalUVAngle", uvRect.angle);
-                            mat.SetColor("_DecalColor", emissionColor);
-                            mat.SetFloat("_DecalEnabled", 1);
-                        }
+                        
+                        // Determine submesh index to update the correct material/mask
+                        int subMeshIndex = GetSubMeshIndex(hit);
+                        
+                        // Update decal on the specific submesh
+                        treatmentController.UpdateDecal(uvRect.center, uvRect.angle, new Vector2(decalWidth, decalHeight), emissionColor, subMeshIndex);
+                        
+                        return;
                     }
-                    
-                    return;
                 }
             }
             
             // No body part hit - disable decal
-            if (currentMaterials != null)
+            if (currentBodyPart != null)
             {
-                foreach (var mat in currentMaterials)
+                var controller = currentBodyPart.GetComponent<HairTreatmentController>();
+                if (controller != null)
                 {
-                    if (mat != null) mat.SetFloat("_DecalEnabled", 0);
+                    controller.HideDecal();
                 }
             }
+            
             isHoveringBodyPart = false;
             currentBodyPart = null;
+        }
+        
+        private int GetSubMeshIndex(RaycastHit hit)
+        {
+            // Debug.Log($"[DuctTape] Hit Collider: {hit.collider.GetType().Name}, TriangleIndex: {hit.triangleIndex}");
+
+            if (hit.triangleIndex == -1) 
+            {
+                // Debug.LogWarning("[DuctTape] Hit triangle index is -1. Raycast might not be hitting a MeshCollider.");
+                return 0; // Fallback
+            }
+
+            Mesh mesh = null;
+
+            if (hit.collider is MeshCollider meshCollider)
+            {
+                mesh = meshCollider.sharedMesh;
+            }
+            else
+            {
+                // If hitting a primitive collider on a SkinnedMeshRenderer, we can't get submesh index from triangle index.
+                // We need to assume based on material or something else?
+                // Or maybe we are hitting the SkinnedMeshRenderer's baked mesh collider?
+                SkinnedMeshRenderer smr = hit.collider.GetComponent<SkinnedMeshRenderer>();
+                if (smr != null)
+                {
+                    mesh = smr.sharedMesh;
+                    // Note: Raycast against non-MeshCollider (like Capsule) returns triangleIndex -1 usually.
+                    // If we have a MeshCollider attached to the same object as SMR, it should work.
+                }
+            }
+
+            if (mesh != null)
+            {
+                int triangleCounter = 0;
+                for (int i = 0; i < mesh.subMeshCount; i++)
+                {
+                    int triangleCount = (int)mesh.GetIndexCount(i) / 3;
+                    if (hit.triangleIndex < triangleCounter + triangleCount)
+                    {
+                        // Debug.Log($"[DuctTape] Hit SubMesh Index: {i}");
+                        return i;
+                    }
+                    triangleCounter += triangleCount;
+                }
+            }
+            
+            return 0;
         }
 
         public override void OnUseDown()
         {
-            Debug.Log($"DuctTape: OnUseDown. Hovering: {isHoveringBodyPart}, BodyPart: {(currentBodyPart != null ? currentBodyPart.name : "null")}");
             if (!isHoveringBodyPart || currentBodyPart == null) return;
-
-            Debug.Log($"DuctTape: ToolType: {toolType}, Time: {Time.time}, LastUse: {lastUseTime}, Interval: {useInterval}");
 
             // For Single type tools, use immediately
             if (toolType == ToolType.Single)
@@ -127,10 +178,6 @@ namespace HairRemovalSim.Tools
                 {
                     PerformRemoval();
                     lastUseTime = Time.time;
-                }
-                else
-                {
-                    Debug.Log("DuctTape: Single use blocked by interval.");
                 }
             }
             // Continuous tools also start on down
@@ -143,174 +190,90 @@ namespace HairRemovalSim.Tools
 
         public override void OnUseUp()
         {
-            if (currentMaterials != null)
+            if (currentBodyPart != null)
             {
-                foreach (var mat in currentMaterials)
+                var controller = currentBodyPart.GetComponent<HairTreatmentController>();
+                if (controller != null)
                 {
-                    if (mat != null) mat.SetFloat("_DecalEnabled", 0);
+                    controller.HideDecal();
                 }
             }
-            
-            // Update completion when releasing
-            if (currentBodyPart != null && currentBodyPart.treatmentController != null)
-            {
-                currentBodyPart.treatmentController.UpdateCompletion();
-            }
-        }
-
-        public override void OnUseDrag(Vector3 delta)
-        {
-            // Only for Continuous tools
-            if (toolType == ToolType.Continuous && isHoveringBodyPart && currentBodyPart != null)
-            {
-                if (Time.time - lastUseTime >= useInterval)
-                {
-                    PerformRemoval();
-                    lastUseTime = Time.time;
-                }
-            }
-        }
-
-
-
-        private Vector3 CalculateCameraAlignedTangent(Vector3 normal)
-        {
-            // Project camera right vector onto the surface plane
-            Vector3 cameraRight = mainCamera.transform.right;
-            Vector3 tangent = Vector3.ProjectOnPlane(cameraRight, normal).normalized;
-            
-            // Handle degenerate case (looking straight down/up relative to surface)
-            if (tangent.sqrMagnitude < 0.001f)
-            {
-                tangent = Vector3.Cross(normal, mainCamera.transform.up).normalized;
-            }
-            
-            return tangent;
         }
 
         private void PerformRemoval()
         {
-            // Check if customer is ready
-            var customer = currentBodyPart.GetComponentInParent<Customer.CustomerController>();
-            if (customer != null)
+            if (currentHit.collider == null) return;
+            
+            HairTreatmentController controller = currentHit.collider.GetComponent<HairTreatmentController>();
+            if (controller == null)
             {
-                if (!customer.IsReadyForTreatment)
+                controller = currentHit.collider.GetComponentInParent<HairTreatmentController>();
+            }
+
+            if (controller != null)
+            {
+                UVRect uvRect = CalculateUVRect(currentHit, decalWidth, decalHeight);
+                int subMeshIndex = GetSubMeshIndex(currentHit);
+                
+                // Use normalized UV (0-1) for mask painting, original UV is for decal display
+                Vector2 normalizedUV = GetNormalizedUV(uvRect.center);
+                
+                // Apply treatment to the specific submesh mask with size and angle
+                controller.ApplyTreatment(normalizedUV, new Vector2(decalWidth, decalHeight), uvRect.angle, subMeshIndex);
+                
+                // Add pain
+                var customer = controller.GetComponentInParent<Customer.CustomerController>();
+                if (customer != null)
                 {
-                    Debug.LogWarning($"DuctTape: Customer {customer.name} is NOT ready for treatment. State: {customer.IsReadyForTreatment}");
-                    return;
+                    customer.AddPain(painMultiplier);
                 }
-            }
-
-            UVRect uvRect = CalculateUVRect(currentHit, decalWidth, decalHeight);
-            Debug.Log($"DuctTape: Removing at UV {uvRect.center}, Size {uvRect.size}, Angle {uvRect.angle * Mathf.Rad2Deg} deg");
-            
-            if (currentBodyPart.treatmentController != null)
-            {
-                currentBodyPart.treatmentController.RemoveHairInRect(uvRect.center, uvRect.size, uvRect.angle);
-            }
-            else
-            {
-                Debug.LogWarning("DuctTape: No TreatmentController found on body part.");
+                // Play sound or effect here
             }
         }
 
-        private UVRect CalculateUVRect(RaycastHit centerHit, float width, float height)
+        private UVRect CalculateUVRect(RaycastHit hit, float width, float height)
         {
-            Vector3 normal = centerHit.normal;
-            Vector3 tangent = CalculateCameraAlignedTangent(normal);
-            Vector3 bitangent = Vector3.Cross(normal, tangent);
-
-            // Calculate world positions for 3 points to determine UV basis
-            Vector3 center = centerHit.point;
-            Vector3 right = center + tangent * (width * 0.5f);
-            Vector3 up = center + bitangent * (height * 0.5f);
-
-            Vector2 centerUV = centerHit.textureCoord;
-            Vector2 rightUV = centerUV;
-            Vector2 upUV = centerUV;
-            
-            // Raycast to find UVs of right and up points
-            float rayOffset = 0.1f;
-            RaycastHit hit;
-            
-            if (currentBodyPart.GetComponent<Collider>().Raycast(new Ray(right + normal * rayOffset, -normal), out hit, rayOffset * 2f))
-            {
-                rightUV = hit.textureCoord;
-            }
-            if (currentBodyPart.GetComponent<Collider>().Raycast(new Ray(up + normal * rayOffset, -normal), out hit, rayOffset * 2f))
-            {
-                upUV = hit.textureCoord;
-            }
-
-            // Calculate UV space vectors
-            Vector2 uvTangent = rightUV - centerUV;
-            Vector2 uvBitangent = upUV - centerUV;
-
-            // Calculate dimensions in UV space (magnitude of vectors)
-            // Note: We multiply by 2 because we used half-width/height
-            float uvWidth = uvTangent.magnitude * 2.0f;
-            float uvHeight = uvBitangent.magnitude * 2.0f;
-
-            // Calculate rotation angle in UV space
-            // Angle of uvTangent relative to UV X-axis
-            float angle = Mathf.Atan2(uvTangent.y, uvTangent.x);
-
-            // Define expected size and maximum allowed size
-            float expectedWidth = width * uvScaleFactor;
-            float expectedHeight = height * uvScaleFactor;
-            float maxAllowedWidth = expectedWidth * 5.0f; // Allow up to 5x expected size
-            float maxAllowedHeight = expectedHeight * 5.0f;
-
-            // Sanity check - minimum values
-            if (uvWidth < 0.0001f || float.IsNaN(uvWidth)) uvWidth = expectedWidth;
-            if (uvHeight < 0.0001f || float.IsNaN(uvHeight)) uvHeight = expectedHeight;
-            if (float.IsNaN(angle)) angle = 0f;
-
-            // Safety check - maximum values to prevent removing entire body part
-            if (uvWidth > maxAllowedWidth)
-            {
-                Debug.LogWarning($"DuctTape: UV width ({uvWidth}) exceeds maximum ({maxAllowedWidth}). Clamping to expected size. Decal may be distorted.");
-                uvWidth = expectedWidth;
-            }
-            if (uvHeight > maxAllowedHeight)
-            {
-                Debug.LogWarning($"DuctTape: UV height ({uvHeight}) exceeds maximum ({maxAllowedHeight}). Clamping to expected size. Decal may be distorted.");
-                uvHeight = expectedHeight;
-            }
-
-            return new UVRect 
-            { 
-                center = centerUV, 
-                size = new Vector2(uvWidth, uvHeight),
-                angle = angle
-            };
+            UVRect rect = new UVRect();
+            // Use original UV for decal display (matches mesh UVs)
+            rect.center = hit.textureCoord;
+            rect.size = new Vector2(width, height);
+            rect.angle = 0f;
+            return rect;
         }
-
-        // Called when tool is equipped
-        public void OnEquip()
+        
+        // Get normalized UV for mask painting (0-1 range)
+        private Vector2 GetNormalizedUV(Vector2 uv)
         {
+            return new Vector2(
+                Mathf.Repeat(uv.x, 1.0f),
+                Mathf.Repeat(uv.y, 1.0f)
+            );
+        }
+        
+        public override void OnUseDrag(Vector3 delta)
+        {
+            // Optional: Implement drag logic if needed for duct tape (e.g. stretching)
+        }
+        
+        public void Equip()
+        {
+            // base.Equip(); // ToolBase doesn't have Equip
             isEquipped = true;
-            Debug.Log("DuctTape: Equipped");
         }
 
-        // Called when tool is unequipped
-        public void OnUnequip()
+        public void Unequip()
         {
+            // base.Unequip(); // ToolBase doesn't have Unequip
             isEquipped = false;
-            if (currentMaterials != null)
+            // Hide decal
+            if (currentBodyPart != null)
             {
-                foreach (var mat in currentMaterials)
+                var controller = currentBodyPart.GetComponent<HairTreatmentController>();
+                if (controller != null)
                 {
-                    if (mat != null) mat.SetFloat("_DecalEnabled", 0);
+                    controller.HideDecal();
                 }
-                currentMaterials = null;
             }
-            Debug.Log("DuctTape: Unequipped");
-        }
-
-        private void OnDisable()
-        {
-            OnUnequip();
         }
     }
 }

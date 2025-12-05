@@ -84,7 +84,8 @@ namespace HairRemovalSim.Core
         {
             if (treatmentController != null)
             {
-                treatmentController.RemoveHairAt(uv);
+                // Default to submesh 0 if not specified, use small brush size
+                treatmentController.ApplyTreatment(uv, new Vector2(0.01f, 0.01f), 0f, 0);
                 
                 var customer = GetComponentInParent<Customer.CustomerController>();
                 if (customer != null)
@@ -94,6 +95,11 @@ namespace HairRemovalSim.Core
             }
         }
         
+        public void UpdateCompletion(float percentage)
+        {
+            SetCompletion(percentage);
+        }
+
         public void SetCompletion(float percentage)
         {
             float previousCompletion = completionPercentage;

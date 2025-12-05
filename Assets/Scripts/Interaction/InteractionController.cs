@@ -109,9 +109,9 @@ namespace HairRemovalSim.Player
         {
             if (currentTool != null)
             {
-                // Call OnUnequip if supported
+                // Call Unequip if supported
                 var oldDuctTape = currentTool as DuctTape;
-                if (oldDuctTape != null) oldDuctTape.OnUnequip();
+                if (oldDuctTape != null) oldDuctTape.Unequip();
                 
                 // Drop current tool
                 currentTool.transform.SetParent(null);
@@ -132,9 +132,9 @@ namespace HairRemovalSim.Player
             tool.transform.localPosition = Vector3.zero;
             tool.transform.localRotation = Quaternion.identity;
             
-            // Call OnEquip if supported
+            // Call Equip if supported
             var newDuctTape = tool as DuctTape;
-            if (newDuctTape != null) newDuctTape.OnEquip();
+            if (newDuctTape != null) newDuctTape.Equip();
             
             Debug.Log($"Equipped: {tool.toolName}");
         }

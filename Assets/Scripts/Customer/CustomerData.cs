@@ -18,6 +18,7 @@ namespace HairRemovalSim.Customer
         public int baseBudget; // Used as price per body part
 
         [Header("Request")]
+        public TreatmentPlan selectedTreatmentPlan = TreatmentPlan.None; // UV mask-based system
         public System.Collections.Generic.List<HairRemovalSim.Core.BodyPart> requestedBodyParts = new System.Collections.Generic.List<HairRemovalSim.Core.BodyPart>(); 
 
         public CustomerData()

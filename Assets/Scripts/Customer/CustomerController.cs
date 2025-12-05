@@ -17,6 +17,7 @@ namespace HairRemovalSim.Customer
         
         [Header("References")]
         public NavMeshAgent agent;
+        public BodyPartsDatabase bodyPartsDatabase; // UV-based body part system
 
         [Header("Status")]
         public float currentPain = 0f;
@@ -136,30 +137,65 @@ namespace HairRemovalSim.Customer
         }
         
         /// <summary>
-        /// Highlight requested body parts with orange glow (called when arriving at bed)
+        /// Highlight requested body parts using UV mask system (called when arriving at bed)
         /// </summary>
         private void HighlightRequestedParts()
         {
-            foreach (var part in data.requestedBodyParts)
+            if (data == null || data.selectedTreatmentPlan == TreatmentPlan.None)
             {
-                var renderer = part.GetComponent<Renderer>();
-                if (renderer != null && renderer.sharedMaterials != null)
+                Debug.LogWarning("[CustomerController] No treatment plan selected");
+                return;
+            }
+            
+            if (bodyPartsDatabase == null)
+            {
+                Debug.LogError("[CustomerController] BodyPartsDatabase is not assigned!");
+                return;
+            }
+            
+            // Get mask values from treatment plan
+            float[] maskValues = data.selectedTreatmentPlan.GetMaskValues(bodyPartsDatabase);
+            
+            if (maskValues.Length == 0)
+            {
+                Debug.LogWarning($"[CustomerController] No mask values found for {data.selectedTreatmentPlan}");
+                return;
+            }
+            
+            // Pack mask values into Vector4s (max 16 parts = 4 Vector4s)
+            // Initialize to -1 to avoid matching partID 0.0 (or close to it)
+            Vector4 masks1 = new Vector4(-1, -1, -1, -1);
+            Vector4 masks2 = new Vector4(-1, -1, -1, -1);
+            Vector4 masks3 = new Vector4(-1, -1, -1, -1);
+            Vector4 masks4 = new Vector4(-1, -1, -1, -1);
+            
+            for (int i = 0; i < maskValues.Length && i < 16; i++)
+            {
+                if (i < 4)
+                    masks1[i] = maskValues[i];
+                else if (i < 8)
+                    masks2[i - 4] = maskValues[i];
+                else if (i < 12)
+                    masks3[i - 8] = maskValues[i];
+                else
+                    masks4[i - 12] = maskValues[i];
+            }
+            
+            // Apply to all materials on the character
+            var renderers = GetComponentsInChildren<SkinnedMeshRenderer>();
+            foreach (var renderer in renderers)
+            {
+                foreach (var mat in renderer.materials)
                 {
-                    // Set HDR orange color (FFBE4A) with emission intensity 2.0
-                    Color glowColor = new Color(1.0f, 0.745f, 0.29f, 1.0f) * 2.0f;
-                    
-                    // Handle multiple materials - create instances for all
-                    Material[] newMaterials = new Material[renderer.sharedMaterials.Length];
-                    for (int i = 0; i < renderer.sharedMaterials.Length; i++)
-                    {
-                        newMaterials[i] = new Material(renderer.sharedMaterials[i]);
-                        newMaterials[i].SetColor("_BodyColor", glowColor);
-                    }
-                    renderer.materials = newMaterials;
-                    
-                    Debug.Log($"[CustomerController] Highlighted {part.partName} with orange glow (intensity 2.0) on {newMaterials.Length} material(s)");
+                    mat.SetVector("_RequestedPartMasks", masks1);
+                    mat.SetVector("_RequestedPartMasks2", masks2);
+                    mat.SetVector("_RequestedPartMasks3", masks3);
+                    mat.SetVector("_RequestedPartMasks4", masks4);
                 }
             }
+            
+            Debug.Log($"[CustomerController] Highlighted {maskValues.Length} parts for {data.selectedTreatmentPlan}: " +
+                      $"Masks1={masks1}, Masks2={masks2}, Masks3={masks3}");
         }
         
         /// <summary>
@@ -489,7 +525,7 @@ namespace HairRemovalSim.Customer
             transform.position = targetBed.position; 
             transform.rotation = targetBed.rotation;
             
-            if (animator != null)
+            if (animator != null && animator.enabled)
             {
                 animator.SetBool("IsLyingDown", true);
                 // Ensure we don't rotate via transform if animation handles it, 

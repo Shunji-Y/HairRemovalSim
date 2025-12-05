@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using HairRemovalSim.Treatment;
+using HairRemovalSim.Customer;
 using System.Collections.Generic;
 
 namespace HairRemovalSim.UI
@@ -15,13 +16,12 @@ namespace HairRemovalSim.UI
         public TextMeshProUGUI overallProgressText;
         public GameObject panelRoot;
 
-        private Dictionary<Core.BodyPart, Slider> bodyPartSliders = new Dictionary<Core.BodyPart, Slider>();
+        private Slider bodyPartSlider;
         private TreatmentSession currentSession;
 
         public void Setup(TreatmentSession session)
         {
             currentSession = session;
-            bodyPartSliders.Clear();
             
             // Clear existing entries
             foreach (Transform child in bodyPartListContainer)
@@ -29,20 +29,25 @@ namespace HairRemovalSim.UI
                 Destroy(child.gameObject);
             }
 
-            // Create new entries
-            foreach (var part in session.TargetBodyParts)
+            // Create single entry for the treatment plan
+            if (session.TargetBodyPart != null && session.Customer != null)
             {
                 GameObject entry = Instantiate(bodyPartEntryPrefab, bodyPartListContainer);
-                entry.SetActive(true); // Ensure the entry is active
+                entry.SetActive(true);
                 
                 TextMeshProUGUI nameText = entry.transform.Find("NameText").GetComponent<TextMeshProUGUI>();
                 Slider slider = entry.transform.Find("ProgressSlider").GetComponent<Slider>();
                 
-                if (nameText != null) nameText.text = part.partName;
+                // Display treatment plan name instead of body part name
+                if (nameText != null) 
+                {
+                    nameText.text = session.Customer.data.selectedTreatmentPlan.GetDisplayName();
+                }
+                
                 if (slider != null)
                 {
-                    slider.value = part.CompletionPercentage / 100f;
-                    bodyPartSliders.Add(part, slider);
+                    slider.value = session.TargetBodyPart.CompletionPercentage / 100f;
+                    bodyPartSlider = slider;
                 }
             }
 
@@ -54,13 +59,10 @@ namespace HairRemovalSim.UI
         {
             if (currentSession == null) return;
 
-            // Update individual sliders
-            foreach (var kvp in bodyPartSliders)
+            // Update individual slider
+            if (bodyPartSlider != null && currentSession.TargetBodyPart != null)
             {
-                if (kvp.Key != null && kvp.Value != null)
-                {
-                    kvp.Value.value = kvp.Key.CompletionPercentage / 100f;
-                }
+                bodyPartSlider.value = currentSession.TargetBodyPart.CompletionPercentage / 100f;
             }
 
             // Update overall progress

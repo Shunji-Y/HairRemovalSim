@@ -19,6 +19,20 @@ Shader "Custom/HairShader"
         _Gravity("Gravity Strength", Float) = 0.02
         _MaskMap("Mask Map", 2D) = "white" {}
         
+        // UV-Based Body Part System
+        _HairGrowthMask("Hair Growth Mask (R=density)", 2D) = "white" {}
+        _BodyPartMask("Body Part Mask (R=partID)", 2D) = "black" {}
+        
+        // Requested Parts (Set from script) - Default to -1 (no parts selected)
+        _RequestedPartMasks("Requested Part Masks 1-4", Vector) = (-1,-1,-1,-1)
+        _RequestedPartMasks2("Requested Part Masks 5-8", Vector) = (-1,-1,-1,-1)
+        _RequestedPartMasks3("Requested Part Masks 9-12", Vector) = (-1,-1,-1,-1)
+        _RequestedPartMasks4("Requested Part Masks 13-16", Vector) = (-1,-1,-1,-1)
+        
+        // Highlight Settings
+        [HDR] _HighlightColor("Highlight Color", Color) = (1, 0.745, 0.29, 1)
+        _HighlightIntensity("Highlight Emission", Float) = 2.0
+        
         // Decal Settings (UV-based for tape preview)
         _DecalUVCenter("Decal UV Center", Vector) = (0.5, 0.5, 0, 0)
         _DecalUVSize("Decal UV Size", Vector) = (0.1, 0.1, 0, 0)
@@ -78,6 +92,13 @@ Shader "Custom/HairShader"
                 float _Gravity;
                 float4 _MaskMap_ST;
                 
+                // UV-Based Body Part System
+                float4 _RequestedPartMasks;
+                float4 _RequestedPartMasks2;
+                float4 _RequestedPartMasks3;
+                float4 _HighlightColor;
+                float _HighlightIntensity;
+                
                 // Decal (UV-based)
                 float4 _DecalUVCenter;
                 float4 _DecalUVSize;
@@ -86,10 +107,14 @@ Shader "Custom/HairShader"
                 float _DecalEnabled;
                 
 
+                float4 _RequestedPartMasks4;
+
             CBUFFER_END
 
             TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
             TEXTURE2D(_MaskMap); SAMPLER(sampler_MaskMap);
+            TEXTURE2D(_HairGrowthMask); SAMPLER(sampler_HairGrowthMask);
+            TEXTURE2D(_BodyPartMask); SAMPLER(sampler_BodyPartMask);
 
             float rand(float3 co)
             {
@@ -235,10 +260,45 @@ Shader "Custom/HairShader"
                 float NdotL = max(0, dot(normal, lightDir));
                 half3 diffuse = mainLight.color * NdotL + 0.3;
 
+                // === UV-Based Body Part System ===
+                // Get body part ID from mask
+                float partID = SAMPLE_TEXTURE2D(_BodyPartMask, sampler_BodyPartMask, input.uv).r;
+                
+                // Check if this part is requested (施術希望部位か判定)
+                // Check if this part is requested (施術希望部位か判定)
+                // Tolerance must be small enough to distinguish 0.01 steps (1/100)
+                // 8-bit texture precision is 1/255 approx 0.0039
+                // So 0.002 is a safe tolerance if values are exact, but with compression/8bit, maybe 0.005 is safer?
+                // Let's try 0.005 to be safe but strict enough to separate 0.01 and 0.02
+                float tolerance = 0.005; 
+                bool isRequested = 
+                    abs(partID - _RequestedPartMasks.x) < tolerance ||
+                    abs(partID - _RequestedPartMasks.y) < tolerance ||
+                    abs(partID - _RequestedPartMasks.z) < tolerance ||
+                    abs(partID - _RequestedPartMasks.w) < tolerance ||
+                    abs(partID - _RequestedPartMasks2.x) < tolerance ||
+                    abs(partID - _RequestedPartMasks2.y) < tolerance ||
+                    abs(partID - _RequestedPartMasks2.z) < tolerance ||
+                    abs(partID - _RequestedPartMasks2.w) < tolerance ||
+                    abs(partID - _RequestedPartMasks3.x) < tolerance ||
+                    abs(partID - _RequestedPartMasks3.y) < tolerance ||
+                    abs(partID - _RequestedPartMasks3.z) < tolerance ||
+                    abs(partID - _RequestedPartMasks3.w) < tolerance ||
+                    abs(partID - _RequestedPartMasks4.x) < tolerance ||
+                    abs(partID - _RequestedPartMasks4.y) < tolerance ||
+                    abs(partID - _RequestedPartMasks4.z) < tolerance ||
+                    abs(partID - _RequestedPartMasks4.w) < tolerance;
+                
+                // Get hair growth density from mask
+                float hairGrowth = SAMPLE_TEXTURE2D(_HairGrowthMask, sampler_HairGrowthMask, input.uv).r;
+
                 if (input.isHair > 0.5)
                 {
                     half4 mask = SAMPLE_TEXTURE2D(_MaskMap, sampler_MaskMap, input.uv);
-                    if (mask.r < 0.1) discard;
+                    
+                    // Discard if: no hair in mask, or no growth in this area
+                    // Note: We removed the isRequested check - hair shows everywhere by default
+                    if (mask.r < 0.1 || hairGrowth < 0.1) discard;
 
                     // Specular (Blinn-Phong)
                     float3 viewDir = normalize(_WorldSpaceCameraPos - input.positionWS);
@@ -253,6 +313,12 @@ Shader "Custom/HairShader"
                 {
                     half4 texColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv);
                     half3 finalColor = (texColor.rgb * _BodyColor.rgb) * diffuse;
+                    
+                    // Apply highlight to requested parts (施術希望部位を光らせる)
+                    if (isRequested)
+                    {
+                        finalColor += _HighlightColor.rgb * _HighlightIntensity;
+                    }
                     
                     // Decal Overlay (UV-based)
                     if (_DecalEnabled > 0.5)
