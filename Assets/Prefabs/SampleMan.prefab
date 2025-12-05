@@ -48,14 +48,30 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -5196135686012114253, guid: b4e380144ab6f474688164e555113352, type: 3}
+      propertyPath: m_Name
+      value: RightArmpit
+      objectReference: {fileID: 0}
     - target: {fileID: -2887167928918501813, guid: b4e380144ab6f474688164e555113352, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 4a8094d8fabca5940bac5abffb4c2a2b, type: 2}
+    - target: {fileID: -1277477897212570971, guid: b4e380144ab6f474688164e555113352, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: e6615a84088d7bb418aef3695139f129, type: 2}
     - target: {fileID: 919132149155446097, guid: b4e380144ab6f474688164e555113352, type: 3}
       propertyPath: m_Name
       value: SampleMan
       objectReference: {fileID: 0}
+    - target: {fileID: 1993001002424039782, guid: b4e380144ab6f474688164e555113352, type: 3}
+      propertyPath: m_Name
+      value: Back
+      objectReference: {fileID: 0}
+    - target: {fileID: 2200111427998478275, guid: b4e380144ab6f474688164e555113352, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: e6615a84088d7bb418aef3695139f129, type: 2}
     - target: {fileID: 4101161180453605438, guid: b4e380144ab6f474688164e555113352, type: 3}
       propertyPath: m_Name
       value: Beard
@@ -551,12 +567,12 @@ MonoBehaviour:
     painTolerance: 0
     patience: 0
     baseBudget: 0
-    requestedBodyParts: 
-    pricePerBodyPart: 5000
+    requestedBodyParts: []
   agent: {fileID: 0}
   currentPain: 0
   maxPain: 100
   IsCompleted: 0
+  isInitialized: 0
   paymentDelay: 2
   animator: {fileID: 0}
   isSupine: 1

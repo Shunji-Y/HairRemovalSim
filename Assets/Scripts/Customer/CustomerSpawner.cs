@@ -6,12 +6,15 @@ namespace HairRemovalSim.Customer
 {
     public class CustomerSpawner : MonoBehaviour
     {
-        [Header("Settings")]
+        [Header("Spawn Settings")]
         public GameObject customerPrefab;
         public Transform spawnPoint;
         public Transform exitPoint;
         public Transform receptionPoint; // Pre-treatment reception
         public Transform cashRegisterPoint; // Post-treatment payment
+        public UI.ReceptionManager receptionManager; // Reference to reception for queue registration
+        
+        [Header("Spawn Intervals")]
         public float spawnInterval = 30f; // Seconds
         public int maxCustomers = 3;
         
@@ -21,7 +24,7 @@ namespace HairRemovalSim.Customer
         private List<CustomerController> customerPool = new List<CustomerController>();
         private List<CustomerController> activeCustomers = new List<CustomerController>();
 
-        private float timer;
+        private float timer = 0f;
         private bool poolInitialized = false;
 
         private void Start()
@@ -72,7 +75,12 @@ namespace HairRemovalSim.Customer
         private void Update()
         {
             // Only spawn if pool is initialized
-            if (!poolInitialized) return;
+            if (!poolInitialized)
+            {
+                // Debug: Only log once to avoid spam
+                if (Time.frameCount % 300 == 0) Debug.Log("[CustomerSpawner] Waiting for pool initialization...");
+                return;
+            }
             
             if (GameManager.Instance.CurrentState == GameManager.GameState.Day)
             {
@@ -84,8 +92,13 @@ namespace HairRemovalSim.Customer
 
                     if (activeCustomers.Count < maxCustomers)
                     {
+                        Debug.Log($"[CustomerSpawner] Attempting to spawn customer ({activeCustomers.Count}/{maxCustomers})");
                         SpawnCustomer();
                         timer = 0f;
+                    }
+                    else
+                    {
+                        Debug.Log($"[CustomerSpawner] Max customers reached ({activeCustomers.Count}/{maxCustomers}), waiting...");
                     }
                 }
             }
@@ -93,15 +106,21 @@ namespace HairRemovalSim.Customer
         
         private CustomerController GetFromPool()
         {
+            int activeCount = 0;
             foreach (var customer in customerPool)
             {
-                if (!customer.gameObject.activeInHierarchy)
+                if (customer.gameObject.activeInHierarchy)
                 {
+                    activeCount++;
+                }
+                else
+                {
+                    Debug.Log($"[CustomerSpawner] Retrieved {customer.name} from pool");
                     return customer;
                 }
             }
             
-            Debug.LogWarning("[CustomerSpawner] No available customers in pool! Consider increasing pool size.");
+            Debug.LogWarning($"[CustomerSpawner] No available customers in pool! All {activeCount}/{customerPool.Count} are active. Consider increasing pool size.");
             return null;
         }
         
@@ -113,6 +132,16 @@ namespace HairRemovalSim.Customer
             customer.gameObject.SetActive(false);
             customer.transform.position = Vector3.zero;
             activeCustomers.Remove(customer);
+        }
+        
+        /// <summary>
+        /// Get current active customer count for close shop validation
+        /// </summary>
+        public int GetActiveCustomerCount()
+        {
+            // Clean up nulls first
+            activeCustomers.RemoveAll(c => c == null);
+            return activeCustomers.Count;
         }
 
         private void SpawnCustomer()
@@ -155,40 +184,59 @@ namespace HairRemovalSim.Customer
                 
                 customer.Initialize(data, exitPoint, receptionPoint, cashRegisterPoint, this);
                 
-                // Generate random requested body parts (1-3 parts) from actual BodyPart components
-                var allBodyParts = new System.Collections.Generic.List<Core.BodyPart>(customer.GetComponentsInChildren<Core.BodyPart>());
+                // Select a random treatment plan instead of random individual parts
+                TreatmentPlan selectedPlan = (TreatmentPlan)Random.Range(0, System.Enum.GetValues(typeof(TreatmentPlan)).Length);
                 
-                if (allBodyParts.Count > 0)
+                // Clear previous requested parts
+                data.requestedBodyParts.Clear();
+                
+                // Get body part names for this plan
+                var requiredPartNames = selectedPlan.GetBodyPartNames();
+                
+                // Find matching BodyPart components by GameObject name
+                var allBodyParts = customer.GetComponentsInChildren<Core.BodyPart>(true); // Include inactive
+                
+                foreach (var partName in requiredPartNames)
                 {
-                    int partCount = Random.Range(1, Mathf.Min(4, allBodyParts.Count + 1)); // 1 to min(3, totalParts)
+                    // Find BodyPart whose GameObject name matches
+                    var matchingPart = System.Array.Find(allBodyParts, bp => bp.gameObject.name == partName);
                     
-                    // Shuffle and take first N
-                    for (int i = 0; i < partCount; i++)
+                    if (matchingPart != null)
                     {
-                        if (allBodyParts.Count > 0)
-                        {
-                            int randomIndex = Random.Range(0, allBodyParts.Count);
-                            data.requestedBodyParts.Add(allBodyParts[randomIndex]);
-                            allBodyParts.RemoveAt(randomIndex); // Avoid duplicates
-                        }
+                        data.requestedBodyParts.Add(matchingPart);
                     }
-                    
-                    Debug.Log($"[CustomerSpawner] {data.customerName} requesting {data.requestedBodyParts.Count} parts: {string.Join(", ", data.requestedBodyParts.ConvertAll(bp => bp.partName))}");
-                }
-                else
-                {
-                    Debug.LogWarning($"[CustomerSpawner] {data.customerName} has no BodyPart components! Cannot assign requested parts.");
+                    else
+                    {
+                        Debug.LogWarning($"[CustomerSpawner] Could not find BodyPart with GameObject name '{partName}' for plan {selectedPlan}");
+                    }
                 }
                 
-                // Send customer to reception first (not directly to bed)
-                if (receptionPoint != null)
+                // Fallback: if no parts found, assign all parts (FullBody)
+                if (data.requestedBodyParts.Count == 0)
                 {
-                    customer.GoToReception(receptionPoint);
-                    Debug.Log($"[CustomerSpawner] {data.customerName} heading to reception");
+                    Debug.LogWarning($"[CustomerSpawner] No body parts found for {selectedPlan}, assigning all available parts");
+                    foreach (var part in allBodyParts)
+                    {
+                        data.requestedBodyParts.Add(part);
+                    }
+                }
+                
+                Debug.Log($"[CustomerSpawner] {data.customerName} selected plan: {selectedPlan.GetDisplayName()} ({data.requestedBodyParts.Count} parts)");
+                
+                // Register with reception to get queue position
+                if (receptionManager != null)
+                {
+                    Transform queuePos = receptionManager.RegisterCustomer(customer);
+                    if (queuePos == null)
+                    {
+                        Debug.LogWarning($"[CustomerSpawner] Could not register {data.customerName} to queue, sending to reception");
+                        customer.GoToReception(receptionPoint);
+                    }
                 }
                 else
                 {
-                    Debug.LogWarning("[CustomerSpawner] No reception point set!");
+                    Debug.LogError("[CustomerSpawner] ReceptionManager reference not set! Customer going to reception point");
+                    customer.GoToReception(receptionPoint);
                 }
                 
                 activeCustomers.Add(customer);

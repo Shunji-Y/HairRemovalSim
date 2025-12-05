@@ -4,7 +4,7 @@ Shader "Custom/HairShader"
     {
         // Body Settings
         _BaseMap("Body Texture", 2D) = "white" {}
-        _BodyColor("Body Color", Color) = (1, 0.8, 0.6, 1)
+        [HDR] _BodyColor("Body Color (HDR)", Color) = (1, 1, 1, 1)
 
         // Hair Settings
         _HairColor("Hair Color", Color) = (0.1, 0.05, 0.0, 1)

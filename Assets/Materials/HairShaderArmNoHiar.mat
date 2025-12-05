@@ -114,6 +114,7 @@ Material:
     - _DecalEnabled: 0
     - _DecalHeight: 0.1
     - _DecalSize: 0.1
+    - _DecalUVAngle: 0
     - _DecalWidth: 0.1
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
@@ -154,6 +155,8 @@ Material:
     - _DecalColor: {r: 0.3063914, g: 0.8862745, b: 0.29803923, a: 1}
     - _DecalNormal: {r: 0, g: 1, b: 0, a: 0}
     - _DecalTangent: {r: 1, g: 0, b: 0, a: 0}
+    - _DecalUVCenter: {r: 0.5, g: 0.5, b: 0, a: 0}
+    - _DecalUVSize: {r: 0.1, g: 0.1, b: 0, a: 0}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _HairColor: {r: 0.055935726, g: 0.010991452, b: 0.122641504, a: 1}
     - _HairSpecular: {r: 0.7169812, g: 0.57155573, b: 0.57155573, a: 1}

@@ -92,12 +92,164 @@ namespace HairRemovalSim.Customer
             receptionPoint = reception;
             cashRegisterPoint = cashRegister;
             spawner = spawnerRef;
+            
+            // Reset all states for pool reuse
+            ResetCustomerState();
+            
+            // Reset all body parts for reuse
+            ResetAllBodyParts();
+        }
+        
+        /// <summary>
+        /// Reset customer state variables for pool reuse
+        /// </summary>
+        private void ResetCustomerState()
+        {
+            // Reset completion flags
+            IsCompleted = false;
+            
+            // Reset rotation state to default (supine = face-up)
+            isSupine = true;
+            isRotating = false;
+            rotationElapsed = 0f;
+            
+            // Reset timers
+            paymentTimer = 0f;
+            
+            // Reset state to initial
+            currentState = CustomerState.Waiting;
+            
+            Debug.Log($"[CustomerController] Reset state for {data.customerName}");
+        }
+        
+        /// <summary>
+        /// Reset all body parts to 0% completion for pool reuse
+        /// </summary>
+        private void ResetAllBodyParts()
+        {
+            var bodyParts = GetComponentsInChildren<HairRemovalSim.Core.BodyPart>();
+            foreach (var part in bodyParts)
+            {
+                part.Reset();
+            }
+            Debug.Log($"[CustomerController] Reset {bodyParts.Length} body parts for {data.customerName}");
+        }
+        
+        /// <summary>
+        /// Highlight requested body parts with orange glow (called when arriving at bed)
+        /// </summary>
+        private void HighlightRequestedParts()
+        {
+            foreach (var part in data.requestedBodyParts)
+            {
+                var renderer = part.GetComponent<Renderer>();
+                if (renderer != null && renderer.sharedMaterials != null)
+                {
+                    // Set HDR orange color (FFBE4A) with emission intensity 2.0
+                    Color glowColor = new Color(1.0f, 0.745f, 0.29f, 1.0f) * 2.0f;
+                    
+                    // Handle multiple materials - create instances for all
+                    Material[] newMaterials = new Material[renderer.sharedMaterials.Length];
+                    for (int i = 0; i < renderer.sharedMaterials.Length; i++)
+                    {
+                        newMaterials[i] = new Material(renderer.sharedMaterials[i]);
+                        newMaterials[i].SetColor("_BodyColor", glowColor);
+                    }
+                    renderer.materials = newMaterials;
+                    
+                    Debug.Log($"[CustomerController] Highlighted {part.partName} with orange glow (intensity 2.0) on {newMaterials.Length} material(s)");
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Reset all body part colors to white (FFFFFF, intensity 0)
+        /// </summary>
+        private void ResetBodyPartColors()
+        {
+            var bodyParts = GetComponentsInChildren<HairRemovalSim.Core.BodyPart>();
+            foreach (var part in bodyParts)
+            {
+                var renderer = part.GetComponent<Renderer>();
+                if (renderer != null && renderer.material != null)
+                {
+                    // Set to white with no emission
+                    Color whiteColor = new Color(1.0f, 1.0f, 1.0f, 1.0f); // No intensity multiplier = 0
+                    renderer.material.SetColor("_BodyColor", whiteColor);
+                    
+                    Debug.Log($"[CustomerController] Reset {part.partName} color to white");
+                }
+            }
         }
 
         public void GoToReception(Transform receptionPoint)
         {
-            agent.SetDestination(receptionPoint.position);
-            currentState = CustomerState.Waiting;
+            if (agent != null)
+            {
+                agent.enabled = true;
+                agent.SetDestination(receptionPoint.position);
+                currentState = CustomerState.Waiting;
+            }
+        }
+        
+        /// <summary>
+        /// Navigate to a queue position while waiting, optionally via a waypoint
+        /// </summary>
+        public void GoToQueuePosition(Transform queuePos, Transform faceTarget = null, Transform waypoint = null)
+        {
+            if (agent != null && queuePos != null)
+            {
+                agent.enabled = true;
+                currentState = CustomerState.Waiting;
+                
+                // If waypoint specified, go there first, then to queue position
+                if (waypoint != null)
+                {
+                    StartCoroutine(MoveViaWaypoint(waypoint, queuePos));
+                    Debug.Log($"[CustomerController] {data.customerName} moving to queue via waypoint");
+                }
+                else
+                {
+                    agent.SetDestination(queuePos.position);
+                    Debug.Log($"[CustomerController] {data.customerName} moving directly to queue position");
+                }
+            }
+        }
+        
+        private System.Collections.IEnumerator MoveViaWaypoint(Transform waypoint, Transform finalDestination)
+        {
+            if (agent == null) yield break;
+            
+            // First, go to waypoint
+            agent.SetDestination(waypoint.position);
+            Debug.Log($"[CustomerController] {data.customerName} STEP 1: Setting destination to waypoint {waypoint.name}");
+            
+            // Wait until we reach the waypoint using simple distance check
+            float waypointReachedDistance = 1.0f;
+            while (true)
+            {
+                if (agent == null || !agent.enabled) yield break;
+                
+                float distance = Vector3.Distance(transform.position, waypoint.position);
+                
+                if (distance < waypointReachedDistance)
+                {
+                    Debug.Log($"[CustomerController] {data.customerName} STEP 2: Reached waypoint! Distance: {distance:F2}m. Now going to final position {finalDestination.name}");
+                    break;
+                }
+                
+                yield return new WaitForSeconds(0.1f);
+            }
+            
+            // Small delay before changing destination
+            yield return new WaitForSeconds(0.1f);
+            
+            // Then go to final destination
+            if (agent != null && agent.enabled && finalDestination != null)
+            {
+                agent.SetDestination(finalDestination.position);
+                Debug.Log($"[CustomerController] {data.customerName} STEP 3: Final destination set to {finalDestination.name}");
+            }
         }
 
         public void StartTreatment()
@@ -153,8 +305,18 @@ namespace HairRemovalSim.Customer
         
         public void CompleteTreatment()
         {
-            Debug.Log($"{data.customerName} treatment complete. Standing up...");
-            currentState = CustomerState.Completed;
+            if (IsCompleted) return; // Already completed
+
+            Debug.Log($"Customer {data.customerName} treatment completed.");
+            
+            // Note: Body part colors are now reset individually when each part reaches 100%
+            
+            // Mark as completed and set state to start walking to reception after delay
+            IsCompleted = true; 
+            currentState = CustomerState.WalkingToReception; // Transition to walking to reception
+            
+            // Start a timer before moving to reception to allow for visual feedback/animation
+            paymentTimer = paymentDelay; 
             
             // Release bed
             if (assignedBed != null)
@@ -173,31 +335,38 @@ namespace HairRemovalSim.Customer
             if (agent != null)
             {
                 agent.enabled = true;
-                agent.isStopped = false;
             }
             
-            // Reset rotation (stand up)
+            // Stand up (reverse lie down animation if applicable)
             if (animator != null)
             {
                 animator.SetBool("IsLyingDown", false);
             }
-            else
-            {
-                // Fallback: reset rotation
-                transform.rotation = Quaternion.Euler(0, transform.rotation.eulerAngles.y, 0);
-            }
             
-            // Walk to cash register (not reception!)
-            if (cashRegisterPoint != null)
+            // Set final destination and state
+            currentState = CustomerState.Paying;
+            
+            // Register with cash register to get queue position
+            var cashRegister = FindObjectOfType<UI.CashRegister>();
+            if (cashRegister != null)
             {
-                agent.SetDestination(cashRegisterPoint.position);
-                currentState = CustomerState.WalkingToReception;
-                Debug.Log($"{data.customerName} walking to cash register...");
+                Transform queuePos = cashRegister.RegisterCustomer(this);
+                if (queuePos == null)
+                {
+                    Debug.LogWarning($"[CustomerController] Could not register to payment queue, going to register point");
+                    if (agent != null && cashRegisterPoint != null)
+                    {
+                        agent.SetDestination(cashRegisterPoint.position);
+                    }
+                }
             }
             else
             {
-                Debug.LogWarning("No cash register point set. Customer leaving directly.");
-                LeaveShop();
+                Debug.LogError("[CustomerController] CashRegister not found!");
+                if (agent != null && cashRegisterPoint != null)
+                {
+                    agent.SetDestination(cashRegisterPoint.position);
+                }
             }
         }
         
@@ -339,6 +508,9 @@ namespace HairRemovalSim.Customer
             
             currentState = CustomerState.InTreatment;
             Debug.Log("Customer arrived at bed and is ready for treatment.");
+            
+            // Highlight requested body parts with orange glow
+            HighlightRequestedParts();
             
             // Start Treatment Session
             TreatmentManager.Instance.StartSession(this);

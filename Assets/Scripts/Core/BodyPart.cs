@@ -39,9 +39,47 @@ namespace HairRemovalSim.Core
             
             treatmentController.Initialize();
             
-            Debug.Log($"BodyPart {partName}: Initialized with Shader-based Hair System.");
+            Debug.Log($"[BodyPart] {partName}: Initialized with Shader-based Hair System.");
         }
-
+        
+        /// <summary>
+        /// Reset this body part for reuse (object pooling)
+        /// </summary>
+        public void Reset()
+        {
+            completionPercentage = 0f;
+            
+            if (treatmentController != null)
+            {
+                treatmentController.ClearMask();
+            }
+            
+            Debug.Log($"[BodyPart] {partName} reset to 0% completion");
+        }
+        
+        /// <summary>
+        /// Reset this body part's color to white (FFFFFF, intensity 0)
+        /// </summary>
+        public void ResetColor()
+        {
+            var renderer = GetComponent<Renderer>();
+            if (renderer != null && renderer.materials != null)
+            {
+                Color whiteColor = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                
+                // Handle multiple materials
+                foreach (var mat in renderer.materials)
+                {
+                    if (mat != null)
+                    {
+                        mat.SetColor("_BodyColor", whiteColor);
+                    }
+                }
+                
+                Debug.Log($"[BodyPart] {partName} color reset to white");
+            }
+        }
+        
         public void RemoveHairAt(Vector2 uv)
         {
             if (treatmentController != null)
@@ -58,7 +96,15 @@ namespace HairRemovalSim.Core
         
         public void SetCompletion(float percentage)
         {
+            float previousCompletion = completionPercentage;
             completionPercentage = Mathf.Clamp(percentage, 0f, 100f);
+            
+            // Auto-reset color when reaching 100%
+            if (previousCompletion < 100f && completionPercentage >= 100f)
+            {
+                ResetColor();
+                Debug.Log($"[BodyPart] {partName} reached 100%! Color reset to white.");
+            }
         }
 
         // IInteractable Implementation

@@ -36,6 +36,15 @@ namespace HairRemovalSim.Environment
             }
             else if (GameManager.Instance.CurrentState == GameManager.GameState.Night)
             {
+                // Check if customers are still in the shop
+                var spawner = FindObjectOfType<Customer.CustomerSpawner>();
+                if (spawner != null && spawner.GetActiveCustomerCount() > 0)
+                {
+                    Debug.LogWarning($"[DoorController] Cannot close shop! {spawner.GetActiveCustomerCount()} customer(s) still inside.");
+                    // TODO: Show UI message to player
+                    return;
+                }
+                
                 GameManager.Instance.StartNextDay();
                 Debug.Log("Door Interacted: Going Home / Next Day");
             }

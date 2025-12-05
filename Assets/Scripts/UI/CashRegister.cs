@@ -11,45 +11,69 @@ namespace HairRemovalSim.UI
         [Header("Settings")]
         public float detectionRadius = 2.0f;
         
+        [Header("Queue Management")]
+        public Transform[] queuePositions; // 待機位置の配列
+        
+        private System.Collections.Generic.Queue<CustomerController> customerQueue = new System.Collections.Generic.Queue<CustomerController>();
+        private CustomerController currentCustomer = null;
         private CustomerController customerAtRegister;
+        private System.Collections.Generic.HashSet<CustomerController> processedCustomers = new System.Collections.Generic.HashSet<CustomerController>();
 
-        private void Update()
+        /// <summary>
+        /// Register a customer to the payment queue and return their assigned position
+        /// </summary>
+        public Transform RegisterCustomer(CustomerController customer)
         {
-            // Find closest customer in Paying state within radius
-            CustomerController closestCustomer = null;
-            float closestDistance = detectionRadius;
-
-            var allCustomers = FindObjectsOfType<CustomerController>();
-            foreach (var customer in allCustomers)
+            if (processedCustomers.Contains(customer))
             {
-                // Only detect customers in Paying state (waiting for payment)
-                if (customer.CurrentState != CustomerController.CustomerState.Paying) continue;
-
-                float distance = Vector3.Distance(transform.position, customer.transform.position);
-                if (distance < closestDistance)
-                {
-                    closestDistance = distance;
-                    closestCustomer = customer;
-                }
+                Debug.LogWarning($"[CashRegister] {customer.data.customerName} already registered");
+                return null;
             }
-
-            // Update current customer
-            if (closestCustomer != customerAtRegister)
+            
+            customerQueue.Enqueue(customer);
+            processedCustomers.Add(customer);
+            
+            int queueIndex = customerQueue.Count - 1; // 0-based index
+            
+            if (queueIndex < queuePositions.Length)
             {
-                customerAtRegister = closestCustomer;
-
-                if (customerAtRegister != null)
+                Debug.Log($"[CashRegister] {customer.data.customerName} registered to queue position {queueIndex + 1}");
+                
+                // Determine waypoint: if not at the back, use the position behind
+                Transform waypoint = null;
+                if (queueIndex + 1 < queuePositions.Length)
                 {
-                    Debug.Log($"[CashRegister] {customerAtRegister.data.customerName} arrived at register");
+                    waypoint = queuePositions[queueIndex + 1]; // Position behind
                 }
+                
+                // Send customer to queue position via waypoint, facing cash register
+                customer.GoToQueuePosition(queuePositions[queueIndex], transform, waypoint);
+                
+                return queuePositions[queueIndex];
+            }
+            else
+            {
+                Debug.LogWarning($"[CashRegister] {customer.data.customerName} registered but no queue position available (queue full)");
+                return transform; // Fallback to register point
             }
         }
 
         public void OnInteract(InteractionController interactor)
         {
-            if (customerAtRegister != null)
+            // Process first customer in queue
+            if (currentCustomer == null && customerQueue.Count > 0)
+            {
+                currentCustomer = customerQueue.Dequeue();
+                UpdateQueuePositions();
+            }
+            
+            if (currentCustomer != null)
             {
                 ProcessPayment();
+            }
+            else
+            {
+                Debug.Log("[CashRegister] No customers waiting in queue");
             }
         }
 
@@ -69,14 +93,44 @@ namespace HairRemovalSim.UI
 
         private void ProcessPayment()
         {
+            if (currentCustomer == null) return;
+            
             // Calculate payment based on completed requested parts only
-            int finalAmount = customerAtRegister.CalculateFinalPayment();
+            int finalAmount = currentCustomer.CalculateFinalPayment();
             
             EconomyManager.Instance.AddMoney(finalAmount);
-            Debug.Log($"[CashRegister] {customerAtRegister.data.customerName} paid ${finalAmount}");
+            Debug.Log($"[CashRegister] {currentCustomer.data.customerName} paid ${finalAmount}");
             
-            customerAtRegister.LeaveShop();
-            customerAtRegister = null;
+            currentCustomer.LeaveShop();
+            
+            // Remove from processed set
+            processedCustomers.Remove(currentCustomer);
+            currentCustomer = null;
+            ProcessNextCustomer();
+        }
+        
+        private void UpdateQueuePositions()
+        {
+            if (queuePositions == null || queuePositions.Length == 0) return;
+            
+            int index = 0;
+            foreach (var customer in customerQueue)
+            {
+                if (index < queuePositions.Length)
+                {
+                    customer.GoToQueuePosition(queuePositions[index], transform);
+                    Debug.Log($"[CashRegister] {customer.data.customerName} moving to queue position {index + 1}");
+                }
+                index++;
+            }
+        }
+        
+        private void ProcessNextCustomer()
+        {
+            if (customerQueue.Count > 0 && currentCustomer == null)
+            {
+                Debug.Log($"[CashRegister] {customerQueue.Count} customer(s) waiting in queue");
+            }
         }
     }
 }
