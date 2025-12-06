@@ -16,6 +16,7 @@
 *.log
 *.snap
 *.ccProject
+Assets/Models/Characters/CC4 Kevin.ccProject
 
 
 # MemoryCaptures can get excessive in size.
