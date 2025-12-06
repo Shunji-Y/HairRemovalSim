@@ -28,6 +28,16 @@ namespace HairRemovalSim.Treatment
 
         public TreatmentSession CurrentSession { get; private set; } // Currently displayed session
         private Dictionary<CustomerController, TreatmentSession> activeSessions = new Dictionary<CustomerController, TreatmentSession>();
+        
+        // Highlight fade settings (Q key toggle)
+        [Header("Highlight Settings")]
+        public float highlightFadeDuration = 1.0f;
+        public float maxHighlightIntensity = 2.0f;
+        
+        private bool isHighlighting = false;
+        private float highlightTimer = 0f;
+        private enum HighlightState { Off, FadingIn, FadingOut }
+        private HighlightState highlightState = HighlightState.Off;
 
         public void StartSession(CustomerController customer)
         {
@@ -174,8 +184,8 @@ namespace HairRemovalSim.Treatment
                 {
                     session.UpdateProgress();
                     
-                    // Check for completion and auto-complete
-                    if (session.OverallProgress >= 100f)
+                    // Check for completion and auto-complete (98% threshold to handle rounding)
+                    if (session.OverallProgress >= 98f)
                     {
                         Debug.Log($"[TreatmentManager] Treatment complete for {session.Customer.data.customerName}! Customer will now go to reception.");
                         
@@ -263,6 +273,99 @@ namespace HairRemovalSim.Treatment
             if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
             {
                 RotateNearestCustomer();
+            }
+            
+            // Q key to show highlight with fade
+            if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
+            {
+                if (highlightState == HighlightState.Off)
+                {
+                    highlightState = HighlightState.FadingIn;
+                    highlightTimer = 0f;
+                    Debug.Log("[TreatmentManager] Q pressed - starting highlight fade in");
+                }
+            }
+            
+            // Update highlight fade animation
+            UpdateHighlightFade();
+        }
+        
+        /// <summary>
+        /// Update highlight intensity with fade animation
+        /// </summary>
+        private void UpdateHighlightFade()
+        {
+            if (highlightState == HighlightState.Off) return;
+            
+            highlightTimer += Time.deltaTime;
+            float intensity = 0f;
+            
+            if (highlightState == HighlightState.FadingIn)
+            {
+                float t = Mathf.Clamp01(highlightTimer / highlightFadeDuration);
+                intensity = Mathf.Lerp(0f, maxHighlightIntensity, t);
+                
+                // When fade-in completes, start fade-out
+                if (highlightTimer >= highlightFadeDuration)
+                {
+                    highlightState = HighlightState.FadingOut;
+                    highlightTimer = 0f;
+                }
+            }
+            else if (highlightState == HighlightState.FadingOut)
+            {
+                float t = Mathf.Clamp01(highlightTimer / highlightFadeDuration);
+                intensity = Mathf.Lerp(maxHighlightIntensity, 0f, t);
+                
+                // When fade-out completes, turn off
+                if (highlightTimer >= highlightFadeDuration)
+                {
+                    highlightState = HighlightState.Off;
+                    intensity = 0f;
+                }
+            }
+            
+            // Apply intensity to nearest customer's materials
+            SetHighlightIntensityForNearestCustomer(intensity);
+        }
+        
+        /// <summary>
+        /// Set _HighlightIntensity on nearest customer's materials
+        /// </summary>
+        private void SetHighlightIntensityForNearestCustomer(float intensity)
+        {
+            if (playerTransform == null) return;
+            
+            CustomerController nearestCustomer = null;
+            float nearestDistance = proximityDistance;
+            
+            foreach (var kvp in activeSessions)
+            {
+                CustomerController customer = kvp.Key;
+                if (customer != null && customer.IsReadyForTreatment)
+                {
+                    float distance = Vector3.Distance(playerTransform.position, customer.transform.position);
+                    if (distance < nearestDistance)
+                    {
+                        nearestDistance = distance;
+                        nearestCustomer = customer;
+                    }
+                }
+            }
+            
+            if (nearestCustomer != null)
+            {
+                var renderers = nearestCustomer.GetComponentsInChildren<SkinnedMeshRenderer>();
+                foreach (var renderer in renderers)
+                {
+                    foreach (var mat in renderer.materials)
+                    {
+                        if (mat.HasProperty("_HighlightIntensity"))
+                        {
+                            mat.SetFloat("_HighlightIntensity", intensity);
+                        }
+                    }
+                }
             }
         }
         

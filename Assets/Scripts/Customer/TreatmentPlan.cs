@@ -36,21 +36,21 @@ namespace HairRemovalSim.Customer
         {
             switch (plan)
             {
-                case TreatmentPlan.None: return "未選択";
-                case TreatmentPlan.UpperArms: return "上腕脱毛";
-                case TreatmentPlan.LowerArms: return "下腕脱毛";
-                case TreatmentPlan.FullArms: return "腕全体脱毛";
-                case TreatmentPlan.Calves: return "ふくらはぎ脱毛";
-                case TreatmentPlan.Thighs: return "太もも脱毛";
-                case TreatmentPlan.FullLegs: return "脚全体脱毛";
-                case TreatmentPlan.Chest: return "胸脱毛";
-                case TreatmentPlan.Abs: return "お腹脱毛";
-                case TreatmentPlan.Beard: return "ひげ脱毛";
-                case TreatmentPlan.Back: return "背中脱毛";
-                case TreatmentPlan.Armpits: return "わき脱毛";
-                case TreatmentPlan.ArmsAndLegs: return "腕・脚脱毛";
-                case TreatmentPlan.FullBody: return "全身脱毛";
-                default: return "不明";
+                case TreatmentPlan.None: return "None";
+                case TreatmentPlan.UpperArms: return "Upper Arms";
+                case TreatmentPlan.LowerArms: return "Lower Arms";
+                case TreatmentPlan.FullArms: return "Full Arms";
+                case TreatmentPlan.Calves: return "Calves";
+                case TreatmentPlan.Thighs: return "Thighs";
+                case TreatmentPlan.FullLegs: return "Full Legs";
+                case TreatmentPlan.Chest: return "Chest";
+                case TreatmentPlan.Abs: return "Abs";
+                case TreatmentPlan.Beard: return "Beard";
+                case TreatmentPlan.Back: return "Back";
+                case TreatmentPlan.Armpits: return "Armpits";
+                case TreatmentPlan.ArmsAndLegs: return "Arms & Legs";
+                case TreatmentPlan.FullBody: return "Full Body";
+                default: return "Unknown";
             }
         }
 
@@ -146,6 +146,27 @@ namespace HairRemovalSim.Customer
             }
             
             return maskValues.ToArray();
+        }
+        
+        /// <summary>
+        /// Get BodyPartDefinition list for completion tracking (includes UV regions)
+        /// </summary>
+        public static List<Core.BodyPartDefinition> GetBodyPartDefinitions(this TreatmentPlan plan, Core.BodyPartsDatabase database)
+        {
+            var result = new List<Core.BodyPartDefinition>();
+            if (database == null) return result;
+            
+            var partNames = plan.GetBodyPartNames();
+            foreach (var partName in partNames)
+            {
+                var partDef = database.GetPartByName(partName);
+                if (partDef != null)
+                {
+                    result.Add(partDef);
+                }
+            }
+            
+            return result;
         }
     }
 }

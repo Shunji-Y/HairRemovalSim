@@ -317,6 +317,11 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 3428768006287516483}
   m_SourcePrefab: {fileID: 100100000, guid: 569c14da28fa5d34d8d9c4df40f3f8f6, type: 3}
+--- !u!137 &196053596496750670 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 5197118176682910397, guid: 569c14da28fa5d34d8d9c4df40f3f8f6, type: 3}
+  m_PrefabInstance: {fileID: 5379368091346619123}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &472957677001747187 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5491878368694689792, guid: 569c14da28fa5d34d8d9c4df40f3f8f6, type: 3}
@@ -384,7 +389,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b5cb24c253b98b4e9afc39d87056d5c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skinnedMeshRenderer: {fileID: 0}
+  skinnedMeshRenderer: {fileID: 196053596496750670}
   headMaterial: {fileID: 2100000, guid: 079f2a3322449664f957211504bca701, type: 2}
   blendScale: 1
   blendCurve: 1

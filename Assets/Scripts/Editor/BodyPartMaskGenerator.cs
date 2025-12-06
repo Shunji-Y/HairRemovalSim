@@ -7,13 +7,14 @@ namespace HairRemovalSim.Core
 {
 #if UNITY_EDITOR
     /// <summary>
-    /// BodyPartMaskテクスチャを自動生成するエディタツール
+    /// 部位別バイナリマスクテクスチャを自動生成するエディタツール
+    /// 14個の部位それぞれに白黒のマスクテクスチャを生成
     /// </summary>
     public class BodyPartMaskGenerator : EditorWindow
     {
         private BodyPartsDatabase database;
         private int textureSize = 2048;
-        private string outputPath = "Assets/Textures/BodyPartMasks/";
+        private string outputPath = "Assets/Textures/PartMasks/";
         
         [MenuItem("Tools/Hair Removal Sim/Generate Body Part Masks")]
         public static void ShowWindow()
@@ -23,7 +24,15 @@ namespace HairRemovalSim.Core
         
         private void OnGUI()
         {
-            GUILayout.Label("Body Part Mask Generator", EditorStyles.boldLabel);
+            GUILayout.Label("Per-Part Binary Mask Generator", EditorStyles.boldLabel);
+            EditorGUILayout.Space(10);
+            
+            EditorGUILayout.HelpBox(
+                "各部位ごとに白黒のバイナリマスクを生成します。\n" +
+                "白 = その部位、黒 = それ以外",
+                MessageType.Info
+            );
+            
             EditorGUILayout.Space(10);
             
             // Database選択
@@ -59,7 +68,7 @@ namespace HairRemovalSim.Core
             
             // 生成ボタン
             GUI.enabled = database != null;
-            if (GUILayout.Button("Generate All Masks", GUILayout.Height(40)))
+            if (GUILayout.Button("Generate 14 Binary Masks", GUILayout.Height(40)))
             {
                 GenerateAllMasks();
             }
@@ -70,14 +79,11 @@ namespace HairRemovalSim.Core
             // 情報表示
             if (database != null)
             {
-                EditorGUILayout.HelpBox(
-                    $"Database: {database.allParts.Count} parts\n" +
-                    $"Material 0 (Head): {database.GetPartsByMaterial(0).Count} parts\n" +
-                    $"Material 1 (Body): {database.GetPartsByMaterial(1).Count} parts\n" +
-                    $"Material 2 (Arm): {database.GetPartsByMaterial(2).Count} parts\n" +
-                    $"Material 3 (Leg): {database.GetPartsByMaterial(3).Count} parts",
-                    MessageType.Info
-                );
+                EditorGUILayout.LabelField("Parts in Database:", EditorStyles.boldLabel);
+                foreach (var part in database.allParts)
+                {
+                    EditorGUILayout.LabelField($"  • {part.partName} (Mat {part.materialIndex})", EditorStyles.miniLabel);
+                }
             }
             else
             {
@@ -97,6 +103,27 @@ namespace HairRemovalSim.Core
             }
             
             // 出力フォルダ作成
+            CreateOutputFolder();
+            
+            int generatedCount = 0;
+            
+            // 各部位ごとにマスクを生成
+            foreach (var part in database.allParts)
+            {
+                GenerateBinaryMaskForPart(part);
+                generatedCount++;
+            }
+            
+            AssetDatabase.Refresh();
+            EditorUtility.DisplayDialog(
+                "Complete", 
+                $"{generatedCount}個のバイナリマスクを生成しました！\n{outputPath}", 
+                "OK"
+            );
+        }
+        
+        private void CreateOutputFolder()
+        {
             if (!AssetDatabase.IsValidFolder(outputPath.TrimEnd('/')))
             {
                 string[] folders = outputPath.TrimEnd('/').Split('/');
@@ -111,33 +138,11 @@ namespace HairRemovalSim.Core
                     currentPath = newPath;
                 }
             }
-            
-            // マテリアルごとにマスクを生成
-            string[] materialNames = { "Head", "Body", "Arm", "Leg" };
-            
-            for (int matIndex = 0; matIndex < 4; matIndex++)
-            {
-                var parts = database.GetPartsByMaterial(matIndex);
-                if (parts.Count == 0)
-                {
-                    Debug.LogWarning($"Material {matIndex} ({materialNames[matIndex]}) has no parts. Skipping.");
-                    continue;
-                }
-                
-                GenerateMaskForMaterial(matIndex, materialNames[matIndex], parts);
-            }
-            
-            AssetDatabase.Refresh();
-            EditorUtility.DisplayDialog(
-                "Complete", 
-                "Body Part Masksの生成が完了しました！\n" + outputPath, 
-                "OK"
-            );
         }
         
-        private void GenerateMaskForMaterial(int materialIndex, string materialName, List<BodyPartDefinition> parts)
+        private void GenerateBinaryMaskForPart(BodyPartDefinition part)
         {
-            // テクスチャ作成（グレースケール）
+            // テクスチャ作成（白黒）
             Texture2D mask = new Texture2D(textureSize, textureSize, TextureFormat.RGB24, false);
             
             // 黒で初期化
@@ -147,22 +152,17 @@ namespace HairRemovalSim.Core
                 pixels[i] = Color.black;
             }
             
-            // 各部位のUV領域を塗る
-            foreach (var part in parts)
+            // この部位のUV領域を白で塗る
+            foreach (var region in part.uvRegions)
             {
-                Color partColor = new Color(part.maskValue, 0, 0); // Rチャネルのみ使用
-                
-                foreach (var region in part.uvRegions)
-                {
-                    PaintRegion(pixels, region.rect, partColor);
-                }
+                PaintRegion(pixels, region.rect, Color.white);
             }
             
             mask.SetPixels(pixels);
             mask.Apply();
             
             // PNG保存
-            string fileName = $"{materialName}_BodyPartMask.png";
+            string fileName = $"Mask_{part.partName}.png";
             string fullPath = outputPath + fileName;
             
             byte[] pngData = mask.EncodeToPNG();
@@ -199,7 +199,7 @@ namespace HairRemovalSim.Core
             endX = Mathf.Clamp(endX, 0, textureSize);
             endY = Mathf.Clamp(endY, 0, textureSize);
             
-            // 領域を塗る
+            // 領域を白で塗る
             for (int y = startY; y < endY; y++)
             {
                 for (int x = startX; x < endX; x++)

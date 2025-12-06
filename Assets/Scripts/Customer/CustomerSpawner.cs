@@ -21,6 +21,18 @@ namespace HairRemovalSim.Customer
         
         [Header("Object Pool")]
         public int poolSize = 3; // Pre-initialized customers
+        
+        [Header("Test/Debug Settings")]
+        [Tooltip("Enable to use fixed settings instead of random")]
+        public bool useTestSettings = false;
+        [Tooltip("Fixed treatment plan for testing")]
+        public TreatmentPlan testTreatmentPlan = TreatmentPlan.Beard;
+        [Tooltip("Fixed hairiness level for testing")]
+        public HairinessLevel testHairinessLevel = HairinessLevel.Medium;
+        [Tooltip("Fixed wealth level for testing")]
+        public WealthLevel testWealthLevel = WealthLevel.Rich;
+        [Tooltip("Spawn customer immediately on play")]
+        public bool spawnOnStart = false;
 
         private List<CustomerController> customerPool = new List<CustomerController>();
         private List<CustomerController> activeCustomers = new List<CustomerController>();
@@ -71,6 +83,13 @@ namespace HairRemovalSim.Customer
             
             poolInitialized = true;
             Debug.Log($"[CustomerSpawner] Customer pool initialization complete!");
+            
+            // Spawn immediately if test mode is enabled
+            if (spawnOnStart && useTestSettings)
+            {
+                Debug.Log("[CustomerSpawner] spawnOnStart enabled - spawning test customer immediately!");
+                SpawnCustomer();
+            }
         }
 
         private void Update()
@@ -163,11 +182,11 @@ namespace HairRemovalSim.Customer
                 // Assign BodyPartsDatabase
                 customer.bodyPartsDatabase = bodyPartsDatabase;
                 
-                // Generate random data
+                // Generate customer data (use test settings if enabled)
                 CustomerData data = new CustomerData();
-                data.customerName = "Guest " + Random.Range(100, 999);
-                data.hairiness = (HairinessLevel)Random.Range(0, 4);
-                data.wealth = (WealthLevel)Random.Range(0, 4);
+                data.customerName = useTestSettings ? "TestCustomer" : "Guest " + Random.Range(100, 999);
+                data.hairiness = useTestSettings ? testHairinessLevel : (HairinessLevel)Random.Range(0, 4);
+                data.wealth = useTestSettings ? testWealthLevel : (WealthLevel)Random.Range(0, 4);
                 
                 // Calculate budget based on wealth level
                 switch (data.wealth)
@@ -188,11 +207,22 @@ namespace HairRemovalSim.Customer
                 
                 customer.Initialize(data, exitPoint, receptionPoint, cashRegisterPoint, this);
                 
-                // Select a random treatment plan
-                TreatmentPlan selectedPlan = (TreatmentPlan)Random.Range(0, System.Enum.GetValues(typeof(TreatmentPlan)).Length);
+                // Select treatment plan (use test settings if enabled)
+                // Valid plans are 0 (UpperArms) to 12 (FullBody), excluding -1 (None)
+                TreatmentPlan selectedPlan;
+                if (useTestSettings)
+                {
+                    selectedPlan = testTreatmentPlan;
+                }
+                else
+                {
+                    // Random.Range: 0 to 12 (inclusive min, exclusive max = 13)
+                    int planIndex = Random.Range(0, 13); // UpperArms(0) to FullBody(12)
+                    selectedPlan = (TreatmentPlan)planIndex;
+                }
                 data.selectedTreatmentPlan = selectedPlan;
                 
-                Debug.Log($"[CustomerSpawner] {data.customerName} selected plan: {selectedPlan.GetDisplayName()}");
+                Debug.Log($"[CustomerSpawner] {data.customerName} selected plan: {selectedPlan.GetDisplayName()} (value: {(int)selectedPlan}) (Test Mode: {useTestSettings})");
                 
                 // Register with reception to get queue position
                 if (receptionManager != null)

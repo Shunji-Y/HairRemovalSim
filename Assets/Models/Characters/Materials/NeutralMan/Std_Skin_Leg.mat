@@ -85,7 +85,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _HairGrowthMask:
-        m_Texture: {fileID: 2800000, guid: a783af12eaaa9754783c6b49704ce508, type: 3}
+        m_Texture: {fileID: 2800000, guid: ed0023d0c0ddfda49ae4e82f90d52f44, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MNAOMap:
@@ -93,6 +93,62 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MaskMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_Abs:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_Back:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_Beard:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_Chest:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_LeftArmpit:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_LeftCalf:
+        m_Texture: {fileID: 2800000, guid: 2b732d39c4c149b49b6fb39007401ab3, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_LeftLowerArm:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_LeftThigh:
+        m_Texture: {fileID: 2800000, guid: b49fafc9b33845940b62fb7d55b2e614, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_LeftUpperArm:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_RightArmpit:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_RightCalf:
+        m_Texture: {fileID: 2800000, guid: 9857e0686781a304485540b75246a495, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_RightLowerArm:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_RightThigh:
+        m_Texture: {fileID: 2800000, guid: 473048659b125584e94074615a0170f5, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Mask_RightUpperArm:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -174,12 +230,42 @@ Material:
     - _ChinScatterScale: 1
     - _ChinSmoothnessMod: 0
     - _ColorBlendStrength: 0.5
+    - _Completed_Abs: 0
+    - _Completed_Back: 0
+    - _Completed_Beard: 0
+    - _Completed_Chest: 0
+    - _Completed_LeftArmpit: 0
+    - _Completed_LeftCalf: 0
+    - _Completed_LeftLowerArm: 0
+    - _Completed_LeftThigh: 0
+    - _Completed_LeftUpperArm: 0
+    - _Completed_RightArmpit: 0
+    - _Completed_RightCalf: 0
+    - _Completed_RightLowerArm: 0
+    - _Completed_RightThigh: 0
+    - _Completed_RightUpperArm: 0
+    - _DebugMode: 0
     - _DecalEnabled: 0
     - _DecalUVAngle: 0
     - _DisplacementLevel: 0.5
     - _DisplacementStrength: 0
     - _EarScatterScale: 1
     - _EarSmoothnessMod: 0
+    - _FlashIntensity: 0
+    - _Flash_Abs: 0
+    - _Flash_Back: 0
+    - _Flash_Beard: 0
+    - _Flash_Chest: 0
+    - _Flash_LeftArmpit: 0
+    - _Flash_LeftCalf: 0
+    - _Flash_LeftLowerArm: 0
+    - _Flash_LeftThigh: 0
+    - _Flash_LeftUpperArm: 0
+    - _Flash_RightArmpit: 0
+    - _Flash_RightCalf: 0
+    - _Flash_RightLowerArm: 0
+    - _Flash_RightThigh: 0
+    - _Flash_RightUpperArm: 0
     - _ForeheadScatterScale: 1
     - _ForeheadSmoothnessMod: 0
     - _GScatterScale: 1
@@ -191,7 +277,7 @@ Material:
     - _HairLength: 0.02
     - _HairRandom: 0.5
     - _HairSmoothness: 16
-    - _HairWidth: 0.0001
+    - _HairWidth: 0.00008
     - _HighlightIntensity: 2
     - _LipsCavityAO: 2.5
     - _MicroNormalStrength: 0.125
@@ -207,6 +293,20 @@ Material:
     - _QueueOffset: 0
     - _RScatterScale: 1
     - _RSmoothnessMod: 0
+    - _Request_Abs: 0
+    - _Request_Back: 0
+    - _Request_Beard: 0
+    - _Request_Chest: 0
+    - _Request_LeftArmpit: 0
+    - _Request_LeftCalf: 0
+    - _Request_LeftLowerArm: 0
+    - _Request_LeftThigh: 0
+    - _Request_LeftUpperArm: 0
+    - _Request_RightArmpit: 0
+    - _Request_RightCalf: 0
+    - _Request_RightLowerArm: 0
+    - _Request_RightThigh: 0
+    - _Request_RightUpperArm: 0
     - _SSSBlend: 0.6
     - _SSSDistortion: 0.5
     - _SSSTransmission: 5
@@ -225,6 +325,18 @@ Material:
     - _WrinkleDisplacementStrength: 1
     m_Colors:
     - _BodyColor: {r: 1, g: 1, b: 1, a: 1}
+    - _CompletedPartMasks: {r: -1, g: -1, b: -1, a: -1}
+    - _CompletedPartMasks2: {r: -1, g: -1, b: -1, a: -1}
+    - _CompletedPartMasks3: {r: -1, g: -1, b: -1, a: -1}
+    - _CompletedPartMasks4: {r: -1, g: -1, b: -1, a: -1}
+    - _CompletedUVRect0: {r: 0, g: 0, b: 0, a: 0}
+    - _CompletedUVRect1: {r: 0, g: 0, b: 0, a: 0}
+    - _CompletedUVRect2: {r: 0, g: 0, b: 0, a: 0}
+    - _CompletedUVRect3: {r: 0, g: 0, b: 0, a: 0}
+    - _CompletedUVRect4: {r: 0, g: 0, b: 0, a: 0}
+    - _CompletedUVRect5: {r: 0, g: 0, b: 0, a: 0}
+    - _CompletedUVRect6: {r: 0, g: 0, b: 0, a: 0}
+    - _CompletedUVRect7: {r: 0, g: 0, b: 0, a: 0}
     - _DecalColor: {r: 0.30654088, g: 1, b: 0.2971698, a: 1}
     - _DecalUVCenter: {r: 0.5, g: 0.5, b: 0, a: 0}
     - _DecalUVSize: {r: 0.1, g: 0.1, b: 0, a: 0}

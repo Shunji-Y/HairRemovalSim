@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using System.Collections.Generic;
 using HairRemovalSim.Interaction;
 using HairRemovalSim.Core;
 using HairRemovalSim.Player;
@@ -50,6 +51,9 @@ namespace HairRemovalSim.Customer
         private Quaternion targetRotation;
         public float rotationDuration = 1.0f;
         private float rotationElapsed = 0f;
+        
+        // Cached material instances for consistent shader property updates
+        private List<Material> cachedMaterials = new List<Material>();
 
         private void Awake()
         {
@@ -120,6 +124,16 @@ namespace HairRemovalSim.Customer
             // Reset state to initial
             currentState = CustomerState.Waiting;
             
+            // Reset HairTreatmentControllers for pool reuse
+            var treatmentControllers = GetComponentsInChildren<HairTreatmentController>();
+            foreach (var controller in treatmentControllers)
+            {
+                controller.ResetForReuse();
+            }
+            
+            // Reset completed parts counter
+            completedPartCount = 0;
+            
             Debug.Log($"[CustomerController] Reset state for {data.customerName}");
         }
         
@@ -139,63 +153,195 @@ namespace HairRemovalSim.Customer
         /// <summary>
         /// Highlight requested body parts using UV mask system (called when arriving at bed)
         /// </summary>
-        private void HighlightRequestedParts()
+        // Highlight state tracking
+        private int completedPartCount = 0;
+        private SkinnedMeshRenderer cachedRenderer;
+        private List<string> requestedPartNames = new List<string>();
+
+        private void SetupRequestedPartsForHighlighting()
         {
+            Debug.Log($"[Highlight] === SETUP === data={data}, plan={data?.selectedTreatmentPlan}");
+            
+            // Validation
             if (data == null || data.selectedTreatmentPlan == TreatmentPlan.None)
             {
-                Debug.LogWarning("[CustomerController] No treatment plan selected");
+                Debug.LogWarning("[Highlight] No treatment plan selected");
                 return;
             }
             
             if (bodyPartsDatabase == null)
             {
-                Debug.LogError("[CustomerController] BodyPartsDatabase is not assigned!");
+                Debug.LogError("[Highlight] BodyPartsDatabase is not assigned!");
                 return;
             }
             
-            // Get mask values from treatment plan
-            float[] maskValues = data.selectedTreatmentPlan.GetMaskValues(bodyPartsDatabase);
-            
-            if (maskValues.Length == 0)
+            // Get renderer from the object that has BodyPart component
+            var bodyPart = GetComponentInChildren<HairRemovalSim.Core.BodyPart>();
+            if (bodyPart == null)
             {
-                Debug.LogWarning($"[CustomerController] No mask values found for {data.selectedTreatmentPlan}");
+                Debug.LogError("[Highlight] No BodyPart component found!");
                 return;
             }
             
-            // Pack mask values into Vector4s (max 16 parts = 4 Vector4s)
-            // Initialize to -1 to avoid matching partID 0.0 (or close to it)
-            Vector4 masks1 = new Vector4(-1, -1, -1, -1);
-            Vector4 masks2 = new Vector4(-1, -1, -1, -1);
-            Vector4 masks3 = new Vector4(-1, -1, -1, -1);
-            Vector4 masks4 = new Vector4(-1, -1, -1, -1);
-            
-            for (int i = 0; i < maskValues.Length && i < 16; i++)
+            cachedRenderer = bodyPart.GetComponent<SkinnedMeshRenderer>();
+            if (cachedRenderer == null)
             {
-                if (i < 4)
-                    masks1[i] = maskValues[i];
-                else if (i < 8)
-                    masks2[i - 4] = maskValues[i];
-                else if (i < 12)
-                    masks3[i - 8] = maskValues[i];
-                else
-                    masks4[i - 12] = maskValues[i];
-            }
-            
-            // Apply to all materials on the character
-            var renderers = GetComponentsInChildren<SkinnedMeshRenderer>();
-            foreach (var renderer in renderers)
-            {
-                foreach (var mat in renderer.materials)
+                cachedRenderer = bodyPart.GetComponentInParent<SkinnedMeshRenderer>();
+                if (cachedRenderer == null)
                 {
-                    mat.SetVector("_RequestedPartMasks", masks1);
-                    mat.SetVector("_RequestedPartMasks2", masks2);
-                    mat.SetVector("_RequestedPartMasks3", masks3);
-                    mat.SetVector("_RequestedPartMasks4", masks4);
+                    cachedRenderer = bodyPart.GetComponentInChildren<SkinnedMeshRenderer>();
                 }
             }
             
-            Debug.Log($"[CustomerController] Highlighted {maskValues.Length} parts for {data.selectedTreatmentPlan}: " +
-                      $"Masks1={masks1}, Masks2={masks2}, Masks3={masks3}");
+            if (cachedRenderer == null)
+            {
+                Debug.LogError("[Highlight] No SkinnedMeshRenderer found on BodyPart object!");
+                return;
+            }
+            
+            Debug.Log($"[Highlight] Renderer found: {cachedRenderer.name}");
+            
+            // Get target parts from treatment plan
+            var targetParts = data.selectedTreatmentPlan.GetBodyPartDefinitions(bodyPartsDatabase);
+            
+            if (targetParts == null || targetParts.Count == 0)
+            {
+                Debug.LogWarning("[Highlight] No target parts found for treatment plan");
+                return;
+            }
+            
+            // Store requested part names for completion tracking
+            requestedPartNames.Clear();
+            foreach (var part in targetParts)
+            {
+                requestedPartNames.Add(part.partName);
+            }
+            
+            // Apply to each material - set Request flags for target parts
+            Material[] materials = cachedRenderer.materials;
+            cachedMaterials.Clear();
+            
+            foreach (var mat in materials)
+            {
+                cachedMaterials.Add(mat);
+                
+                // Reset all request/completed flags first
+                ResetAllPartFlags(mat);
+                
+                // Set request flags for target parts
+                foreach (var part in targetParts)
+                {
+                    string propName = $"_Request_{part.partName}";
+                    mat.SetFloat(propName, 1.0f);
+                    Debug.Log($"[Highlight] Set {propName} = 1.0 on {mat.name}");
+                }
+                
+                // Start with highlight OFF - Q key will turn it on
+                mat.SetFloat("_HighlightIntensity", 0f);
+            }
+            
+            // Assign modified materials back to renderer
+            cachedRenderer.materials = materials;
+            
+            // Reset completion counter
+            completedPartCount = 0;
+            
+            // Setup Treatment Controllers
+            var treatmentControllers = GetComponentsInChildren<Treatment.HairTreatmentController>();
+            foreach (var controller in treatmentControllers)
+            {
+                controller.SetTargetBodyParts(targetParts);
+                controller.OnPartCompleted -= OnBodyPartCompleted;
+                controller.OnPartCompleted += OnBodyPartCompleted;
+            }
+            
+            Debug.Log($"[Highlight] === COMPLETE === Setup {targetParts.Count} parts for highlighting");
+        }
+        
+        /// <summary>
+        /// Reset all per-part flags to 0
+        /// </summary>
+        private void ResetAllPartFlags(Material mat)
+        {
+            string[] partNames = { "Beard", "Chest", "Abs", "Back", "LeftArmpit", "RightArmpit",
+                                   "LeftUpperArm", "LeftLowerArm", "RightUpperArm", "RightLowerArm",
+                                   "LeftThigh", "LeftCalf", "RightThigh", "RightCalf" };
+            
+            foreach (var name in partNames)
+            {
+                mat.SetFloat($"_Request_{name}", 0f);
+                mat.SetFloat($"_Completed_{name}", 0f);
+            }
+        }
+        
+        /// <summary>
+        /// Called when an individual body part treatment is completed
+        /// Adds mask value to _CompletedPartMasks to stop highlighting that part
+        /// </summary>
+        private void OnBodyPartCompleted(string partName)
+        {
+            Debug.Log($"[Highlight] OnBodyPartCompleted: {partName}");
+            
+            // Set the completed flag for this part on all materials
+            string propName = $"_Completed_{partName}";
+            
+            foreach (var mat in cachedMaterials)
+            {
+                if (mat != null && mat.HasProperty(propName))
+                {
+                    mat.SetFloat(propName, 1.0f);
+                    Debug.Log($"[Highlight] Set {propName} = 1.0 on {mat.name}");
+                }
+            }
+            
+            completedPartCount++;
+            StartCoroutine(FlashCompletedPart(partName));
+        }
+        
+        /// <summary>
+        /// Flash effect coroutine for completed body part
+        /// </summary>
+        private System.Collections.IEnumerator FlashCompletedPart(string partName)
+        {
+            float flashDuration = 0.5f;
+            float flashIntensity = 2f;
+            float elapsed = 0f;
+            
+            string flashPropName = $"_Flash_{partName}";
+            
+            // Flash in
+            while (elapsed < flashDuration)
+            {
+                float t = elapsed / flashDuration;
+                float intensity = Mathf.Lerp(0f, flashIntensity, t);
+                UpdatePartFlashIntensity(flashPropName, intensity);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            
+            // Flash out
+            elapsed = 0f;
+            while (elapsed < flashDuration)
+            {
+                float t = elapsed / flashDuration;
+                float intensity = Mathf.Lerp(flashIntensity, 0f, t);
+                UpdatePartFlashIntensity(flashPropName, intensity);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            
+            UpdatePartFlashIntensity(flashPropName, 0f);
+        }
+        
+        private void UpdatePartFlashIntensity(string propName, float intensity)
+        {
+            foreach (var mat in cachedMaterials)
+            {
+                if (mat != null && mat.HasProperty(propName))
+                {
+                    mat.SetFloat(propName, intensity);
+                }
+            }
         }
         
         /// <summary>
@@ -206,14 +352,16 @@ namespace HairRemovalSim.Customer
             var bodyParts = GetComponentsInChildren<HairRemovalSim.Core.BodyPart>();
             foreach (var part in bodyParts)
             {
-                var renderer = part.GetComponent<Renderer>();
-                if (renderer != null && renderer.material != null)
+                part.ResetColor();
+            }
+            
+            // Also reset shader properties on cached materials
+            foreach (var mat in cachedMaterials)
+            {
+                if (mat != null)
                 {
-                    // Set to white with no emission
-                    Color whiteColor = new Color(1.0f, 1.0f, 1.0f, 1.0f); // No intensity multiplier = 0
-                    renderer.material.SetColor("_BodyColor", whiteColor);
-                    
-                    Debug.Log($"[CustomerController] Reset {part.partName} color to white");
+                    if (mat.HasProperty("_HighlightIntensity")) mat.SetFloat("_HighlightIntensity", 0f);
+                    if (mat.HasProperty("_FlashIntensity")) mat.SetFloat("_FlashIntensity", 0f);
                 }
             }
         }
@@ -323,18 +471,29 @@ namespace HairRemovalSim.Customer
         {
             int completedCount = 0;
             
-            // Count requested parts that are completed
-            foreach (var requestedPart in data.requestedBodyParts)
+            // Get HairTreatmentController to check actual completion
+            var treatmentController = GetComponentInChildren<Treatment.HairTreatmentController>();
+            if (treatmentController == null)
             {
-                if (requestedPart != null && requestedPart.CompletionPercentage >= 100f)
+                Debug.LogWarning("[CustomerController] No HairTreatmentController found for payment calculation");
+                return 0;
+            }
+            
+            // Get target part names from treatment plan
+            var targetPartNames = treatmentController.GetTargetPartNames();
+            
+            foreach (var partName in targetPartNames)
+            {
+                if (treatmentController.IsPartCompleted(partName))
                 {
                     completedCount++;
+                    Debug.Log($"[CustomerController] Part {partName} is completed");
                 }
             }
             
             // Calculate payment: baseBudget × completed parts
             int payment = completedCount * data.baseBudget;
-            Debug.Log($"[CustomerController] Payment calculation: {completedCount}/{data.requestedBodyParts.Count} parts completed × ${data.baseBudget}/part = ${payment}");
+            Debug.Log($"[CustomerController] Payment calculation: {completedCount}/{targetPartNames.Count} parts completed × ${data.baseBudget}/part = ${payment}");
             
             return payment;
         }
@@ -345,7 +504,8 @@ namespace HairRemovalSim.Customer
 
             Debug.Log($"Customer {data.customerName} treatment completed.");
             
-            // Note: Body part colors are now reset individually when each part reaches 100%
+            // Force mark all requested parts as completed to hide any remaining hair (98% threshold issue)
+            ForceCompleteAllRequestedParts();
             
             // Mark as completed and set state to start walking to reception after delay
             IsCompleted = true; 
@@ -362,7 +522,40 @@ namespace HairRemovalSim.Customer
                 Debug.Log("Bed released.");
             }
             
+            // Ensure all decals are hidden
+            var treatmentControllers = GetComponentsInChildren<Treatment.HairTreatmentController>();
+            foreach (var controller in treatmentControllers)
+            {
+                controller.HideDecal();
+            }
+            
             StandUpAndWalkToReception();
+        }
+        
+        /// <summary>
+        /// Force mark all requested parts as completed (sets _Completed_{PartName} = 1)
+        /// This ensures all hair is hidden even if only 98% was removed
+        /// </summary>
+        private void ForceCompleteAllRequestedParts()
+        {
+            if (cachedMaterials == null || cachedMaterials.Count == 0)
+            {
+                Debug.LogWarning("[CompleteTreatment] No cached materials to update");
+                return;
+            }
+            
+            foreach (var partName in requestedPartNames)
+            {
+                string propName = $"_Completed_{partName}";
+                foreach (var mat in cachedMaterials)
+                {
+                    if (mat != null && mat.HasProperty(propName))
+                    {
+                        mat.SetFloat(propName, 1.0f);
+                    }
+                }
+                Debug.Log($"[CompleteTreatment] Forced complete: {partName}");
+            }
         }
         
         private void StandUpAndWalkToReception()
@@ -514,7 +707,7 @@ namespace HairRemovalSim.Customer
 
         private void ArriveAtBed()
         {
-
+            Debug.Log($"[CustomerController] ArriveAtBed() CALLED! targetBed={targetBed}");
             if (targetBed == null) return;
 
             // Disable agent for manual positioning
@@ -545,8 +738,8 @@ namespace HairRemovalSim.Customer
             currentState = CustomerState.InTreatment;
             Debug.Log("Customer arrived at bed and is ready for treatment.");
             
-            // Highlight requested body parts with orange glow
-            HighlightRequestedParts();
+            // Setup requested parts for Q-key highlighting (but don't highlight automatically)
+            SetupRequestedPartsForHighlighting();
             
             // Start Treatment Session
             TreatmentManager.Instance.StartSession(this);

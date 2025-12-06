@@ -21,6 +21,7 @@ namespace HairRemovalSim.Tools
         private bool isHoveringBodyPart = false;
         private Material[] currentMaterials;
         private bool isEquipped = false;
+        private HairTreatmentController previousTreatmentController;
 
         private struct UVRect
         {
@@ -75,11 +76,30 @@ namespace HairRemovalSim.Tools
 
                 if (treatmentController != null)
                 {
+                    // Check if the customer is in treatment state
+                    var customerController = treatmentController.GetComponentInParent<HairRemovalSim.Customer.CustomerController>();
+                    if (customerController != null && customerController.CurrentState != HairRemovalSim.Customer.CustomerController.CustomerState.InTreatment)
+                    {
+                        // Customer is not in treatment state - hide decal and skip
+                        if (previousTreatmentController != null)
+                        {
+                            previousTreatmentController.HideDecal();
+                            previousTreatmentController = null;
+                        }
+                        isHoveringBodyPart = false;
+                        currentBodyPart = null;
+                        return;
+                    }
+                    
                     // Check if we switched to a different BodyPart
                     if (currentBodyPart != null && currentBodyPart != treatmentController.GetComponent<BodyPart>())
                     {
-                        // Hide decal on previous controller if needed
-                        // Ideally we should track the previous controller, but for now we rely on HideDecal being called elsewhere or frame update
+                        // Hide decal on previous controller if we're switching to a different one
+                        if (previousTreatmentController != null && previousTreatmentController != treatmentController)
+                        {
+                            previousTreatmentController.HideDecal();
+                        }
+                        previousTreatmentController = treatmentController;
                     }
 
                     isHoveringBodyPart = true;
@@ -93,6 +113,23 @@ namespace HairRemovalSim.Tools
 
                         // Calculate UV rect for decal display
                         UVRect uvRect = CalculateUVRect(hit, decalWidth, decalHeight);
+                        
+                        // Check if this UV area is in a completed part - block interaction if so
+                        var partNames = treatmentController.GetTargetPartNames();
+                        foreach (var partName in partNames)
+                        {
+                            if (treatmentController.IsPartCompleted(partName))
+                            {
+                                // Check if UV is in this completed part's region
+                                if (IsUVInCompletedPart(customerController, partName, uvRect.center))
+                                {
+                                    // Part is completed - hide decal and block interaction
+                                    treatmentController.HideDecal();
+                                    isHoveringBodyPart = false;
+                                    return;
+                                }
+                            }
+                        }
                         
                         // Determine submesh index to update the correct material/mask
                         int subMeshIndex = GetSubMeshIndex(hit);
@@ -274,6 +311,26 @@ namespace HairRemovalSim.Tools
                     controller.HideDecal();
                 }
             }
+        }
+        
+        /// <summary>
+        /// Check if a UV coordinate is inside a completed body part's region
+        /// </summary>
+        private bool IsUVInCompletedPart(HairRemovalSim.Customer.CustomerController customer, string partName, Vector2 uv)
+        {
+            if (customer == null || customer.bodyPartsDatabase == null) return false;
+            
+            var partDef = customer.bodyPartsDatabase.GetPartByName(partName);
+            if (partDef == null || partDef.uvRegions == null) return false;
+            
+            foreach (var region in partDef.uvRegions)
+            {
+                if (region.rect.Contains(uv))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

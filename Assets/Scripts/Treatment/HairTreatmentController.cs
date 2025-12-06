@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+using System.Collections.Generic;
+using System;
 
 namespace HairRemovalSim.Treatment
 {
@@ -14,7 +16,7 @@ namespace HairRemovalSim.Treatment
         public Shader paintShader;
         public float brushSize = 0.05f;
         [Range(0f, 10f)]
-        public float completionBuffer = 5f;
+        public float completionBuffer = 2f;
 
         private RenderTexture[] maskTextures; // Array of masks, one per material
         private Material paintMaterial;
@@ -23,6 +25,22 @@ namespace HairRemovalSim.Treatment
         private HairRemovalSim.Core.BodyPart bodyPart;
         private int initialWhitePixels = 0;
         private bool isCompleted = false;
+        
+        // Track which submesh is being treated (set from the first ApplyTreatment call)
+        // -1 means not yet determined, will be set on first paint
+        private int activeSubmeshIndex = -1;
+        private bool hasActiveSubmesh = false;
+        
+        // Target body parts for UV region-based counting
+        private List<HairRemovalSim.Core.BodyPartDefinition> targetBodyParts = new List<HairRemovalSim.Core.BodyPartDefinition>();
+        
+        // Per-body-part tracking
+        private Dictionary<string, int> perPartInitialPixels = new Dictionary<string, int>();
+        private Dictionary<string, float> perPartCompletion = new Dictionary<string, float>();
+        private HashSet<string> completedParts = new HashSet<string>();
+        
+        // Event fired when an individual body part completes (partName)
+        public event Action<string> OnPartCompleted;
 
         private void Start()
         {
@@ -85,6 +103,60 @@ namespace HairRemovalSim.Treatment
             Debug.Log($"[HairTreatmentController] Initial white pixels (mesh-covered area): {initialWhitePixels}");
             
             UpdateCompletion();
+        }
+        
+        /// <summary>
+        /// Set target body parts for UV region-based completion tracking.
+        /// Called by CustomerController after treatment plan is assigned.
+        /// </summary>
+        public void SetTargetBodyParts(List<HairRemovalSim.Core.BodyPartDefinition> parts)
+        {
+            targetBodyParts = parts ?? new List<HairRemovalSim.Core.BodyPartDefinition>();
+            
+            // Clear per-part tracking
+            perPartInitialPixels.Clear();
+            perPartCompletion.Clear();
+            completedParts.Clear();
+            
+            // Calculate initial pixels for each target part
+            foreach (var part in targetBodyParts)
+            {
+                int partPixels = CountWhitePixelsForPart(part);
+                perPartInitialPixels[part.partName] = partPixels;
+                perPartCompletion[part.partName] = 0f;
+                Debug.Log($"[HairTreatmentController] Part {part.partName}: Initial pixels = {partPixels}");
+            }
+            
+            // Recalculate total initial pixels
+            initialWhitePixels = CountWhitePixels();
+            Debug.Log($"[HairTreatmentController] Set {targetBodyParts.Count} target parts. Total initial pixels: {initialWhitePixels}");
+        }
+        
+        /// <summary>
+        /// Reset controller for reuse from object pool.
+        /// Called when customer is reused from pool.
+        /// </summary>
+        public void ResetForReuse()
+        {
+            // Reset completion state
+            isCompleted = false;
+            initialWhitePixels = 0;
+            activeSubmeshIndex = -1;
+            hasActiveSubmesh = false;
+            targetBodyParts.Clear();
+            
+            // Clear per-part tracking
+            perPartInitialPixels.Clear();
+            perPartCompletion.Clear();
+            completedParts.Clear();
+            
+            // Clear masks back to white (hair visible everywhere)
+            ClearMask();
+            
+            // Hide any decals
+            HideDecal();
+            
+            Debug.Log($"[HairTreatmentController] Reset for reuse: {name}");
         }
 
         public void ClearMask()
@@ -155,11 +227,24 @@ namespace HairRemovalSim.Treatment
             */
         }
 
+        // Track which submesh has the decal enabled (for proper cleanup)
+        private int previousDecalSubMeshIndex = -1;
+
         // Update decal position on the mask
         public void UpdateDecal(Vector2 uvPosition, float angle, Vector2 size, Color color, int subMeshIndex)
         {
             if (subMeshIndex < 0 || subMeshIndex >= targetMaterials.Length) return;
             if (targetMaterials[subMeshIndex] == null) return;
+            
+            // Hide decal on previous submesh if we switched to a different one
+            if (previousDecalSubMeshIndex >= 0 && previousDecalSubMeshIndex != subMeshIndex)
+            {
+                if (previousDecalSubMeshIndex < targetMaterials.Length && targetMaterials[previousDecalSubMeshIndex] != null)
+                {
+                    targetMaterials[previousDecalSubMeshIndex].SetFloat("_DecalEnabled", 0.0f);
+                }
+            }
+            previousDecalSubMeshIndex = subMeshIndex;
             
             // Only update the material corresponding to the hit submesh
             Material mat = targetMaterials[subMeshIndex];
@@ -194,6 +279,16 @@ namespace HairRemovalSim.Treatment
 
             Debug.Log($"[HairTreatmentController] Applying treatment at {uvPosition}, Size: {size}, Angle: {angle}, SubMesh: {subMeshIndex}");
 
+            // Track which submesh we're treating (set on first paint)
+            if (!hasActiveSubmesh)
+            {
+                activeSubmeshIndex = subMeshIndex;
+                hasActiveSubmesh = true;
+                // Recalculate initial pixels for this specific submesh only
+                initialWhitePixels = CountWhitePixels();
+                Debug.Log($"[HairTreatmentController] Active submesh set to {activeSubmeshIndex}, initial pixels: {initialWhitePixels}");
+            }
+
             // Setup paint material to draw a rectangle (tape shape)
             // Shader properties: _BrushMode (1=Rect), _BrushRect (x,y,w,h), _BrushAngle, _BrushColor
             paintMaterial.SetFloat("_BrushMode", 1.0f); // Rect mode
@@ -224,16 +319,40 @@ namespace HairRemovalSim.Treatment
 
             int currentWhitePixels = CountWhitePixels();
             
-            // Calculate percentage based on initial white pixels
-            // If initial is 0 (error or no mesh), avoid divide by zero
+            // Calculate overall percentage based on initial white pixels
             float percentage = 0f;
             if (initialWhitePixels > 0)
             {
-                // Inverted: We want % removed (black), so (Initial - Current) / Initial
-                percentage = (float)(initialWhitePixels - currentWhitePixels) / initialWhitePixels * 100f;
+                int removedPixels = initialWhitePixels - currentWhitePixels;
+                percentage = (float)removedPixels / initialWhitePixels * 100f;
+                
+                Debug.Log($"[HairTreatmentController] {name}: Removed {removedPixels}/{initialWhitePixels} pixels = {percentage:F1}%");
             }
             
-            // Clamp and add buffer
+            // Update per-part completion
+            foreach (var part in targetBodyParts)
+            {
+                if (completedParts.Contains(part.partName)) continue; // Already completed
+                
+                int initialPartPixels = perPartInitialPixels.ContainsKey(part.partName) ? perPartInitialPixels[part.partName] : 0;
+                if (initialPartPixels <= 0) continue;
+                
+                int currentPartPixels = CountWhitePixelsForPart(part);
+                int removedPartPixels = initialPartPixels - currentPartPixels;
+                float partPercentage = Mathf.Clamp((float)removedPartPixels / initialPartPixels * 100f + completionBuffer, 0f, 100f);
+                
+                perPartCompletion[part.partName] = partPercentage;
+                
+                // Check if this part is now completed
+                if (partPercentage >= 100f && !completedParts.Contains(part.partName))
+                {
+                    completedParts.Add(part.partName);
+                    OnPartCompleted?.Invoke(part.partName);
+                    Debug.Log($"[HairTreatmentController] Part {part.partName} completed!");
+                }
+            }
+            
+            // Clamp and add buffer for overall progress
             percentage = Mathf.Clamp(percentage + completionBuffer, 0f, 100f);
             
             bodyPart.UpdateCompletion(percentage);
@@ -246,42 +365,193 @@ namespace HairRemovalSim.Treatment
             }
         }
 
+        /// <summary>
+        /// Count white pixels in MaskMap, but only where HairGrowthMask indicates hair exists.
+        /// Counts ALL submeshes with hair (not filtered by activeSubmesh) to support multi-part treatments.
+        /// </summary>
         private int CountWhitePixels()
         {
-            // This is slow, should be optimized for production (e.g. Compute Shader or async GPU readback)
-            // For prototype, we'll sample a low-res version or just do it less frequently
+            int totalHairPixels = 0;
             
-            // Optimization: Only check every N frames or use a smaller texture for counting
-            // For now, let's just sum up all masks
-            
-            int totalWhite = 0;
-            
-            foreach (var mask in maskTextures)
+            for (int matIndex = 0; matIndex < maskTextures.Length; matIndex++)
             {
+                var mask = maskTextures[matIndex];
                 if (mask == null) continue;
                 
-                // Create a small temporary texture to read from (downsample for speed)
-                int smallSize = 64; 
-                RenderTexture smallRT = RenderTexture.GetTemporary(smallSize, smallSize, 0, RenderTextureFormat.ARGB32);
-                Graphics.Blit(mask, smallRT);
+                // Skip materials that don't support hair (e.g., Nails, Eyelash)
+                if (targetMaterials[matIndex] == null) continue;
+                if (!targetMaterials[matIndex].HasProperty("_HairGrowthMask")) continue;
                 
-                Texture2D tex = new Texture2D(smallSize, smallSize, TextureFormat.ARGB32, false);
-                RenderTexture.active = smallRT;
-                tex.ReadPixels(new Rect(0, 0, smallSize, smallSize), 0, 0);
-                tex.Apply();
+                // Get HairGrowthMask from the material
+                Texture hairGrowthTex = targetMaterials[matIndex].GetTexture("_HairGrowthMask");
+                if (hairGrowthTex == null) continue;
+                
+                // Create small temporary textures for reading
+                int smallSize = 64;
+                
+                RenderTexture smallMaskRT = RenderTexture.GetTemporary(smallSize, smallSize, 0, RenderTextureFormat.ARGB32);
+                Graphics.Blit(mask, smallMaskRT);
+                Texture2D maskTex = new Texture2D(smallSize, smallSize, TextureFormat.ARGB32, false);
+                RenderTexture.active = smallMaskRT;
+                maskTex.ReadPixels(new Rect(0, 0, smallSize, smallSize), 0, 0);
+                maskTex.Apply();
+                
+                RenderTexture smallHairRT = RenderTexture.GetTemporary(smallSize, smallSize, 0, RenderTextureFormat.ARGB32);
+                Graphics.Blit(hairGrowthTex, smallHairRT);
+                Texture2D hairGrowthTex2D = new Texture2D(smallSize, smallSize, TextureFormat.ARGB32, false);
+                RenderTexture.active = smallHairRT;
+                hairGrowthTex2D.ReadPixels(new Rect(0, 0, smallSize, smallSize), 0, 0);
+                hairGrowthTex2D.Apply();
                 RenderTexture.active = null;
                 
-                Color[] pixels = tex.GetPixels();
-                foreach (Color p in pixels)
+                Color[] maskPixels = maskTex.GetPixels();
+                Color[] hairPixels = hairGrowthTex2D.GetPixels();
+                
+                for (int i = 0; i < maskPixels.Length; i++)
                 {
-                    if (p.r > 0.5f) totalWhite++;
+                    bool hasHair = hairPixels[i].r > 0.1f;
+                    bool notRemoved = maskPixels[i].r > 0.5f;
+                    
+                    if (!hasHair || !notRemoved) continue;
+                    
+                    // Calculate UV from pixel index
+                    int x = i % smallSize;
+                    int y = i / smallSize;
+                    Vector2 uv = new Vector2((float)x / smallSize, (float)y / smallSize);
+                    
+                    // Check if UV is in any target body part's region
+                    bool isInTargetArea = false;
+                    
+                    if (targetBodyParts.Count == 0)
+                    {
+                        // No target parts specified = count all (backwards compatibility)
+                        isInTargetArea = true;
+                    }
+                    else
+                    {
+                        foreach (var part in targetBodyParts)
+                        {
+                            // Only check parts that match this material/submesh
+                            if (part.materialIndex == matIndex)
+                            {
+                                if (part.ContainsUV(uv))
+                                {
+                                    isInTargetArea = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (isInTargetArea)
+                    {
+                        totalHairPixels++;
+                    }
                 }
                 
-                Destroy(tex);
-                RenderTexture.ReleaseTemporary(smallRT);
+                Destroy(maskTex);
+                Destroy(hairGrowthTex2D);
+                RenderTexture.ReleaseTemporary(smallMaskRT);
+                RenderTexture.ReleaseTemporary(smallHairRT);
             }
-
-            return totalWhite;
+            
+            return totalHairPixels;
+        }
+        
+        /// <summary>
+        /// Count white pixels for a specific body part only
+        /// </summary>
+        private int CountWhitePixelsForPart(HairRemovalSim.Core.BodyPartDefinition part)
+        {
+            int partPixels = 0;
+            int matIndex = part.materialIndex;
+            
+            if (matIndex < 0 || matIndex >= maskTextures.Length) return 0;
+            
+            var mask = maskTextures[matIndex];
+            if (mask == null) return 0;
+            if (targetMaterials[matIndex] == null) return 0;
+            if (!targetMaterials[matIndex].HasProperty("_HairGrowthMask")) return 0;
+            
+            Texture hairGrowthTex = targetMaterials[matIndex].GetTexture("_HairGrowthMask");
+            if (hairGrowthTex == null) return 0;
+            
+            int smallSize = 64;
+            
+            RenderTexture smallMaskRT = RenderTexture.GetTemporary(smallSize, smallSize, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(mask, smallMaskRT);
+            Texture2D maskTex = new Texture2D(smallSize, smallSize, TextureFormat.ARGB32, false);
+            RenderTexture.active = smallMaskRT;
+            maskTex.ReadPixels(new Rect(0, 0, smallSize, smallSize), 0, 0);
+            maskTex.Apply();
+            
+            RenderTexture smallHairRT = RenderTexture.GetTemporary(smallSize, smallSize, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(hairGrowthTex, smallHairRT);
+            Texture2D hairGrowthTex2D = new Texture2D(smallSize, smallSize, TextureFormat.ARGB32, false);
+            RenderTexture.active = smallHairRT;
+            hairGrowthTex2D.ReadPixels(new Rect(0, 0, smallSize, smallSize), 0, 0);
+            hairGrowthTex2D.Apply();
+            RenderTexture.active = null;
+            
+            Color[] maskPixels = maskTex.GetPixels();
+            Color[] hairPixels = hairGrowthTex2D.GetPixels();
+            
+            for (int i = 0; i < maskPixels.Length; i++)
+            {
+                bool hasHair = hairPixels[i].r > 0.1f;
+                bool notRemoved = maskPixels[i].r > 0.5f;
+                
+                if (!hasHair || !notRemoved) continue;
+                
+                int x = i % smallSize;
+                int y = i / smallSize;
+                Vector2 uv = new Vector2((float)x / smallSize, (float)y / smallSize);
+                
+                if (part.ContainsUV(uv))
+                {
+                    partPixels++;
+                }
+            }
+            
+            Destroy(maskTex);
+            Destroy(hairGrowthTex2D);
+            RenderTexture.ReleaseTemporary(smallMaskRT);
+            RenderTexture.ReleaseTemporary(smallHairRT);
+            
+            return partPixels;
+        }
+        
+        /// <summary>
+        /// Get completion percentage for a specific body part
+        /// </summary>
+        public float GetPartCompletion(string partName)
+        {
+            if (perPartCompletion.TryGetValue(partName, out float completion))
+            {
+                return completion;
+            }
+            return 0f;
+        }
+        
+        /// <summary>
+        /// Get list of target body part names
+        /// </summary>
+        public List<string> GetTargetPartNames()
+        {
+            var names = new List<string>();
+            foreach (var part in targetBodyParts)
+            {
+                names.Add(part.partName);
+            }
+            return names;
+        }
+        
+        /// <summary>
+        /// Check if a specific part is completed
+        /// </summary>
+        public bool IsPartCompleted(string partName)
+        {
+            return completedParts.Contains(partName);
         }
 
         private void OnDestroy()

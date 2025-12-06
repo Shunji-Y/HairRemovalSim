@@ -19,15 +19,66 @@ Shader "Custom/HairShader"
         _Gravity("Gravity Strength", Float) = 0.02
         _MaskMap("Mask Map", 2D) = "white" {}
         
-        // UV-Based Body Part System
+        // Hair Growth Mask
         _HairGrowthMask("Hair Growth Mask (R=density)", 2D) = "white" {}
-        _BodyPartMask("Body Part Mask (R=partID)", 2D) = "black" {}
         
-        // Requested Parts (Set from script) - Default to -1 (no parts selected)
-        _RequestedPartMasks("Requested Part Masks 1-4", Vector) = (-1,-1,-1,-1)
-        _RequestedPartMasks2("Requested Part Masks 5-8", Vector) = (-1,-1,-1,-1)
-        _RequestedPartMasks3("Requested Part Masks 9-12", Vector) = (-1,-1,-1,-1)
-        _RequestedPartMasks4("Requested Part Masks 13-16", Vector) = (-1,-1,-1,-1)
+        // === Per-Part Binary Mask Textures (14 parts) ===
+        // Each texture: white = this part, black = not this part
+        
+        // Head (1 part)
+        _Mask_Beard("Beard Mask", 2D) = "black" {}
+        
+        // Body (5 parts)
+        _Mask_Chest("Chest Mask", 2D) = "black" {}
+        _Mask_Abs("Abs Mask", 2D) = "black" {}
+        _Mask_Back("Back Mask", 2D) = "black" {}
+        _Mask_LeftArmpit("Left Armpit Mask", 2D) = "black" {}
+        _Mask_RightArmpit("Right Armpit Mask", 2D) = "black" {}
+        
+        // Arm (4 parts)
+        _Mask_LeftUpperArm("Left Upper Arm Mask", 2D) = "black" {}
+        _Mask_LeftLowerArm("Left Lower Arm Mask", 2D) = "black" {}
+        _Mask_RightUpperArm("Right Upper Arm Mask", 2D) = "black" {}
+        _Mask_RightLowerArm("Right Lower Arm Mask", 2D) = "black" {}
+        
+        // Leg (4 parts)
+        _Mask_LeftThigh("Left Thigh Mask", 2D) = "black" {}
+        _Mask_LeftCalf("Left Calf Mask", 2D) = "black" {}
+        _Mask_RightThigh("Right Thigh Mask", 2D) = "black" {}
+        _Mask_RightCalf("Right Calf Mask", 2D) = "black" {}
+        
+        // === Request Flags (set from C# script) ===
+        // 1.0 = highlight this part, 0.0 = don't highlight
+        _Request_Beard("Request Beard", Float) = 0
+        _Request_Chest("Request Chest", Float) = 0
+        _Request_Abs("Request Abs", Float) = 0
+        _Request_Back("Request Back", Float) = 0
+        _Request_LeftArmpit("Request Left Armpit", Float) = 0
+        _Request_RightArmpit("Request Right Armpit", Float) = 0
+        _Request_LeftUpperArm("Request Left Upper Arm", Float) = 0
+        _Request_LeftLowerArm("Request Left Lower Arm", Float) = 0
+        _Request_RightUpperArm("Request Right Upper Arm", Float) = 0
+        _Request_RightLowerArm("Request Right Lower Arm", Float) = 0
+        _Request_LeftThigh("Request Left Thigh", Float) = 0
+        _Request_LeftCalf("Request Left Calf", Float) = 0
+        _Request_RightThigh("Request Right Thigh", Float) = 0
+        _Request_RightCalf("Request Right Calf", Float) = 0
+        
+        // === Completed Flags (set from C# script) ===
+        _Completed_Beard("Completed Beard", Float) = 0
+        _Completed_Chest("Completed Chest", Float) = 0
+        _Completed_Abs("Completed Abs", Float) = 0
+        _Completed_Back("Completed Back", Float) = 0
+        _Completed_LeftArmpit("Completed Left Armpit", Float) = 0
+        _Completed_RightArmpit("Completed Right Armpit", Float) = 0
+        _Completed_LeftUpperArm("Completed Left Upper Arm", Float) = 0
+        _Completed_LeftLowerArm("Completed Left Lower Arm", Float) = 0
+        _Completed_RightUpperArm("Completed Right Upper Arm", Float) = 0
+        _Completed_RightLowerArm("Completed Right Lower Arm", Float) = 0
+        _Completed_LeftThigh("Completed Left Thigh", Float) = 0
+        _Completed_LeftCalf("Completed Left Calf", Float) = 0
+        _Completed_RightThigh("Completed Right Thigh", Float) = 0
+        _Completed_RightCalf("Completed Right Calf", Float) = 0
         
         // Highlight Settings
         [HDR] _HighlightColor("Highlight Color", Color) = (1, 0.745, 0.29, 1)
@@ -40,7 +91,24 @@ Shader "Custom/HairShader"
         _DecalColor("Decal Color", Color) = (2, 2, 0.5, 1)
         _DecalEnabled("Decal Enabled", Float) = 0
         
-
+        // === Per-Part Flash Properties ===
+        _Flash_Beard("Flash Beard", Float) = 0
+        _Flash_Chest("Flash Chest", Float) = 0
+        _Flash_Abs("Flash Abs", Float) = 0
+        _Flash_Back("Flash Back", Float) = 0
+        _Flash_LeftArmpit("Flash Left Armpit", Float) = 0
+        _Flash_RightArmpit("Flash Right Armpit", Float) = 0
+        _Flash_LeftUpperArm("Flash Left Upper Arm", Float) = 0
+        _Flash_LeftLowerArm("Flash Left Lower Arm", Float) = 0
+        _Flash_RightUpperArm("Flash Right Upper Arm", Float) = 0
+        _Flash_RightLowerArm("Flash Right Lower Arm", Float) = 0
+        _Flash_LeftThigh("Flash Left Thigh", Float) = 0
+        _Flash_LeftCalf("Flash Left Calf", Float) = 0
+        _Flash_RightThigh("Flash Right Thigh", Float) = 0
+        _Flash_RightCalf("Flash Right Calf", Float) = 0
+        
+        // Debug Mode: 0=Off, 1=Show part masks
+        _DebugMode ("Debug Mode", Float) = 0
     }
     SubShader
     {
@@ -92,10 +160,38 @@ Shader "Custom/HairShader"
                 float _Gravity;
                 float4 _MaskMap_ST;
                 
-                // UV-Based Body Part System
-                float4 _RequestedPartMasks;
-                float4 _RequestedPartMasks2;
-                float4 _RequestedPartMasks3;
+                // Per-Part Request Flags (1.0 = highlight, 0.0 = don't)
+                float _Request_Beard;
+                float _Request_Chest;
+                float _Request_Abs;
+                float _Request_Back;
+                float _Request_LeftArmpit;
+                float _Request_RightArmpit;
+                float _Request_LeftUpperArm;
+                float _Request_LeftLowerArm;
+                float _Request_RightUpperArm;
+                float _Request_RightLowerArm;
+                float _Request_LeftThigh;
+                float _Request_LeftCalf;
+                float _Request_RightThigh;
+                float _Request_RightCalf;
+                
+                // Per-Part Completed Flags
+                float _Completed_Beard;
+                float _Completed_Chest;
+                float _Completed_Abs;
+                float _Completed_Back;
+                float _Completed_LeftArmpit;
+                float _Completed_RightArmpit;
+                float _Completed_LeftUpperArm;
+                float _Completed_LeftLowerArm;
+                float _Completed_RightUpperArm;
+                float _Completed_RightLowerArm;
+                float _Completed_LeftThigh;
+                float _Completed_LeftCalf;
+                float _Completed_RightThigh;
+                float _Completed_RightCalf;
+                
                 float4 _HighlightColor;
                 float _HighlightIntensity;
                 
@@ -106,15 +202,46 @@ Shader "Custom/HairShader"
                 float4 _DecalColor;
                 float _DecalEnabled;
                 
-
-                float4 _RequestedPartMasks4;
+                // Per-Part Flash Properties
+                float _Flash_Beard;
+                float _Flash_Chest;
+                float _Flash_Abs;
+                float _Flash_Back;
+                float _Flash_LeftArmpit;
+                float _Flash_RightArmpit;
+                float _Flash_LeftUpperArm;
+                float _Flash_LeftLowerArm;
+                float _Flash_RightUpperArm;
+                float _Flash_RightLowerArm;
+                float _Flash_LeftThigh;
+                float _Flash_LeftCalf;
+                float _Flash_RightThigh;
+                float _Flash_RightCalf;
+                
+                float _DebugMode;
 
             CBUFFER_END
 
             TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
             TEXTURE2D(_MaskMap); SAMPLER(sampler_MaskMap);
             TEXTURE2D(_HairGrowthMask); SAMPLER(sampler_HairGrowthMask);
-            TEXTURE2D(_BodyPartMask); SAMPLER(sampler_BodyPartMask);
+            
+            // Per-Part Binary Mask Textures (share sampler to save resources)
+            TEXTURE2D(_Mask_Beard);
+            TEXTURE2D(_Mask_Chest);
+            TEXTURE2D(_Mask_Abs);
+            TEXTURE2D(_Mask_Back);
+            TEXTURE2D(_Mask_LeftArmpit);
+            TEXTURE2D(_Mask_RightArmpit);
+            TEXTURE2D(_Mask_LeftUpperArm);
+            TEXTURE2D(_Mask_LeftLowerArm);
+            TEXTURE2D(_Mask_RightUpperArm);
+            TEXTURE2D(_Mask_RightLowerArm);
+            TEXTURE2D(_Mask_LeftThigh);
+            TEXTURE2D(_Mask_LeftCalf);
+            TEXTURE2D(_Mask_RightThigh);
+            TEXTURE2D(_Mask_RightCalf);
+            SAMPLER(sampler_Mask_Beard); // Shared sampler for all masks
 
             float rand(float3 co)
             {
@@ -260,34 +387,82 @@ Shader "Custom/HairShader"
                 float NdotL = max(0, dot(normal, lightDir));
                 half3 diffuse = mainLight.color * NdotL + 0.3;
 
-                // === UV-Based Body Part System ===
-                // Get body part ID from mask
-                float partID = SAMPLE_TEXTURE2D(_BodyPartMask, sampler_BodyPartMask, input.uv).r;
+                // === Per-Part Binary Mask System ===
+                // Sample each part mask and check against request/completed flags
                 
-                // Check if this part is requested (施術希望部位か判定)
-                // Check if this part is requested (施術希望部位か判定)
-                // Tolerance must be small enough to distinguish 0.01 steps (1/100)
-                // 8-bit texture precision is 1/255 approx 0.0039
-                // So 0.002 is a safe tolerance if values are exact, but with compression/8bit, maybe 0.005 is safer?
-                // Let's try 0.005 to be safe but strict enough to separate 0.01 and 0.02
-                float tolerance = 0.005; 
+                // Sample all 14 part masks
+                float maskBeard = SAMPLE_TEXTURE2D(_Mask_Beard, sampler_Mask_Beard, input.uv).r;
+                float maskChest = SAMPLE_TEXTURE2D(_Mask_Chest, sampler_Mask_Beard, input.uv).r;
+                float maskAbs = SAMPLE_TEXTURE2D(_Mask_Abs, sampler_Mask_Beard, input.uv).r;
+                float maskBack = SAMPLE_TEXTURE2D(_Mask_Back, sampler_Mask_Beard, input.uv).r;
+                float maskLeftArmpit = SAMPLE_TEXTURE2D(_Mask_LeftArmpit, sampler_Mask_Beard, input.uv).r;
+                float maskRightArmpit = SAMPLE_TEXTURE2D(_Mask_RightArmpit, sampler_Mask_Beard, input.uv).r;
+                float maskLeftUpperArm = SAMPLE_TEXTURE2D(_Mask_LeftUpperArm, sampler_Mask_Beard, input.uv).r;
+                float maskLeftLowerArm = SAMPLE_TEXTURE2D(_Mask_LeftLowerArm, sampler_Mask_Beard, input.uv).r;
+                float maskRightUpperArm = SAMPLE_TEXTURE2D(_Mask_RightUpperArm, sampler_Mask_Beard, input.uv).r;
+                float maskRightLowerArm = SAMPLE_TEXTURE2D(_Mask_RightLowerArm, sampler_Mask_Beard, input.uv).r;
+                float maskLeftThigh = SAMPLE_TEXTURE2D(_Mask_LeftThigh, sampler_Mask_Beard, input.uv).r;
+                float maskLeftCalf = SAMPLE_TEXTURE2D(_Mask_LeftCalf, sampler_Mask_Beard, input.uv).r;
+                float maskRightThigh = SAMPLE_TEXTURE2D(_Mask_RightThigh, sampler_Mask_Beard, input.uv).r;
+                float maskRightCalf = SAMPLE_TEXTURE2D(_Mask_RightCalf, sampler_Mask_Beard, input.uv).r;
+                
+                // DEBUG MODE: Show which parts are active
+                if (_DebugMode > 0.5)
+                {
+                    half3 debugColor = half3(0, 0, 0);
+                    // Show highest priority mask as color
+                    if (maskBeard > 0.5)        debugColor = half3(0.5, 0, 0.5);  // Purple
+                    else if (maskChest > 0.5)   debugColor = half3(0, 0, 1);      // Blue
+                    else if (maskAbs > 0.5)     debugColor = half3(0, 0.5, 1);    // Light Blue
+                    else if (maskBack > 0.5)    debugColor = half3(0, 1, 1);      // Cyan
+                    else if (maskLeftArmpit > 0.5 || maskRightArmpit > 0.5) debugColor = half3(1, 0.5, 0); // Orange
+                    else if (maskLeftUpperArm > 0.5) debugColor = half3(0, 1, 0.5); // Teal
+                    else if (maskLeftLowerArm > 0.5) debugColor = half3(0, 1, 0);   // Green
+                    else if (maskRightUpperArm > 0.5) debugColor = half3(1, 1, 0);  // Yellow
+                    else if (maskRightLowerArm > 0.5) debugColor = half3(1, 0.7, 0);// Gold
+                    else if (maskLeftThigh > 0.5) debugColor = half3(1, 0.3, 0);    // Dark Orange
+                    else if (maskLeftCalf > 0.5)  debugColor = half3(1, 0, 0);      // Red
+                    else if (maskRightThigh > 0.5) debugColor = half3(1, 0, 0.5);   // Pink
+                    else if (maskRightCalf > 0.5) debugColor = half3(1, 0, 1);      // Magenta
+                    return half4(debugColor, 1.0);
+                }
+                
+                // Check if any requested part is active at this pixel (and not completed)
                 bool isRequested = 
-                    abs(partID - _RequestedPartMasks.x) < tolerance ||
-                    abs(partID - _RequestedPartMasks.y) < tolerance ||
-                    abs(partID - _RequestedPartMasks.z) < tolerance ||
-                    abs(partID - _RequestedPartMasks.w) < tolerance ||
-                    abs(partID - _RequestedPartMasks2.x) < tolerance ||
-                    abs(partID - _RequestedPartMasks2.y) < tolerance ||
-                    abs(partID - _RequestedPartMasks2.z) < tolerance ||
-                    abs(partID - _RequestedPartMasks2.w) < tolerance ||
-                    abs(partID - _RequestedPartMasks3.x) < tolerance ||
-                    abs(partID - _RequestedPartMasks3.y) < tolerance ||
-                    abs(partID - _RequestedPartMasks3.z) < tolerance ||
-                    abs(partID - _RequestedPartMasks3.w) < tolerance ||
-                    abs(partID - _RequestedPartMasks4.x) < tolerance ||
-                    abs(partID - _RequestedPartMasks4.y) < tolerance ||
-                    abs(partID - _RequestedPartMasks4.z) < tolerance ||
-                    abs(partID - _RequestedPartMasks4.w) < tolerance;
+                    (maskBeard > 0.5 && _Request_Beard > 0.5) ||
+                    (maskChest > 0.5 && _Request_Chest > 0.5) ||
+                    (maskAbs > 0.5 && _Request_Abs > 0.5) ||
+                    (maskBack > 0.5 && _Request_Back > 0.5) ||
+                    (maskLeftArmpit > 0.5 && _Request_LeftArmpit > 0.5) ||
+                    (maskRightArmpit > 0.5 && _Request_RightArmpit > 0.5) ||
+                    (maskLeftUpperArm > 0.5 && _Request_LeftUpperArm > 0.5) ||
+                    (maskLeftLowerArm > 0.5 && _Request_LeftLowerArm > 0.5) ||
+                    (maskRightUpperArm > 0.5 && _Request_RightUpperArm > 0.5) ||
+                    (maskRightLowerArm > 0.5 && _Request_RightLowerArm > 0.5) ||
+                    (maskLeftThigh > 0.5 && _Request_LeftThigh > 0.5) ||
+                    (maskLeftCalf > 0.5 && _Request_LeftCalf > 0.5) ||
+                    (maskRightThigh > 0.5 && _Request_RightThigh > 0.5) ||
+                    (maskRightCalf > 0.5 && _Request_RightCalf > 0.5);
+                
+                // Check if any completed part is active at this pixel
+                bool isCompleted = 
+                    (maskBeard > 0.5 && _Completed_Beard > 0.5) ||
+                    (maskChest > 0.5 && _Completed_Chest > 0.5) ||
+                    (maskAbs > 0.5 && _Completed_Abs > 0.5) ||
+                    (maskBack > 0.5 && _Completed_Back > 0.5) ||
+                    (maskLeftArmpit > 0.5 && _Completed_LeftArmpit > 0.5) ||
+                    (maskRightArmpit > 0.5 && _Completed_RightArmpit > 0.5) ||
+                    (maskLeftUpperArm > 0.5 && _Completed_LeftUpperArm > 0.5) ||
+                    (maskLeftLowerArm > 0.5 && _Completed_LeftLowerArm > 0.5) ||
+                    (maskRightUpperArm > 0.5 && _Completed_RightUpperArm > 0.5) ||
+                    (maskRightLowerArm > 0.5 && _Completed_RightLowerArm > 0.5) ||
+                    (maskLeftThigh > 0.5 && _Completed_LeftThigh > 0.5) ||
+                    (maskLeftCalf > 0.5 && _Completed_LeftCalf > 0.5) ||
+                    (maskRightThigh > 0.5 && _Completed_RightThigh > 0.5) ||
+                    (maskRightCalf > 0.5 && _Completed_RightCalf > 0.5);
+
+                // Final highlight condition: requested but NOT completed
+                bool shouldHighlight = isRequested && !isCompleted;
                 
                 // Get hair growth density from mask
                 float hairGrowth = SAMPLE_TEXTURE2D(_HairGrowthMask, sampler_HairGrowthMask, input.uv).r;
@@ -296,9 +471,8 @@ Shader "Custom/HairShader"
                 {
                     half4 mask = SAMPLE_TEXTURE2D(_MaskMap, sampler_MaskMap, input.uv);
                     
-                    // Discard if: no hair in mask, or no growth in this area
-                    // Note: We removed the isRequested check - hair shows everywhere by default
-                    if (mask.r < 0.1 || hairGrowth < 0.1) discard;
+                    // Discard if: no hair in mask, or no growth in this area, or part is completed
+                    if (mask.r < 0.1 || hairGrowth < 0.1 || isCompleted) discard;
 
                     // Specular (Blinn-Phong)
                     float3 viewDir = normalize(_WorldSpaceCameraPos - input.positionWS);
@@ -314,10 +488,35 @@ Shader "Custom/HairShader"
                     half4 texColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv);
                     half3 finalColor = (texColor.rgb * _BodyColor.rgb) * diffuse;
                     
-                    // Apply highlight to requested parts (施術希望部位を光らせる)
-                    if (isRequested)
+                    // Sample MaskMap to check if hair still exists in this area
+                    half4 bodyMask = SAMPLE_TEXTURE2D(_MaskMap, sampler_MaskMap, input.uv);
+                    bool hairStillExists = bodyMask.r > 0.1;
+                    
+                    if (shouldHighlight && hairGrowth > 0.1 && hairStillExists)
                     {
-                        finalColor += _HighlightColor.rgb * _HighlightIntensity;
+                        finalColor.rgb += _HighlightColor.rgb * _HighlightIntensity;
+                    }
+                    
+                    // Per-part flash effect (only flashes the specific completed part)
+                    float flashAmount = 0.0;
+                    if (maskBeard > 0.5) flashAmount = max(flashAmount, _Flash_Beard);
+                    if (maskChest > 0.5) flashAmount = max(flashAmount, _Flash_Chest);
+                    if (maskAbs > 0.5) flashAmount = max(flashAmount, _Flash_Abs);
+                    if (maskBack > 0.5) flashAmount = max(flashAmount, _Flash_Back);
+                    if (maskLeftArmpit > 0.5) flashAmount = max(flashAmount, _Flash_LeftArmpit);
+                    if (maskRightArmpit > 0.5) flashAmount = max(flashAmount, _Flash_RightArmpit);
+                    if (maskLeftUpperArm > 0.5) flashAmount = max(flashAmount, _Flash_LeftUpperArm);
+                    if (maskLeftLowerArm > 0.5) flashAmount = max(flashAmount, _Flash_LeftLowerArm);
+                    if (maskRightUpperArm > 0.5) flashAmount = max(flashAmount, _Flash_RightUpperArm);
+                    if (maskRightLowerArm > 0.5) flashAmount = max(flashAmount, _Flash_RightLowerArm);
+                    if (maskLeftThigh > 0.5) flashAmount = max(flashAmount, _Flash_LeftThigh);
+                    if (maskLeftCalf > 0.5) flashAmount = max(flashAmount, _Flash_LeftCalf);
+                    if (maskRightThigh > 0.5) flashAmount = max(flashAmount, _Flash_RightThigh);
+                    if (maskRightCalf > 0.5) flashAmount = max(flashAmount, _Flash_RightCalf);
+                    
+                    if (flashAmount > 0.01)
+                    {
+                        finalColor.rgb += float3(1, 1, 1) * flashAmount;
                     }
                     
                     // Decal Overlay (UV-based)
