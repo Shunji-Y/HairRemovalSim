@@ -553,6 +553,18 @@ namespace HairRemovalSim.Treatment
         {
             return completedParts.Contains(partName);
         }
+        
+        /// <summary>
+        /// Force mark a part as completed (for 98% threshold edge case)
+        /// </summary>
+        public void ForcePartComplete(string partName)
+        {
+            if (!completedParts.Contains(partName))
+            {
+                completedParts.Add(partName);
+                Debug.Log($"[HairTreatmentController] Force completed: {partName}");
+            }
+        }
 
         private void OnDestroy()
         {

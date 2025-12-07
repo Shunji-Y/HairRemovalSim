@@ -29,7 +29,7 @@ namespace HairRemovalSim.Customer
         public CustomerState CurrentState => currentState; // Public read-only access
         
         private Transform targetBed;
-        private Environment.BedController assignedBed; // Track which bed this customer is using
+        public Environment.BedController assignedBed; // Track which bed this customer is using
         private Transform exitPoint;
         private Transform receptionPoint; // Pre-treatment reception
         private Transform cashRegisterPoint; // Post-treatment payment
@@ -384,6 +384,8 @@ namespace HairRemovalSim.Customer
             if (agent != null && queuePos != null)
             {
                 agent.enabled = true;
+                agent.isStopped = false;
+                agent.updateRotation = true;
                 currentState = CustomerState.Waiting;
                 
                 // If waypoint specified, go there first, then to queue position
@@ -447,6 +449,7 @@ namespace HairRemovalSim.Customer
         {
             currentState = CustomerState.Leaving;
             agent.isStopped = false;
+            agent.updateRotation = true; // Re-enable rotation for walking
             if (exitPoint != null)
             {
                 agent.SetDestination(exitPoint.position);
@@ -507,20 +510,11 @@ namespace HairRemovalSim.Customer
             // Force mark all requested parts as completed to hide any remaining hair (98% threshold issue)
             ForceCompleteAllRequestedParts();
             
-            // Mark as completed and set state to start walking to reception after delay
+            // Mark as completed
             IsCompleted = true; 
-            currentState = CustomerState.WalkingToReception; // Transition to walking to reception
+            currentState = CustomerState.Completed;
             
-            // Start a timer before moving to reception to allow for visual feedback/animation
-            paymentTimer = paymentDelay; 
-            
-            // Release bed
-            if (assignedBed != null)
-            {
-                assignedBed.ClearCustomer();
-                assignedBed = null;
-                Debug.Log("Bed released.");
-            }
+            // Don't release bed yet - keep reference for door control
             
             // Ensure all decals are hidden
             var treatmentControllers = GetComponentsInChildren<Treatment.HairTreatmentController>();
@@ -529,12 +523,136 @@ namespace HairRemovalSim.Customer
                 controller.HideDecal();
             }
             
+            // Set TreatmentFinished = true (customer is waiting for player to leave)
+            if (animator != null && animator.enabled)
+            {
+                animator.SetBool("TreatmentFinished", true);
+                Debug.Log("[CustomerController] TreatmentFinished = true, waiting for player to leave");
+            }
+            
+            // Start checking if player leaves the bed area
+            StartCoroutine(WaitForPlayerToLeave());
+        }
+        
+        [Header("Curtain Settings")]
+        [Tooltip("Distance player needs to be from bed before doors close")]
+        public float playerLeaveDistance = 3f;
+        
+        /// <summary>
+        /// Wait for player to leave the bed area, then start the departure sequence
+        /// </summary>
+        private System.Collections.IEnumerator WaitForPlayerToLeave()
+        {
+            Transform playerTransform = Camera.main?.transform;
+            if (playerTransform == null || assignedBed == null)
+            {
+                // No player reference, just proceed after delay
+                yield return new WaitForSeconds(2f);
+                StartDepartureSequence();
+                yield break;
+            }
+            
+            // Wait until player is far enough from bed
+            while (true)
+            {
+                float distance = Vector3.Distance(playerTransform.position, assignedBed.transform.position);
+                if (distance > playerLeaveDistance)
+                {
+                    break;
+                }
+                yield return new WaitForSeconds(0.2f);
+            }
+            
+            Debug.Log("[CustomerController] Player left bed area, closing doors");
+            StartDepartureSequence();
+        }
+        
+        /// <summary>
+        /// Start departure: close doors, stand up, open doors, walk to reception
+        /// </summary>
+        private void StartDepartureSequence()
+        {
+            if (assignedBed != null)
+            {
+                // Subscribe to door closed event
+                assignedBed.OnDoorsClosed += OnDoorsClosedForDeparture;
+                assignedBed.CloseDoors();
+            }
+            else
+            {
+                // No doors, proceed immediately
+                StandUpSequence();
+            }
+        }
+        
+        private void OnDoorsClosedForDeparture()
+        {
+            if (assignedBed != null)
+            {
+                assignedBed.OnDoorsClosed -= OnDoorsClosedForDeparture;
+            }
+            StandUpSequence();
+        }
+        
+        /// <summary>
+        /// Customer stands up, then doors open, then walk to reception
+        /// </summary>
+        private void StandUpSequence()
+        {
+            // Set TreatmentFinished = false (stand up animation)
+            if (animator != null && animator.enabled)
+            {
+                animator.SetBool("TreatmentFinished", false);
+                animator.SetBool("IsLyingDown", false);
+                animator.SetBool("IsLieDownFaceDown", false);
+                Debug.Log("[CustomerController] Standing up");
+            }
+            
+            // Wait a moment then open doors
+            StartCoroutine(OpenDoorsAfterStandUp());
+        }
+        
+        private System.Collections.IEnumerator OpenDoorsAfterStandUp()
+        {
+            // Wait for stand up animation
+            yield return new WaitForSeconds(1.5f);
+            
+            if (assignedBed != null)
+            {
+                // Subscribe to door opened event
+                assignedBed.OnDoorsOpened += OnDoorsOpenedForDeparture;
+                assignedBed.OpenDoors();
+            }
+            else
+            {
+                // No doors, proceed immediately
+                WalkToReception();
+            }
+        }
+        
+        private void OnDoorsOpenedForDeparture()
+        {
+            if (assignedBed != null)
+            {
+                assignedBed.OnDoorsOpened -= OnDoorsOpenedForDeparture;
+                
+                // Now release the bed
+                assignedBed.ClearCustomer();
+                assignedBed = null;
+                Debug.Log("Bed released after departure.");
+            }
+            WalkToReception();
+        }
+        
+        private void WalkToReception()
+        {
             StandUpAndWalkToReception();
         }
         
         /// <summary>
         /// Force mark all requested parts as completed (sets _Completed_{PartName} = 1)
         /// This ensures all hair is hidden even if only 98% was removed
+        /// Also marks parts as completed in HairTreatmentController for payment calculation
         /// </summary>
         private void ForceCompleteAllRequestedParts()
         {
@@ -544,8 +662,12 @@ namespace HairRemovalSim.Customer
                 return;
             }
             
+            // Get treatment controller to mark parts as completed
+            var treatmentController = GetComponentInChildren<Treatment.HairTreatmentController>();
+            
             foreach (var partName in requestedPartNames)
             {
+                // Update shader property
                 string propName = $"_Completed_{partName}";
                 foreach (var mat in cachedMaterials)
                 {
@@ -554,6 +676,13 @@ namespace HairRemovalSim.Customer
                         mat.SetFloat(propName, 1.0f);
                     }
                 }
+                
+                // Mark as completed in treatment controller for payment calculation
+                if (treatmentController != null)
+                {
+                    treatmentController.ForcePartComplete(partName);
+                }
+                
                 Debug.Log($"[CompleteTreatment] Forced complete: {partName}");
             }
         }
@@ -564,12 +693,16 @@ namespace HairRemovalSim.Customer
             if (agent != null)
             {
                 agent.enabled = true;
+                agent.isStopped = false;
+                agent.updateRotation = true;
             }
             
             // Stand up (reverse lie down animation if applicable)
             if (animator != null)
             {
                 animator.SetBool("IsLyingDown", false);
+                animator.SetBool("IsLieDownFaceDown", false); // Reset to face-up
+                // TreatmentFinished already set to false in TreatmentFinishedSequence
             }
             
             // Set final destination and state
@@ -622,15 +755,27 @@ namespace HairRemovalSim.Customer
         
         public void RotateCustomer()
         {
-            if (currentState != CustomerState.InTreatment || isRotating) return;
+            if (currentState != CustomerState.InTreatment) return;
             
+            // Toggle face-down state
             isSupine = !isSupine;
-            isRotating = true;
             
-            // Calculate target rotation (180 degrees around LOCAL Y-axis)
-            targetRotation = transform.rotation * Quaternion.Euler(0f, 180f, 0f);
-            
-            Debug.Log($"Rotating customer to {(isSupine ? "Supine (face-up)" : "Prone (face-down)")}");
+            // If animator is available, use animation-based flip
+            if (animator != null && animator.enabled)
+            {
+                animator.SetBool("IsLieDownFaceDown", !isSupine);
+                Debug.Log($"[Animator] Set IsLieDownFaceDown = {!isSupine} ({(isSupine ? "Supine (face-up)" : "Prone (face-down)")})" );
+            }
+            else
+            {
+                // Fallback: Transform rotation for non-animated customers
+                if (!isRotating)
+                {
+                    isRotating = true;
+                    targetRotation = transform.rotation * Quaternion.Euler(0f, 180f, 0f);
+                    Debug.Log($"[Transform] Rotating customer to {(isSupine ? "Supine (face-up)" : "Prone (face-down)")}");
+                }
+            }
         }
 
         public void AddPain(float amount)
@@ -675,6 +820,81 @@ namespace HairRemovalSim.Customer
         }
         
         public bool IsReadyForTreatment => currentState == CustomerState.InTreatment;
+        
+        [Header("Door Detection")]
+        [Tooltip("Distance to detect and open closed doors")]
+        public float doorDetectionDistance = 1.5f;
+        
+        [Tooltip("Distance to consider arrived at bed (should be larger when using bed center)")]
+        public float bedArrivalDistance = 1.5f;
+        
+        private bool waitingForDoorToOpen = false;
+        
+        /// <summary>
+        /// Check if we're near closed doors and open them (stops while door opens)
+        /// </summary>
+        private void CheckAndOpenNearbyDoors()
+        {
+            if (assignedBed == null || waitingForDoorToOpen) return;
+            
+            // Check left door
+            if (assignedBed.leftDoor != null && !assignedBed.leftDoor.IsOpen && !assignedBed.leftDoor.IsAnimating)
+            {
+                float dist = Vector3.Distance(transform.position, assignedBed.leftDoor.transform.position);
+                if (dist < doorDetectionDistance)
+                {
+                    StopAndOpenDoor(assignedBed.leftDoor);
+                    return;
+                }
+            }
+            
+            // Check right door
+            if (assignedBed.rightDoor != null && !assignedBed.rightDoor.IsOpen && !assignedBed.rightDoor.IsAnimating)
+            {
+                float dist = Vector3.Distance(transform.position, assignedBed.rightDoor.transform.position);
+                if (dist < doorDetectionDistance)
+                {
+                    StopAndOpenDoor(assignedBed.rightDoor);
+                    return;
+                }
+            }
+        }
+        
+        private void StopAndOpenDoor(Environment.CurtainDoor door)
+        {
+            waitingForDoorToOpen = true;
+            
+            // Stop walking
+            if (agent != null)
+            {
+                agent.isStopped = true;
+                animator?.SetFloat("Speed", 0f);
+            }
+            
+            Debug.Log($"[CustomerController] Stopping to open door: {door.name}");
+            
+            // Subscribe to door open event
+            door.OnDoorOpened += OnDoorOpenedWhileWalking;
+            door.Open();
+        }
+        
+        private void OnDoorOpenedWhileWalking()
+        {
+            // Unsubscribe from both doors just in case
+            if (assignedBed?.leftDoor != null)
+                assignedBed.leftDoor.OnDoorOpened -= OnDoorOpenedWhileWalking;
+            if (assignedBed?.rightDoor != null)
+                assignedBed.rightDoor.OnDoorOpened -= OnDoorOpenedWhileWalking;
+            
+            waitingForDoorToOpen = false;
+            
+            // Resume walking
+            if (agent != null && currentState == CustomerState.WalkingToBed)
+            {
+                agent.isStopped = false;
+                Debug.Log("[CustomerController] Door opened, resuming walk to bed");
+            }
+        }
 
         public void GoToBed(Environment.BedController bed)
         {
@@ -692,17 +912,75 @@ namespace HairRemovalSim.Customer
                 targetBed = bed.transform;
             }
 
-            //Debug.Log($"Customer moving to bed {bed.name}...");
-            
-            // Enable agent and set destination
+            // Determine destination: use arrivalPoint (bed center) if available
+            Vector3 destination = bed.arrivalPoint != null 
+                ? bed.arrivalPoint.position 
+                : bed.transform.position;
+
+            // Start walking immediately - doors will be handled when customer gets close
             if (agent != null)
             {
                 agent.enabled = true;
                 agent.isStopped = false;
-                agent.SetDestination(bed.transform.position);
+                agent.updateRotation = true;
+                agent.SetDestination(destination);
             }
             
             currentState = CustomerState.WalkingToBed;
+            Debug.Log("[CustomerController] Walking to bed");
+        }
+        
+        private bool waitingForDoors = false;
+        
+        /// <summary>
+        /// Start the bed arrival sequence: close doors, wait, then lie down
+        /// </summary>
+        private void StartBedArrivalSequence()
+        {
+            if (waitingForDoors) return; // Already waiting
+            waitingForDoors = true;
+            
+            // Stop walking
+            if (agent != null)
+            {
+                agent.isStopped = true;
+                animator?.SetFloat("Speed", 0f);
+            }
+            
+            // Close curtain doors
+            if (assignedBed != null)
+            {
+                // Check if doors are already closed
+                if (assignedBed.AreAllDoorsClosed && !assignedBed.AreDoorsAnimating)
+                {
+                    Debug.Log("[CustomerController] Doors already closed, proceeding to lie down");
+                    waitingForDoors = false;
+                    ArriveAtBed();
+                }
+                else
+                {
+                    // Subscribe to door closed event
+                    assignedBed.OnDoorsClosed += OnDoorsClosedForArrival;
+                    assignedBed.CloseDoors();
+                    Debug.Log("[CustomerController] Closing curtain doors before lying down");
+                }
+            }
+            else
+            {
+                // No bed reference, proceed immediately
+                waitingForDoors = false;
+                ArriveAtBed();
+            }
+        }
+        
+        private void OnDoorsClosedForArrival()
+        {
+            if (assignedBed != null)
+            {
+                assignedBed.OnDoorsClosed -= OnDoorsClosedForArrival;
+            }
+            waitingForDoors = false;
+            ArriveAtBed();
         }
 
         private void ArriveAtBed()
@@ -720,7 +998,11 @@ namespace HairRemovalSim.Customer
             
             if (animator != null && animator.enabled)
             {
+                animator.SetFloat("Speed", 0f); // Stop walk animation
+                animator.SetBool("IsLieDownFaceDown", false); // Start face-up
                 animator.SetBool("IsLyingDown", true);
+                // Delay BakeMesh to allow animation to settle
+                StartCoroutine(DelayedBakeMesh(0.5f));
                 // Ensure we don't rotate via transform if animation handles it, 
                 // BUT usually lie down animations are in local space, so we might still need to orient the root.
                 // For now, let's assume the animation keeps the root rotation or we rotate the root to match bed.
@@ -738,11 +1020,37 @@ namespace HairRemovalSim.Customer
             currentState = CustomerState.InTreatment;
             Debug.Log("Customer arrived at bed and is ready for treatment.");
             
+            // NOTE: BakeMesh is now called via Animation Event (OnLieDownComplete)
+            
             // Setup requested parts for Q-key highlighting (but don't highlight automatically)
             SetupRequestedPartsForHighlighting();
             
             // Start Treatment Session
             TreatmentManager.Instance.StartSession(this);
+        }
+        
+        /// <summary>
+        /// Called by Animation Event when lie-down animation completes
+        /// Bakes mesh colliders for accurate hit detection
+        /// </summary>
+        public void OnLieDownComplete()
+        {
+            var bodyParts = GetComponentsInChildren<HairRemovalSim.Core.BodyPart>();
+            foreach (var part in bodyParts)
+            {
+                part.BakeMeshForCollider();
+            }
+            
+            Debug.Log($"[CustomerController] OnLieDownComplete: Baked mesh colliders for {bodyParts.Length} body parts");
+        }
+        
+        /// <summary>
+        /// Delay BakeMesh to allow animation to settle
+        /// </summary>
+        private System.Collections.IEnumerator DelayedBakeMesh(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            OnLieDownComplete();
         }
 
         public void OnHoverEnter() { }
@@ -754,6 +1062,13 @@ namespace HairRemovalSim.Customer
 
         private void Update()
         {
+            // Sync animation speed with NavMeshAgent velocity
+            if (animator != null && agent != null && agent.enabled)
+            {
+                float speed = agent.velocity.magnitude;
+                animator.SetFloat("Speed", speed);
+            }
+            
             // Handle smooth rotation
             if (isRotating)
             {
@@ -770,13 +1085,19 @@ namespace HairRemovalSim.Customer
             // State-specific behavior
             if (currentState == CustomerState.WalkingToBed)
             {
-                if (agent != null && !agent.pathPending)
+                if (agent != null && !agent.pathPending && !waitingForDoorToOpen)
                 {
+                    // Check if we're near a closed door and need to open it
+                    CheckAndOpenNearbyDoors();
                     
-                    // Debug.Log($"Dist: {agent.remainingDistance}, Stop: {agent.stoppingDistance}");
-                    if (agent.remainingDistance <= agent.stoppingDistance + 1.5f)
+                    // Don't check arrival if we just started opening a door
+                    if (waitingForDoorToOpen) return;
+                    
+                    // Check if arrived at bed (using bedArrivalDistance for center-based detection)
+                    if (agent.remainingDistance <= agent.stoppingDistance + bedArrivalDistance)
                     {
-                        ArriveAtBed();
+                        // Start door closing sequence, ArriveAtBed will be called when doors are closed
+                        StartBedArrivalSequence();
                     }
                 }
             }
@@ -787,8 +1108,23 @@ namespace HairRemovalSim.Customer
                     ArriveAtReception();
                 }
             }
+            else if (currentState == CustomerState.Waiting)
+            {
+                // Stop moving/rotating when arrived at queue position
+                if (agent != null && agent.enabled && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.3f)
+                {
+                    agent.isStopped = true;
+                    agent.updateRotation = false;
+                }
+            }
             else if (currentState == CustomerState.Paying)
             {
+                // Stop moving/rotating when arrived at cash register queue
+                if (agent != null && agent.enabled && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.3f)
+                {
+                    agent.isStopped = true;
+                    agent.updateRotation = false;
+                }
                 // Auto-payment disabled - payment now happens via CashRegister interaction
                 /* OLD AUTO-PAYMENT CODE:
                 paymentTimer += Time.deltaTime;

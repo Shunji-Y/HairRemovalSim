@@ -16,6 +16,7 @@ namespace HairRemovalSim.Tools
         public Color emissionColor = new Color(2f, 2f, 0.5f, 1f);
         
         private Camera mainCamera;
+        private PlayerController playerController;
         private BodyPart currentBodyPart;
         private RaycastHit currentHit;
         private bool isHoveringBodyPart = false;
@@ -34,10 +35,22 @@ namespace HairRemovalSim.Tools
         {
             base.Awake();
             mainCamera = Camera.main;
+            playerController = FindObjectOfType<PlayerController>();
         }
+        
+        private bool wasInTreatmentMode = false;
 
         private void Update()
         {
+            // Check if treatment mode just ended - hide decal
+            bool isInTreatmentMode = playerController != null && playerController.IsInTreatmentMode;
+            if (wasInTreatmentMode && !isInTreatmentMode)
+            {
+                // Treatment ended - hide decal and reset state
+                HideCurrentDecal();
+            }
+            wasInTreatmentMode = isInTreatmentMode;
+            
             if (isEquipped)
             {
                 UpdateDecalPosition();
@@ -51,12 +64,47 @@ namespace HairRemovalSim.Tools
                 currentMaterials = null;
             }
         }
+        
+        private void HideCurrentDecal()
+        {
+            if (currentBodyPart != null)
+            {
+                var controller = currentBodyPart.GetComponent<HairTreatmentController>();
+                if (controller != null)
+                {
+                    controller.HideDecal();
+                }
+            }
+            if (previousTreatmentController != null)
+            {
+                previousTreatmentController.HideDecal();
+                previousTreatmentController = null;
+            }
+            currentBodyPart = null;
+            isHoveringBodyPart = false;
+        }
 
         private void UpdateDecalPosition()
         {
             if (mainCamera == null) return;
 
-            Ray ray = new Ray(mainCamera.transform.position, mainCamera.transform.forward);
+            // Get ray from crosshair position (uses PlayerController's crosshair in treatment mode)
+            Ray ray;
+            if (playerController != null && playerController.IsInTreatmentMode)
+            {
+                // Use crosshair viewport position
+                Vector3 viewportPoint = new Vector3(
+                    playerController.CrosshairViewportPosition.x,
+                    playerController.CrosshairViewportPosition.y,
+                    0f
+                );
+                ray = mainCamera.ViewportPointToRay(viewportPoint);
+            }
+            else
+            {
+                // Default to camera center
+                ray = new Ray(mainCamera.transform.position, mainCamera.transform.forward);
+            }
             RaycastHit hit;
 
             if (Physics.Raycast(ray, out hit, 10f))
@@ -113,23 +161,6 @@ namespace HairRemovalSim.Tools
 
                         // Calculate UV rect for decal display
                         UVRect uvRect = CalculateUVRect(hit, decalWidth, decalHeight);
-                        
-                        // Check if this UV area is in a completed part - block interaction if so
-                        var partNames = treatmentController.GetTargetPartNames();
-                        foreach (var partName in partNames)
-                        {
-                            if (treatmentController.IsPartCompleted(partName))
-                            {
-                                // Check if UV is in this completed part's region
-                                if (IsUVInCompletedPart(customerController, partName, uvRect.center))
-                                {
-                                    // Part is completed - hide decal and block interaction
-                                    treatmentController.HideDecal();
-                                    isHoveringBodyPart = false;
-                                    return;
-                                }
-                            }
-                        }
                         
                         // Determine submesh index to update the correct material/mask
                         int subMeshIndex = GetSubMeshIndex(hit);

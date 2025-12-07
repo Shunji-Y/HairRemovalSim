@@ -345,7 +345,7 @@ Material:
     - _DecalUVSize: {r: 0.1, g: 0.1, b: 0, a: 0}
     - _DiffuseColor: {r: 0.99999994, g: 0.99999994, b: 0.99999994, a: 1}
     - _EmissiveColor: {r: 0, g: 0, b: 0, a: 0}
-    - _HairColor: {r: 0.26415092, g: 0.26041293, b: 0.26041293, a: 1}
+    - _HairColor: {r: 0, g: 0, b: 0, a: 1}
     - _HairSpecular: {r: 0.5, g: 0.5, b: 0.5, a: 1}
     - _HighlightColor: {r: 0.25190154, g: 0.10337469, b: 0.10337469, a: 1}
     - _RequestedPartMasks: {r: -1, g: -1, b: -1, a: -1}

@@ -203,27 +203,26 @@ namespace HairRemovalSim.Treatment
                 }
             }
             
-            // Find nearest customer to player
+            // Find if player is inside any bed with an active customer
+            Environment.BedController activeBed = null;
             CustomerController nearestCustomer = null;
-            float nearestDistance = float.MaxValue;
             
-            if (playerTransform != null)
+            foreach (var kvp in activeSessions)
             {
-                foreach (var kvp in activeSessions)
+                if (kvp.Key != null && kvp.Key.IsReadyForTreatment)
                 {
-                    if (kvp.Key != null && kvp.Key.IsReadyForTreatment)
+                    // Get the bed this customer is assigned to
+                    var bed = kvp.Key.assignedBed;
+                    if (bed != null && bed.IsPlayerInside)
                     {
-                        float distance = Vector3.Distance(playerTransform.position, kvp.Key.transform.position);
-                        if (distance < nearestDistance && distance <= proximityDistance)
-                        {
-                            nearestDistance = distance;
-                            nearestCustomer = kvp.Key;
-                        }
+                        activeBed = bed;
+                        nearestCustomer = kvp.Key;
+                        break;
                     }
                 }
             }
             
-            // Switch to nearest customer's session if different
+            // Switch to customer's session if player is in their bed area
             if (nearestCustomer != null && activeSessions.ContainsKey(nearestCustomer))
             {
                 TreatmentSession nearestSession = activeSessions[nearestCustomer];
@@ -233,7 +232,7 @@ namespace HairRemovalSim.Treatment
                 {
                     CurrentSession = nearestSession;
                     UI.HUDManager.Instance.ShowTreatmentPanel(CurrentSession);
-                    Debug.Log($"Switched to {nearestCustomer.name}'s session");
+                    Debug.Log($"Switched to {nearestCustomer.name}'s session (trigger-based)");
                 }
                 
                 // Show UI
@@ -243,19 +242,31 @@ namespace HairRemovalSim.Treatment
                     if (panelRoot != null)
                     {
                         panelRoot.SetActive(true);
+                        
+                        // Enable treatment mode for zoom control
+                        if (playerController != null)
+                        {
+                            playerController.SetTreatmentMode(true);
+                        }
                     }
                     UI.HUDManager.Instance.UpdateTreatmentPanel();
                 }
             }
             else
             {
-                // No customer nearby - hide UI
+                // Player not in any bed area - hide UI
                 if (UI.HUDManager.Instance != null && UI.HUDManager.Instance.treatmentPanel != null)
                 {
                     GameObject panelRoot = UI.HUDManager.Instance.treatmentPanel.panelRoot;
                     if (panelRoot != null)
                     {
                         panelRoot.SetActive(false);
+                        
+                        // Disable treatment mode for zoom control
+                        if (playerController != null)
+                        {
+                            playerController.SetTreatmentMode(false);
+                        }
                     }
                 }
             }

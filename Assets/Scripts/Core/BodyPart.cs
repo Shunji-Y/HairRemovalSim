@@ -43,6 +43,37 @@ namespace HairRemovalSim.Core
         }
         
         /// <summary>
+        /// Bake the current pose of SkinnedMeshRenderer into MeshCollider for accurate hit detection
+        /// Call this when customer lies down on the bed
+        /// </summary>
+        public void BakeMeshForCollider()
+        {
+            var skinnedMeshRenderer = GetComponent<SkinnedMeshRenderer>();
+            var meshCollider = GetComponent<MeshCollider>();
+            
+            if (skinnedMeshRenderer == null)
+            {
+                Debug.LogWarning($"[BodyPart] {partName}: No SkinnedMeshRenderer found for BakeMesh");
+                return;
+            }
+            
+            // Create or get the baked mesh
+            Mesh bakedMesh = new Mesh();
+            skinnedMeshRenderer.BakeMesh(bakedMesh);
+            
+            // Create MeshCollider if it doesn't exist
+            if (meshCollider == null)
+            {
+                meshCollider = gameObject.AddComponent<MeshCollider>();
+            }
+            
+            // Update the collider with the baked mesh
+            meshCollider.sharedMesh = bakedMesh;
+            
+            Debug.Log($"[BodyPart] {partName}: MeshCollider updated with baked mesh ({bakedMesh.vertexCount} vertices)");
+        }
+        
+        /// <summary>
         /// Reset this body part for reuse (object pooling)
         /// </summary>
         public void Reset()

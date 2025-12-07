@@ -16,6 +16,10 @@ namespace HairRemovalSim.Player
 
         [Header("References")]
         public Transform cameraTransform;
+        
+        [Header("Crosshair UI")]
+        [Tooltip("RectTransform of the crosshair UI element")]
+        public RectTransform crosshairUI;
 
 
 
@@ -28,6 +32,19 @@ namespace HairRemovalSim.Player
         private float xRotation = 0f;
         private bool canMove = true;
         private float currentSpeed = 0f; // Current movement speed
+        
+        // Crosshair position in viewport space (0-1)
+        private Vector2 crosshairPosition = new Vector2(0.5f, 0.5f);
+        
+        /// <summary>
+        /// Current crosshair position in viewport space (0-1). Use for raycasting and UI.
+        /// </summary>
+        public Vector2 CrosshairViewportPosition => crosshairPosition;
+        
+        /// <summary>
+        /// Is the player currently in treatment mode (near a customer)
+        /// </summary>
+        public bool IsInTreatmentMode => isInTreatmentMode;
 
         public void SetMovementEnabled(bool enabled)
         {
@@ -70,8 +87,13 @@ namespace HairRemovalSim.Player
         {
             Vector2 lookInput = lookAction.ReadValue<Vector2>();
             
-            float mouseX = lookInput.x * mouseSensitivity;
-            float mouseY = lookInput.y * mouseSensitivity;
+            // Calculate zoom-adjusted sensitivity (lower when zoomed in)
+            float sensitivityMultiplier = isInTreatmentMode 
+                ? Mathf.Lerp(1f, zoomedSensitivityMultiplier, currentZoomLevel)
+                : 1f;
+            
+            float mouseX = lookInput.x * mouseSensitivity * sensitivityMultiplier;
+            float mouseY = lookInput.y * mouseSensitivity * sensitivityMultiplier;
 
             xRotation -= mouseY;
             xRotation = Mathf.Clamp(xRotation, -90f, 90f);
@@ -79,7 +101,56 @@ namespace HairRemovalSim.Player
             // Rotate player body horizontally
             transform.Rotate(Vector3.up * mouseX);
             
-            // Camera rotation is now handled in UpdateCameraTransform
+            // During treatment mode, move crosshair based on zoom level
+            if (isInTreatmentMode && currentZoomLevel > 0.01f)
+            {
+                // Speed scales from 0 at min zoom to max at full zoom
+                float crosshairSpeed = crosshairMaxSpeed * currentZoomLevel;
+                
+                // Range also scales with zoom
+                float currentMaxOffset = crosshairMaxOffset * currentZoomLevel;
+                
+                crosshairPosition.x += lookInput.x * crosshairSpeed;
+                crosshairPosition.y += lookInput.y * crosshairSpeed;
+                
+                // Clamp crosshair to current zoom-based bounds
+                crosshairPosition.x = Mathf.Clamp(crosshairPosition.x, 0.5f - currentMaxOffset, 0.5f + currentMaxOffset);
+                crosshairPosition.y = Mathf.Clamp(crosshairPosition.y, 0.5f - currentMaxOffset, 0.5f + currentMaxOffset);
+            }
+            else
+            {
+                // At min zoom or not in treatment mode: crosshair stays at center
+                crosshairPosition = Vector2.Lerp(crosshairPosition, new Vector2(0.5f, 0.5f), Time.deltaTime * 10f);
+            }
+            
+            // Update crosshair UI position
+            UpdateCrosshairUI();
+        }
+        
+        private void UpdateCrosshairUI()
+        {
+            if (crosshairUI == null) return;
+            
+            // Convert viewport position to screen position
+            Canvas canvas = crosshairUI.GetComponentInParent<Canvas>();
+            if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            {
+                // Screen space overlay: use screen coordinates
+                crosshairUI.position = new Vector3(
+                    crosshairPosition.x * Screen.width,
+                    crosshairPosition.y * Screen.height,
+                    0f
+                );
+            }
+            else if (canvas != null)
+            {
+                // Other render modes: convert to canvas local position
+                RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+                crosshairUI.anchoredPosition = new Vector2(
+                    (crosshairPosition.x - 0.5f) * canvasRect.sizeDelta.x,
+                    (crosshairPosition.y - 0.5f) * canvasRect.sizeDelta.y
+                );
+            }
         }
 
         [Header("Zoom Settings")]
@@ -88,12 +159,77 @@ namespace HairRemovalSim.Player
         public float minZoomFOV = 80f;
         public float maxZoomFOV = 60f;
         public float zoomSpeed = 5f;
+        public float zoomResetDuration = 0.3f;
+        
+        [Header("Treatment Mode Settings")]
+        [Tooltip("Camera sensitivity multiplier at max zoom (lower = slower)")]
+        public float zoomedSensitivityMultiplier = 0.3f;
+        [Tooltip("Crosshair movement speed at max zoom")]
+        public float crosshairMaxSpeed = 0.003f;
+        [Tooltip("How far crosshair can move from center at max zoom (0-0.5)")]
+        public float crosshairMaxOffset = 0.3f;
         
         private float currentZoomLevel = 0f; // 0 = Zoom Out (Min), 1 = Zoom In (Max)
+        private bool isInTreatmentMode = false;
+        private bool isResettingZoom = false;
+        private float zoomResetTimer = 0f;
+        private float zoomResetStartLevel = 0f;
+        
+        /// <summary>
+        /// Set treatment mode - zoom is only allowed during treatment
+        /// </summary>
+        public void SetTreatmentMode(bool enabled)
+        {
+            if (isInTreatmentMode == enabled) return;
+            
+            isInTreatmentMode = enabled;
+            
+            if (!enabled)
+            {
+                // Start smooth reset to min zoom
+                isResettingZoom = true;
+                zoomResetTimer = 0f;
+                zoomResetStartLevel = currentZoomLevel;
+                
+                // Reset crosshair to center
+                crosshairPosition = new Vector2(0.5f, 0.5f);
+                UpdateCrosshairUI();
+                
+                Debug.Log("[PlayerController] Treatment mode OFF - resetting zoom and crosshair");
+            }
+            else
+            {
+                isResettingZoom = false;
+                // Ensure crosshair starts at center
+                crosshairPosition = new Vector2(0.5f, 0.5f);
+                UpdateCrosshairUI();
+                Debug.Log("[PlayerController] Treatment mode ON - zoom enabled");
+            }
+        }
 
         private void HandleZoom()
         {
-            if (cameraTransform == null || Mouse.current == null) return;
+            if (cameraTransform == null) return;
+            
+            // Handle zoom reset animation
+            if (isResettingZoom)
+            {
+                zoomResetTimer += Time.deltaTime;
+                float t = Mathf.Clamp01(zoomResetTimer / zoomResetDuration);
+                currentZoomLevel = Mathf.Lerp(zoomResetStartLevel, 0f, t);
+                
+                if (t >= 1f)
+                {
+                    isResettingZoom = false;
+                    currentZoomLevel = 0f;
+                }
+                return;
+            }
+            
+            // Only allow zoom during treatment mode
+            if (!isInTreatmentMode) return;
+            
+            if (Mouse.current == null) return;
 
             // Read mouse scroll wheel input from Input System
             Vector2 scrollDelta = Mouse.current.scroll.ReadValue();
