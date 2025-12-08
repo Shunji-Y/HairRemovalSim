@@ -5,6 +5,18 @@ Shader "Custom/HairShader"
         // Body Settings
         _BaseMap("Body Texture", 2D) = "white" {}
         [HDR] _BodyColor("Body Color (HDR)", Color) = (1, 1, 1, 1)
+        
+        // Normal and Occlusion Maps
+        [Normal] _NormalMap("Normal Map", 2D) = "bump" {}
+        _NormalStrength("Normal Strength", Range(0, 2)) = 1.0
+        _OcclusionMap("Occlusion Map", 2D) = "white" {}
+        _OcclusionStrength("Occlusion Strength", Range(0, 1)) = 1.0
+        _RoughnessMap("Roughness Map", 2D) = "gray" {}
+        _RoughnessStrength("Roughness Strength", Range(0, 1)) = 1.0
+        
+        // Skin Specular
+        _SkinSpecularColor("Skin Specular Color", Color) = (1, 1, 1, 1)
+        _SkinSpecularStrength("Skin Specular Strength", Range(0, 2)) = 0.5
 
         // Hair Settings
         _HairColor("Hair Color", Color) = (0.1, 0.05, 0.0, 1)
@@ -133,6 +145,7 @@ Shader "Custom/HairShader"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
+                float4 tangentOS : TANGENT;
                 float2 uv : TEXCOORD0;
             };
 
@@ -141,6 +154,7 @@ Shader "Custom/HairShader"
                 float4 positionCS : SV_POSITION;
                 float3 positionWS : TEXCOORD1;
                 float3 normalWS : TEXCOORD3;
+                float4 tangentWS : TEXCOORD5;
                 float2 uv : TEXCOORD0;
                 float isHair : TEXCOORD4;
             };
@@ -148,6 +162,11 @@ Shader "Custom/HairShader"
             CBUFFER_START(UnityPerMaterial)
                 float4 _BodyColor;
                 float4 _BaseMap_ST;
+                float _NormalStrength;
+                float _OcclusionStrength;
+                float _RoughnessStrength;
+                float4 _SkinSpecularColor;
+                float _SkinSpecularStrength;
                 float4 _HairColor;
                 float4 _HairSpecular;
                 float _HairSmoothness;
@@ -223,6 +242,9 @@ Shader "Custom/HairShader"
             CBUFFER_END
 
             TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
+            TEXTURE2D(_NormalMap); SAMPLER(sampler_NormalMap);
+            TEXTURE2D(_OcclusionMap); SAMPLER(sampler_OcclusionMap);
+            TEXTURE2D(_RoughnessMap); SAMPLER(sampler_RoughnessMap);
             TEXTURE2D(_MaskMap); SAMPLER(sampler_MaskMap);
             TEXTURE2D(_HairGrowthMask); SAMPLER(sampler_HairGrowthMask);
             
@@ -252,17 +274,18 @@ Shader "Custom/HairShader"
             {
                 Varyings output;
                 VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);
-                VertexNormalInputs normalInput = GetVertexNormalInputs(input.normalOS, float4(0,0,0,0));
+                VertexNormalInputs normalInput = GetVertexNormalInputs(input.normalOS, input.tangentOS);
 
                 output.positionCS = vertexInput.positionCS;
                 output.positionWS = vertexInput.positionWS;
                 output.normalWS = normalInput.normalWS;
+                output.tangentWS = float4(normalInput.tangentWS, input.tangentOS.w);
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
                 output.isHair = 0.0;
                 return output;
             }
 
-            [maxvertexcount(75)] 
+            [maxvertexcount(60)] 
             void geom(triangle Varyings input[3], uint pid : SV_PrimitiveID, inout TriangleStream<Varyings> triStream)
             {
                 // 1. Emit Body
@@ -287,7 +310,7 @@ Shader "Custom/HairShader"
                 float rCount = rand(float3(pid, area, _HairDensity));
                 if (rCount < remainder) baseCount++;
 
-                int maxHairs = 9; 
+                int maxHairs = 7; // Reduced to stay within geometry shader output limits 
                 int hairCount = min(baseCount, maxHairs);
 
                 float widthMultiplier = 1.0;
@@ -358,6 +381,7 @@ Shader "Custom/HairShader"
                         Varyings v;
                         v.isHair = 1.0;
                         v.uv = uv;
+                        v.tangentWS = float4(0, 0, 0, 0); // Hair doesn't use normal mapping
                         
                         // Left Vertex
                         v.positionWS = currentPos - t1 * w; 
@@ -381,11 +405,52 @@ Shader "Custom/HairShader"
             {
                 Light mainLight = GetMainLight();
                 float3 lightDir = normalize(mainLight.direction);
-                float3 normal = normalize(input.normalWS);
                 
-                // Diffuse
+                float3 normal;
+                float occlusion = 1.0;
+                half3 skinSpecular = half3(0, 0, 0);
+                
+                // Apply normal map and occlusion only to skin (body), not hair
+                if (input.isHair < 0.5)
+                {
+                    // Sample normal map and apply tangent-space to world-space transformation
+                    float3 normalTS = UnpackNormal(SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, input.uv));
+                    normalTS.xy *= _NormalStrength;
+                    
+                    // Build TBN matrix
+                    float3 tangentWS = normalize(input.tangentWS.xyz);
+                    float3 normalWS = normalize(input.normalWS);
+                    float3 bitangentWS = normalize(cross(normalWS, tangentWS) * input.tangentWS.w);
+                    float3x3 TBN = float3x3(tangentWS, bitangentWS, normalWS);
+                    
+                    // Transform normal from tangent space to world space
+                    normal = normalize(mul(normalTS, TBN));
+                    
+                    // Sample occlusion map
+                    occlusion = SAMPLE_TEXTURE2D(_OcclusionMap, sampler_OcclusionMap, input.uv).r;
+                    occlusion = lerp(1.0, occlusion, _OcclusionStrength);
+                    
+                    // Sample roughness map (lower roughness = sharper/brighter specular)
+                    float roughness = SAMPLE_TEXTURE2D(_RoughnessMap, sampler_RoughnessMap, input.uv).r;
+                    roughness = lerp(0.5, roughness, _RoughnessStrength);
+                    
+                    // Calculate skin specular (Blinn-Phong)
+                    float3 viewDir = normalize(_WorldSpaceCameraPos - input.positionWS);
+                    float3 halfVec = normalize(lightDir + viewDir);
+                    float NdotH = max(0, dot(normal, halfVec));
+                    // Convert roughness to smoothness (smoothness = 1 - roughness)
+                    float smoothness = pow(2.0, 10.0 * (1.0 - roughness)); // Range: 4 (rough) to 1024 (smooth)
+                    skinSpecular = pow(NdotH, smoothness) * _SkinSpecularStrength * _SkinSpecularColor.rgb * mainLight.color;
+                }
+                else
+                {
+                    // Hair uses geometry-generated normals, no normal/occlusion map
+                    normal = normalize(input.normalWS);
+                }
+                
+                // Diffuse with occlusion
                 float NdotL = max(0, dot(normal, lightDir));
-                half3 diffuse = mainLight.color * NdotL + 0.3;
+                half3 diffuse = mainLight.color * NdotL * occlusion + 0.3 * occlusion;
 
                 // === Per-Part Binary Mask System ===
                 // Sample each part mask and check against request/completed flags
@@ -486,7 +551,7 @@ Shader "Custom/HairShader"
                 else
                 {
                     half4 texColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv);
-                    half3 finalColor = (texColor.rgb * _BodyColor.rgb) * diffuse;
+                    half3 finalColor = (texColor.rgb * _BodyColor.rgb) * diffuse + skinSpecular;
                     
                     // Sample MaskMap to check if hair still exists in this area
                     half4 bodyMask = SAMPLE_TEXTURE2D(_MaskMap, sampler_MaskMap, input.uv);

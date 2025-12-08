@@ -20,6 +20,12 @@ namespace HairRemovalSim.Player
         [Header("Crosshair UI")]
         [Tooltip("RectTransform of the crosshair UI element")]
         public RectTransform crosshairUI;
+        [Tooltip("Image component of the crosshair (for sprite switching)")]
+        public UnityEngine.UI.Image crosshairImage;
+        [Tooltip("Sprite to use when NOT in treatment mode")]
+        public Sprite normalCrosshairSprite;
+        [Tooltip("Sprite to use during treatment mode")]
+        public Sprite treatmentCrosshairSprite;
 
 
 
@@ -195,6 +201,16 @@ namespace HairRemovalSim.Player
                 crosshairPosition = new Vector2(0.5f, 0.5f);
                 UpdateCrosshairUI();
                 
+                // Switch to normal crosshair sprite and size
+                if (crosshairImage != null && normalCrosshairSprite != null)
+                {
+                    crosshairImage.sprite = normalCrosshairSprite;
+                }
+                if (crosshairUI != null)
+                {
+                    crosshairUI.sizeDelta = new Vector2(25f, 25f);
+                }
+                
                 Debug.Log("[PlayerController] Treatment mode OFF - resetting zoom and crosshair");
             }
             else
@@ -203,6 +219,17 @@ namespace HairRemovalSim.Player
                 // Ensure crosshair starts at center
                 crosshairPosition = new Vector2(0.5f, 0.5f);
                 UpdateCrosshairUI();
+                
+                // Switch to treatment crosshair sprite and size
+                if (crosshairImage != null && treatmentCrosshairSprite != null)
+                {
+                    crosshairImage.sprite = treatmentCrosshairSprite;
+                }
+                if (crosshairUI != null)
+                {
+                    crosshairUI.sizeDelta = new Vector2(60f, 60f);
+                }
+                
                 Debug.Log("[PlayerController] Treatment mode ON - zoom enabled");
             }
         }

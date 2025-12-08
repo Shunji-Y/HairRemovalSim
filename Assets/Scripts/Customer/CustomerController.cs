@@ -764,7 +764,7 @@ namespace HairRemovalSim.Customer
             if (animator != null && animator.enabled)
             {
                 animator.SetBool("IsLieDownFaceDown", !isSupine);
-                Debug.Log($"[Animator] Set IsLieDownFaceDown = {!isSupine} ({(isSupine ? "Supine (face-up)" : "Prone (face-down)")})" );
+                Debug.Log($"[Animator] Set IsLieDownFaceDown = {!isSupine} ({(isSupine ? "Supine (face-up)" : "Prone (face-down)")})");
             }
             else
             {
@@ -940,17 +940,32 @@ namespace HairRemovalSim.Customer
             if (waitingForDoors) return; // Already waiting
             waitingForDoors = true;
             
-            // Stop walking
+            // Stop walking and wait for animation to settle before continuing
+            StartCoroutine(StopWalkingAndArrive());
+        }
+        
+        /// <summary>
+        /// Stop walking animation and wait before arriving at bed
+        /// </summary>
+        private System.Collections.IEnumerator StopWalkingAndArrive()
+        {
+            // Stop agent and walking animation
             if (agent != null)
             {
                 agent.isStopped = true;
-                animator?.SetFloat("Speed", 0f);
+            }
+            if (animator != null)
+            {
+                animator.SetFloat("Speed", 0f);
             }
             
-            // Close curtain doors
+            // Wait for animation to fully stop (1 frame + small delay)
+            yield return null;
+            yield return new WaitForSeconds(0.1f);
+            
+            // Now proceed with door closing and arrival
             if (assignedBed != null)
             {
-                // Check if doors are already closed
                 if (assignedBed.AreAllDoorsClosed && !assignedBed.AreDoorsAnimating)
                 {
                     Debug.Log("[CustomerController] Doors already closed, proceeding to lie down");
@@ -959,7 +974,6 @@ namespace HairRemovalSim.Customer
                 }
                 else
                 {
-                    // Subscribe to door closed event
                     assignedBed.OnDoorsClosed += OnDoorsClosedForArrival;
                     assignedBed.CloseDoors();
                     Debug.Log("[CustomerController] Closing curtain doors before lying down");
@@ -967,7 +981,6 @@ namespace HairRemovalSim.Customer
             }
             else
             {
-                // No bed reference, proceed immediately
                 waitingForDoors = false;
                 ArriveAtBed();
             }
@@ -991,24 +1004,65 @@ namespace HairRemovalSim.Customer
             // Disable agent for manual positioning
             if (agent != null) agent.enabled = false;
 
-            // Snap to bed position
-            // Adjust position based on bed height (approx 1.0f for now)
-            transform.position = targetBed.position; 
-            transform.rotation = targetBed.rotation;
-            
+            // Smoothly move to lieDownPoint over 0.3 seconds
+            StartCoroutine(SmoothMoveToLieDownPosition());
+        }
+        
+        /// <summary>
+        /// Smoothly move to lieDownPoint position and rotation over 0.3 seconds
+        /// </summary>
+        private System.Collections.IEnumerator SmoothMoveToLieDownPosition()
+        {
+            // FIRST: Start lie down animation
             if (animator != null && animator.enabled)
             {
                 animator.SetFloat("Speed", 0f); // Stop walk animation
                 animator.SetBool("IsLieDownFaceDown", false); // Start face-up
                 animator.SetBool("IsLyingDown", true);
-                // Delay BakeMesh to allow animation to settle
+                Debug.Log("[CustomerController] Started LieDown animation");
+            }
+            
+            // Wait a bit for animation to start transitioning
+            yield return new WaitForSeconds(0.1f);
+            
+            // THEN: Smoothly adjust position/rotation
+            Vector3 startPos = transform.position;
+            Quaternion startRot = transform.rotation;
+            Vector3 targetPos;
+            Quaternion targetRot = Quaternion.identity; // (0, 0, 0)
+            
+            if (assignedBed != null && assignedBed.lieDownPoint != null)
+            {
+                targetPos = assignedBed.lieDownPoint.position;
+            }
+            else
+            {
+                targetPos = targetBed.position;
+            }
+            
+            float duration = 0.3f;
+            float elapsed = 0f;
+            
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
+                
+                transform.position = Vector3.Lerp(startPos, targetPos, t);
+                transform.rotation = Quaternion.Slerp(startRot, targetRot, t);
+                
+                yield return null;
+            }
+            
+            // Snap to final position/rotation
+            transform.position = targetPos;
+            transform.rotation = targetRot;
+            Debug.Log($"[CustomerController] Position/rotation adjusted: pos={targetPos}, rot=(0,0,0)");
+            
+            // Delay BakeMesh to allow animation to fully settle
+            if (animator != null && animator.enabled)
+            {
                 StartCoroutine(DelayedBakeMesh(0.5f));
-                // Ensure we don't rotate via transform if animation handles it, 
-                // BUT usually lie down animations are in local space, so we might still need to orient the root.
-                // For now, let's assume the animation keeps the root rotation or we rotate the root to match bed.
-                // If the animation is "standing to lying", the root stays. 
-                // If it's a static "lying" pose, we might need to rotate the root if the pose is upright in model space.
-                // Let's assume a standard "Lie Down" animation state.
             }
             else
             {

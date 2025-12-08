@@ -108,7 +108,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_Beard:
-        m_Texture: {fileID: 2800000, guid: 35a4714f07deaae41a1924a59a0e203b, type: 3}
+        m_Texture: {fileID: 2800000, guid: fdbf3f5628ca7834092a189024e1592f, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_Chest:
@@ -167,8 +167,16 @@ Material:
         m_Texture: {fileID: 2800000, guid: 7def5e1e1734d9a4db3f75717946f4e2, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _OcclusionMap:
+        m_Texture: {fileID: 2800000, guid: 2b6c87afed3bb134e9534f9cd5899a16, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _RGBAMask:
         m_Texture: {fileID: 2800000, guid: ce9a5a42d72bf9d4b8aa8506aa413fa0, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _RoughnessMap:
+        m_Texture: {fileID: 2800000, guid: 5820ea59d58ac9841ba4a6199a44113a, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _SSSThicknessPack:
@@ -279,7 +287,7 @@ Material:
     - _HairFrizz: 1
     - _HairLength: 0.008
     - _HairRandom: 0.5
-    - _HairSmoothness: 16
+    - _HairSmoothness: 10
     - _HairWidth: 0.00015
     - _HighlightIntensity: 2
     - _LipsCavityAO: 2.5
@@ -292,6 +300,7 @@ Material:
     - _NormalBlendStrength: 0
     - _NormalStrength: 1
     - _NostrilCavityAO: 2.5
+    - _OcclusionStrength: 1
     - _QueueControl: 0
     - _QueueOffset: 0
     - _RScatterScale: 1
@@ -310,9 +319,11 @@ Material:
     - _Request_RightLowerArm: 0
     - _Request_RightThigh: 0
     - _Request_RightUpperArm: 0
+    - _RoughnessStrength: 1
     - _SSSBlend: 0.6
     - _SSSDistortion: 0.5
     - _SSSTransmission: 5
+    - _SkinSpecularStrength: 0.2
     - _SmoothnessContrast: 1
     - _SmoothnessMax: 0.78936
     - _SmoothnessMin: 0.14999998
@@ -346,12 +357,13 @@ Material:
     - _DiffuseColor: {r: 0.99999994, g: 0.99999994, b: 0.99999994, a: 1}
     - _EmissiveColor: {r: 0, g: 0, b: 0, a: 0}
     - _HairColor: {r: 0, g: 0, b: 0, a: 1}
-    - _HairSpecular: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+    - _HairSpecular: {r: 0.3490566, g: 0.28155038, b: 0.28155038, a: 1}
     - _HighlightColor: {r: 0.25190154, g: 0.10337469, b: 0.10337469, a: 1}
     - _RequestedPartMasks: {r: -1, g: -1, b: -1, a: -1}
     - _RequestedPartMasks2: {r: -1, g: -1, b: -1, a: -1}
     - _RequestedPartMasks3: {r: -1, g: -1, b: -1, a: -1}
     - _RequestedPartMasks4: {r: -1, g: -1, b: -1, a: -1}
+    - _SkinSpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _SubsurfaceFalloff: {r: 0.7411765, g: 0.2627451, b: 0.21960784, a: 1}
     - _WrinkleValueSet12CL: {r: 0, g: 0, b: 0, a: 0}
     - _WrinkleValueSet12CR: {r: 0, g: 0, b: 0, a: 0}

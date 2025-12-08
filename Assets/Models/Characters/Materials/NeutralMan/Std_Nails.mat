@@ -137,7 +137,7 @@ Material:
     - BOOLEAN_USE_SSS: 1
     - ENUM_DISPLACEMENT_MODE: 0
     - ENUM_WRINKLE_MODE: 0
-    - _AOStrength: 1
+    - _AOStrength: 0.947
     - _AScatterScale: 1
     - _ASmoothnessMod: 0
     - _BScatterScale: 1
@@ -173,10 +173,10 @@ Material:
     - _RSmoothnessMod: 0
     - _SSSBlend: 0.6
     - _SSSDistortion: 0.5
-    - _SSSTransmission: 5
+    - _SSSTransmission: 5.93
     - _SmoothnessContrast: 2
-    - _SmoothnessMax: 0.78936
-    - _SmoothnessMin: 0.14999998
+    - _SmoothnessMax: 0
+    - _SmoothnessMin: 0
     - _SubsurfaceScale: 1.4025
     - _ThicknessScale: 0.9
     - _ThicknessScaleMin: 0.4
@@ -188,9 +188,9 @@ Material:
     - _UseCavity: 0
     - _WrinkleDisplacementStrength: 1
     m_Colors:
-    - _DiffuseColor: {r: 0.99999994, g: 0.99999994, b: 0.99999994, a: 1}
-    - _EmissiveColor: {r: 0, g: 0, b: 0, a: 0}
-    - _SubsurfaceFalloff: {r: 1, g: 0.37, b: 0.3, a: 1}
+    - _DiffuseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _EmissiveColor: {r: 0.1509434, g: 0.071911715, b: 0.071911715, a: 0}
+    - _SubsurfaceFalloff: {r: 1, g: 1, b: 1, a: 1}
     - _WrinkleValueSet12CL: {r: 0, g: 0, b: 0, a: 0}
     - _WrinkleValueSet12CR: {r: 0, g: 0, b: 0, a: 0}
     - _WrinkleValueSet1AL: {r: 0, g: 0, b: 0, a: 0}
