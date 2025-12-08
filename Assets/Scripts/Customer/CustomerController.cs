@@ -777,18 +777,35 @@ namespace HairRemovalSim.Customer
                 }
             }
         }
-
-        public void AddPain(float amount)
+        [Header("Pain Settings")]
+        [Range(0f, 1f)]
+        public float painReactionProbability = 0.3f; // 30% chance to trigger pain reaction
+        
+        /// <summary>
+        /// Add pain to customer. Returns true if pain reaction (animation/sound) was triggered.
+        /// </summary>
+        public bool AddPain(float amount)
         {
             currentPain += amount;
             currentPain = Mathf.Clamp(currentPain, 0, maxPain);
             Debug.Log($"Customer Pain: {currentPain}/{maxPain}");
+            
+            bool triggeredReaction = false;
+            
+            // Trigger pain animation with probability
+            if (animator != null && amount > 0 && Random.value < painReactionProbability)
+            {
+                animator.SetTrigger("Pain");
+                triggeredReaction = true;
+            }
             
             if (currentPain >= maxPain)
             {
                 Debug.LogWarning("Customer is in too much pain!");
                 // TODO: Trigger angry leaving or complaint
             }
+            
+            return triggeredReaction;
         }
 
         // IInteractable Implementation
@@ -1139,7 +1156,7 @@ namespace HairRemovalSim.Customer
             // State-specific behavior
             if (currentState == CustomerState.WalkingToBed)
             {
-                if (agent != null && !agent.pathPending && !waitingForDoorToOpen)
+                if (agent != null && agent.isOnNavMesh && !agent.pathPending && !waitingForDoorToOpen)
                 {
                     // Check if we're near a closed door and need to open it
                     CheckAndOpenNearbyDoors();
@@ -1157,7 +1174,7 @@ namespace HairRemovalSim.Customer
             }
             else if (currentState == CustomerState.WalkingToReception)
             {
-                if (agent != null && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f)
+                if (agent != null && agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f)
                 {
                     ArriveAtReception();
                 }
@@ -1165,7 +1182,7 @@ namespace HairRemovalSim.Customer
             else if (currentState == CustomerState.Waiting)
             {
                 // Stop moving/rotating when arrived at queue position
-                if (agent != null && agent.enabled && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.3f)
+                if (agent != null && agent.enabled && agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.3f)
                 {
                     agent.isStopped = true;
                     agent.updateRotation = false;
@@ -1174,7 +1191,7 @@ namespace HairRemovalSim.Customer
             else if (currentState == CustomerState.Paying)
             {
                 // Stop moving/rotating when arrived at cash register queue
-                if (agent != null && agent.enabled && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.3f)
+                if (agent != null && agent.enabled && agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.3f)
                 {
                     agent.isStopped = true;
                     agent.updateRotation = false;

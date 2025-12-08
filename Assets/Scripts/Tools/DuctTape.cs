@@ -289,13 +289,25 @@ namespace HairRemovalSim.Tools
                 // Apply treatment to the specific submesh mask with size and angle
                 controller.ApplyTreatment(normalizedUV, new Vector2(decalWidth, decalHeight), uvRect.angle, subMeshIndex);
                 
-                // Add pain
+                // Add pain and check if reaction was triggered
                 var customer = controller.GetComponentInParent<Customer.CustomerController>();
+                bool painTriggered = false;
                 if (customer != null)
                 {
-                    customer.AddPain(painMultiplier);
+                    painTriggered = customer.AddPain(painMultiplier);
                 }
-                // Play sound or effect here
+                
+                // Play sound effects
+                if (SoundManager.Instance != null)
+                {
+                    SoundManager.Instance.PlaySFXWithPitchVariation("DuctTape", 0.9f, 1.1f);
+                    
+                    // Play Pain SE only if pain reaction was triggered
+                    if (painTriggered)
+                    {
+                        SoundManager.Instance.PlaySFX("Pain");
+                    }
+                }
             }
         }
 
