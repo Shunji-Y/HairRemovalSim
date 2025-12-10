@@ -24,6 +24,10 @@ namespace HairRemovalSim.Customer
         public float currentPain = 0f;
         public float maxPain = 100f;
         public bool IsCompleted = false; // Track if treatment is complete
+        
+        [Header("Review")]
+        [SerializeField] private int baseReviewValue = 30; // Random 10-50 on spawn
+        private int painMaxCount = 0; // How many times pain hit 100%
 
         private CustomerState currentState;
         public CustomerState CurrentState => currentState; // Public read-only access
@@ -124,6 +128,16 @@ namespace HairRemovalSim.Customer
             // Reset state to initial
             currentState = CustomerState.Waiting;
             
+            // Reset pain state
+            currentPain = 0f;
+            isInPainStage3 = false;
+            hasAppliedReviewPenalty = false;
+            painHoldTimer = 0f;
+            
+            // Reset review state and generate new base value
+            painMaxCount = 0;
+            baseReviewValue = Random.Range(10, 51); // 10-50 random
+            
             // Reset HairTreatmentControllers for pool reuse
             var treatmentControllers = GetComponentsInChildren<HairTreatmentController>();
             foreach (var controller in treatmentControllers)
@@ -134,7 +148,7 @@ namespace HairRemovalSim.Customer
             // Reset completed parts counter
             completedPartCount = 0;
             
-            Debug.Log($"[CustomerController] Reset state for {data.customerName}");
+            Debug.Log($"[CustomerController] Reset state for {data.customerName} (baseReview: {baseReviewValue})");
         }
         
         /// <summary>
@@ -779,34 +793,160 @@ namespace HairRemovalSim.Customer
         }
         [Header("Pain Settings")]
         [Range(0f, 1f)]
-        public float painReactionProbability = 0.3f; // 30% chance to trigger pain reaction
+        public float painReactionProbability = 0.3f; // Stage 1: 30% chance
+        [Range(0f, 1f)]
+        public float painReactionProbabilityStage2 = 0.5f; // Stage 2: 50% chance
+        public float painDecayRate = 5f; // Pain decay per second
+        public float painRecoveryThreshold = 60f; // Threshold to recover from Stage 3
+        public float painHoldDuration = 1f; // How long to hold at 100% before decay starts
+        
+        private bool isInPainStage3 = false; // Currently in Stage 3 (treatment blocked)
+        private bool hasAppliedReviewPenalty = false; // Only apply review penalty once per stage 3
+        private float painHoldTimer = 0f; // Timer for holding at 100%
+        
+        /// <summary>
+        /// Get current pain level (1-3, or 0 if no pain)
+        /// </summary>
+        public int PainLevel
+        {
+            get
+            {
+                if (currentPain >= 100f) return 3;
+                if (currentPain > 50f) return 2;
+                if (currentPain > 0f) return 1;
+                return 0;
+            }
+        }
+        
+        /// <summary>
+        /// Check if customer can receive treatment (not in pain stage 3 or recovered)
+        /// </summary>
+        public bool CanReceiveTreatment()
+        {
+            // If in stage 3, check if pain has dropped below recovery threshold
+            if (isInPainStage3)
+            {
+                if (currentPain <= painRecoveryThreshold)
+                {
+                    isInPainStage3 = false;
+                    Debug.Log($"[CustomerController] {data.customerName} recovered from pain! Can receive treatment again.");
+                }
+                else
+                {
+                    return false; // Still in pain, can't receive treatment
+                }
+            }
+            return true;
+        }
+        
+        /// <summary>
+        /// Update pain decay - called from Update()
+        /// </summary>
+        private void UpdatePainDecay()
+        {
+            if (currentState != CustomerState.InTreatment) return;
+            if (currentPain <= 0f) return;
+            
+            // Hold at 100% for painHoldDuration before starting decay
+            if (painHoldTimer > 0f)
+            {
+                painHoldTimer -= Time.deltaTime;
+                return; // Don't decay during hold
+            }
+            
+            currentPain -= painDecayRate * Time.deltaTime;
+            currentPain = Mathf.Max(0f, currentPain);
+        }
         
         /// <summary>
         /// Add pain to customer. Returns true if pain reaction (animation/sound) was triggered.
+        /// Pain is scaled by customer's pain tolerance (lower tolerance = more pain)
         /// </summary>
         public bool AddPain(float amount)
         {
-            currentPain += amount;
-            currentPain = Mathf.Clamp(currentPain, 0, maxPain);
-            Debug.Log($"Customer Pain: {currentPain}/{maxPain}");
+            // Scale pain by tolerance (0 = no tolerance, 1 = full tolerance)
+            float scaledAmount = amount * (1f - data.painTolerance);
+            currentPain += scaledAmount;
+            currentPain = Mathf.Clamp(currentPain, 0f, maxPain);
             
+            int painLevel = PainLevel;
             bool triggeredReaction = false;
             
-            // Trigger pain animation with probability
-            if (animator != null && amount > 0 && Random.value < painReactionProbability)
+            // Stage 1: Small reaction with low probability (0-50%)
+            if (painLevel == 1)
             {
-                animator.SetTrigger("Pain");
-                triggeredReaction = true;
+                if (animator != null && amount > 0 && Random.value < painReactionProbability)
+                {
+                    animator.SetTrigger("Pain");
+                    if (HairRemovalSim.Core.SoundManager.Instance != null)
+                    {
+                        HairRemovalSim.Core.SoundManager.Instance.PlaySFX("Pain");
+                    }
+                    triggeredReaction = true;
+                }
             }
-            
-            if (currentPain >= maxPain)
+            // Stage 2: Larger reaction with higher probability (51-99%)
+            else if (painLevel == 2)
             {
-                Debug.LogWarning("Customer is in too much pain!");
-                // TODO: Trigger angry leaving or complaint
+                if (animator != null && amount > 0 && Random.value < painReactionProbabilityStage2)
+                {
+                    animator.SetTrigger("PainStrong"); // Larger reaction
+                    if (HairRemovalSim.Core.SoundManager.Instance != null)
+                    {
+                        HairRemovalSim.Core.SoundManager.Instance.PlaySFX("PainStrong");
+                    }
+                    triggeredReaction = true;
+                }
+            }
+            // Stage 3: Extreme pain, block treatment (100%)
+            else if (painLevel == 3 && !isInPainStage3)
+            {
+                isInPainStage3 = true;
+                painHoldTimer = painHoldDuration; // Hold at 100% before decay starts
+                painMaxCount++; // Track for review penalty
+                
+                // Trigger writhing animation
+                if (animator != null)
+                {
+                    animator.SetTrigger("PainExtreme");
+                }
+                if (HairRemovalSim.Core.SoundManager.Instance != null)
+                {
+                    HairRemovalSim.Core.SoundManager.Instance.PlaySFX("PainExtreme");
+                }
+                
+                // Apply review penalty (only once per stage 3 occurrence)
+                if (!hasAppliedReviewPenalty)
+                {
+                    ApplyReviewPenalty();
+                    hasAppliedReviewPenalty = true;
+                }
+                
+                Debug.LogWarning($"[CustomerController] {data.customerName} is in extreme pain! Treatment blocked until pain drops to {painRecoveryThreshold}%.");
+                triggeredReaction = true;
             }
             
             return triggeredReaction;
         }
+        
+        /// <summary>
+        /// Apply review penalty when customer reaches pain stage 3
+        /// </summary>
+        private void ApplyReviewPenalty()
+        {
+            // Penalty is tracked via painMaxCount and applied when treatment completes
+            Debug.Log($"[CustomerController] Pain max count for {data.customerName}: {painMaxCount}");
+        }
+        
+        /// <summary>
+        /// Get base review value for this customer (10-50)
+        /// </summary>
+        public int GetBaseReviewValue() => baseReviewValue;
+        
+        /// <summary>
+        /// Get how many times this customer hit 100% pain
+        /// </summary>
+        public int GetPainMaxCount() => painMaxCount;
 
         // IInteractable Implementation
         public void OnInteract(InteractionController interactor)
@@ -1133,6 +1273,9 @@ namespace HairRemovalSim.Customer
 
         private void Update()
         {
+            // Update pain decay during treatment
+            UpdatePainDecay();
+            
             // Sync animation speed with NavMeshAgent velocity
             if (animator != null && agent != null && agent.enabled)
             {

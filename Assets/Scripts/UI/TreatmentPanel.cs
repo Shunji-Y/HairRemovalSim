@@ -15,6 +15,7 @@ namespace HairRemovalSim.UI
         public Slider overallProgressSlider;
         public TextMeshProUGUI overallProgressText;
         public GameObject panelRoot;
+        public PainGauge painGauge; // Pain gauge UI
 
         private TreatmentSession currentSession;
         private HairTreatmentController treatmentController;
@@ -24,6 +25,12 @@ namespace HairRemovalSim.UI
         {
             currentSession = session;
             partSliders.Clear();
+            
+            // Setup pain gauge
+            if (painGauge != null && session.Customer != null)
+            {
+                painGauge.SetCustomer(session.Customer);
+            }
             
             // Clear existing entries
             foreach (Transform child in bodyPartListContainer)
@@ -90,19 +97,28 @@ namespace HairRemovalSim.UI
             // Update individual sliders per body part
             if (treatmentController != null)
             {
+                var partCompletions = treatmentController.GetPerPartCompletion();
+                
                 foreach (var kvp in partSliders)
                 {
                     float completion = 0f;
                     
                     if (kvp.Key == "overall")
                     {
-                        // Fallback: use overall completion
-                        completion = currentSession.OverallProgress;
+                        // Calculate average completion from all parts
+                        if (partCompletions.Count > 0)
+                        {
+                            float total = 0f;
+                            foreach (var pc in partCompletions)
+                            {
+                                total += pc.Value;
+                            }
+                            completion = total / partCompletions.Count;
+                        }
                     }
-                    else
+                    else if (partCompletions.TryGetValue(kvp.Key, out float partCompletion))
                     {
-                        // Get completion for this specific body part
-                        completion = treatmentController.GetPartCompletion(kvp.Key);
+                        completion = partCompletion;
                     }
                     
                     kvp.Value.value = completion / 100f;
@@ -119,14 +135,14 @@ namespace HairRemovalSim.UI
                 }
             }
 
-            // Update overall progress text
+            // Hide overall progress UI (no longer needed)
             if (overallProgressSlider != null)
             {
-                overallProgressSlider.value = currentSession.OverallProgress / 100f;
+                overallProgressSlider.gameObject.SetActive(false);
             }
             if (overallProgressText != null)
             {
-                overallProgressText.text = $"{currentSession.OverallProgress:F0}%";
+                overallProgressText.gameObject.SetActive(false);
             }
         }
 

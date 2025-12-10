@@ -18,7 +18,6 @@ namespace HairRemovalSim.Core
         [Header("Settings")]
         [Tooltip("Length of one game day in real seconds (e.g., 600 = 10 mins)")]
         public float dayLengthSeconds = 600f;
-        public GameObject hairPrefab; // Assigned in Inspector
 
         private float currentTimeOfDay;
 

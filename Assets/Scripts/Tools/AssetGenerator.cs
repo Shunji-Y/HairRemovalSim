@@ -235,8 +235,8 @@ namespace HairRemovalSim.Tools
         {
             GameObject toolsRoot = new GameObject("Tool_Placeholders");
 
-            // Duct Tape (Cube)
-            CreateTool(toolsRoot, "Tool_DuctTape", PrimitiveType.Cube, new Vector3(0.2f, 0.2f, 0.2f), Color.gray);
+            // Rectangle Laser (Cube)
+            CreateTool(toolsRoot, "Tool_RectangleLaser", PrimitiveType.Cube, new Vector3(0.2f, 0.2f, 0.2f), Color.gray);
 
             // Wax (Cylinder)
             CreateTool(toolsRoot, "Tool_Wax", PrimitiveType.Cylinder, new Vector3(0.2f, 0.2f, 0.2f), Color.yellow);
@@ -270,9 +270,9 @@ namespace HairRemovalSim.Tools
             tool.layer = LayerMask.NameToLayer(GameConstants.Layers.Interactable);
             
             ToolBase toolScript;
-            if (name.Contains("DuctTape"))
+            if (name.Contains("RectangleLaser"))
             {
-                toolScript = tool.AddComponent<DuctTape>();
+                toolScript = tool.AddComponent<RectangleLaser>();
             }
             else
             {

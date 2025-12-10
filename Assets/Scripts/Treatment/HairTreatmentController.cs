@@ -132,6 +132,8 @@ namespace HairRemovalSim.Treatment
             Debug.Log($"[HairTreatmentController] Set {targetBodyParts.Count} target parts. Total initial pixels: {initialWhitePixels}");
         }
         
+
+        
         /// <summary>
         /// Reset controller for reuse from object pool.
         /// Called when customer is reused from pool.
@@ -277,7 +279,7 @@ namespace HairRemovalSim.Treatment
                 return;
             }
 
-            Debug.Log($"[HairTreatmentController] Applying treatment at {uvPosition}, Size: {size}, Angle: {angle}, SubMesh: {subMeshIndex}");
+            //Debug.Log($"[HairTreatmentController] Applying treatment at {uvPosition}, Size: {size}, Angle: {angle}, SubMesh: {subMeshIndex}");
 
             // Track which submesh we're treating (set on first paint)
             if (!hasActiveSubmesh)
@@ -341,7 +343,16 @@ namespace HairRemovalSim.Treatment
                 int removedPartPixels = initialPartPixels - currentPartPixels;
                 float partPercentage = Mathf.Clamp((float)removedPartPixels / initialPartPixels * 100f + completionBuffer, 0f, 100f);
                 
+                // Round up to 100% when reaching 99.5% or higher
+                if (partPercentage >= 99.5f)
+                {
+                    partPercentage = 100f;
+                }
+                
                 perPartCompletion[part.partName] = partPercentage;
+                
+                // Debug: Log detailed calculation for this part
+                Debug.Log($"[HairTreatmentController] Part '{part.partName}': Initial={initialPartPixels}, Current={currentPartPixels}, Removed={removedPartPixels}, Final%={partPercentage:F1}");
                 
                 // Check if this part is now completed
                 if (partPercentage >= 100f && !completedParts.Contains(part.partName))
@@ -356,13 +367,9 @@ namespace HairRemovalSim.Treatment
             percentage = Mathf.Clamp(percentage + completionBuffer, 0f, 100f);
             
             bodyPart.UpdateCompletion(percentage);
-
-            if (percentage >= 100f)
-            {
-                isCompleted = true;
-                HideDecal(); // Ensure decal is hidden
-                Debug.Log($"[HairTreatmentController] Treatment completed for {name}!");
-            }
+            
+            // Note: Completion is now tracked per-part via completedParts HashSet
+            // TreatmentSession.AreAllPartsComplete() checks if all parts are done
         }
 
         /// <summary>
@@ -564,6 +571,38 @@ namespace HairRemovalSim.Treatment
                 completedParts.Add(partName);
                 Debug.Log($"[HairTreatmentController] Force completed: {partName}");
             }
+        }
+        
+        /// <summary>
+        /// Get the completion percentage for each body part
+        /// </summary>
+        public Dictionary<string, float> GetPerPartCompletion()
+        {
+            return new Dictionary<string, float>(perPartCompletion);
+        }
+        
+        /// <summary>
+        /// Get list of all completed parts
+        /// </summary>
+        public HashSet<string> GetCompletedParts()
+        {
+            return new HashSet<string>(completedParts);
+        }
+        
+        /// <summary>
+        /// Get total number of target body parts
+        /// </summary>
+        public int GetTargetPartCount()
+        {
+            return targetBodyParts.Count;
+        }
+        
+        /// <summary>
+        /// Get number of completed body parts
+        /// </summary>
+        public int GetCompletedPartCount()
+        {
+            return completedParts.Count;
         }
 
         private void OnDestroy()

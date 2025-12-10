@@ -13,6 +13,8 @@ namespace HairRemovalSim.UI
         public TextMeshProUGUI interactionPromptText;
         public TreatmentPanel treatmentPanel;
 
+        public TextMeshProUGUI timeTextForPC;
+
         // No need for Awake override unless we have specific init logic, Singleton handles Instance.
 
         private void OnEnable()
@@ -100,6 +102,11 @@ namespace HairRemovalSim.UI
 
                 timeText.text = $"{hours:00}:{minutes:00}";
             }
+
+            if (timeTextForPC != null)
+            {
+                timeTextForPC.text = timeText.text;
+            }
         }
 
         private void UpdateDay(int day)
@@ -108,6 +115,7 @@ namespace HairRemovalSim.UI
             {
                 dayText.text = $"Day {day}";
             }
+    
         }
     }
 }

@@ -3125,6 +3125,7 @@ MonoBehaviour:
     requestedBodyParts: []
   agent: {fileID: 0}
   bodyPartsDatabase: {fileID: 11400000, guid: abc316df15da5114085f978b8d7a32be, type: 2}
+  partOffsets: {fileID: 11400000, guid: 69dc0f86fbadb254c84dd30dc3642f8b, type: 2}
   currentPain: 0
   maxPain: 100
   IsCompleted: 0
@@ -3135,6 +3136,7 @@ MonoBehaviour:
   isSupine: 1
   rotationDuration: 1
   playerLeaveDistance: 3
+  painReactionProbability: 0.3
   doorDetectionDistance: 1.5
   bedArrivalDistance: 0.75
 --- !u!4 &5561351504326307096 stripped

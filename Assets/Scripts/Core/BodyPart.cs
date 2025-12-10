@@ -133,15 +133,7 @@ namespace HairRemovalSim.Core
 
         public void SetCompletion(float percentage)
         {
-            float previousCompletion = completionPercentage;
             completionPercentage = Mathf.Clamp(percentage, 0f, 100f);
-            
-            // Auto-reset color when reaching 100%
-            if (previousCompletion < 100f && completionPercentage >= 100f)
-            {
-                ResetColor();
-                Debug.Log($"[BodyPart] {partName} reached 100%! Color reset to white.");
-            }
         }
 
         // IInteractable Implementation

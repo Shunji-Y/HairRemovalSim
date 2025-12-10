@@ -9,6 +9,9 @@ namespace HairRemovalSim.Core
     /// </summary>
     public class SoundManager : Singleton<SoundManager>
     {
+        [Header("Sound Library")]
+        [SerializeField] private SoundLibrary soundLibrary;
+        
         [Header("Audio Sources")]
         [SerializeField] private AudioSource musicSource;
         [SerializeField] private int sfxPoolSize = 10;
@@ -18,17 +21,14 @@ namespace HairRemovalSim.Core
         [Range(0f, 1f)] public float sfxVolume = 1f;
         [Range(0f, 1f)] public float musicVolume = 1f;
         
-        [Header("Sound Effects Library")]
-        [SerializeField] private SoundEffect[] soundEffects;
-        
         private List<AudioSource> sfxPool = new List<AudioSource>();
-        private Dictionary<string, AudioClip> sfxDictionary = new Dictionary<string, AudioClip>();
+        private Dictionary<string, SoundLibrary.SoundEntry> soundLookup = new Dictionary<string, SoundLibrary.SoundEntry>();
         
         protected override void Awake()
         {
             base.Awake();
             InitializeSFXPool();
-            BuildSFXDictionary();
+            BuildSoundLookup();
         }
         
         private void InitializeSFXPool()
@@ -43,32 +43,56 @@ namespace HairRemovalSim.Core
             }
         }
         
-        private void BuildSFXDictionary()
+        private void BuildSoundLookup()
         {
-            sfxDictionary.Clear();
-            if (soundEffects == null) return;
+            soundLookup.Clear();
             
-            foreach (var sfx in soundEffects)
+            if (soundLibrary == null)
             {
-                if (sfx.clip != null && !string.IsNullOrEmpty(sfx.name))
+                Debug.LogWarning("[SoundManager] No SoundLibrary assigned!");
+                return;
+            }
+            
+            foreach (var sound in soundLibrary.sounds)
+            {
+                if (!string.IsNullOrEmpty(sound.id) && sound.clip != null)
                 {
-                    sfxDictionary[sfx.name] = sfx.clip;
+                    soundLookup[sound.id] = sound;
                 }
+            }
+            
+            Debug.Log($"[SoundManager] Loaded {soundLookup.Count} sounds from library");
+        }
+        
+        /// <summary>
+        /// Play a sound effect by ID with pitch variation from SoundLibrary settings
+        /// </summary>
+        public void PlaySFX(string sfxId)
+        {
+            if (soundLookup.TryGetValue(sfxId, out var entry))
+            {
+                float pitch = entry.minPitch == entry.maxPitch ? entry.minPitch : Random.Range(entry.minPitch, entry.maxPitch);
+                PlaySFXInternal(entry.clip, entry.volume, pitch);
+            }
+            else
+            {
+                Debug.LogWarning($"[SoundManager] SFX not found: {sfxId}");
             }
         }
         
         /// <summary>
-        /// Play a sound effect by name
+        /// Play a sound effect by ID with volume multiplier and pitch variation
         /// </summary>
-        public void PlaySFX(string sfxName, float volumeMultiplier = 1f)
+        public void PlaySFX(string sfxId, float volumeMultiplier)
         {
-            if (sfxDictionary.TryGetValue(sfxName, out AudioClip clip))
+            if (soundLookup.TryGetValue(sfxId, out var entry))
             {
-                PlaySFX(clip, volumeMultiplier);
+                float pitch = entry.minPitch == entry.maxPitch ? entry.minPitch : Random.Range(entry.minPitch, entry.maxPitch);
+                PlaySFXInternal(entry.clip, entry.volume * volumeMultiplier, pitch);
             }
             else
             {
-                Debug.LogWarning($"[SoundManager] SFX not found: {sfxName}");
+                Debug.LogWarning($"[SoundManager] SFX not found: {sfxId}");
             }
         }
         
@@ -78,50 +102,38 @@ namespace HairRemovalSim.Core
         public void PlaySFX(AudioClip clip, float volumeMultiplier = 1f)
         {
             if (clip == null) return;
-            
-            AudioSource source = GetAvailableSFXSource();
-            if (source != null)
-            {
-                source.clip = clip;
-                source.volume = masterVolume * sfxVolume * volumeMultiplier;
-                source.pitch = 1f;
-                source.Play();
-            }
+            PlaySFXInternal(clip, volumeMultiplier, 1f);
         }
         
-        /// <summary>
-        /// Play a sound effect with random pitch variation
-        /// </summary>
-        public void PlaySFXWithPitchVariation(string sfxName, float minPitch = 0.9f, float maxPitch = 1.1f, float volumeMultiplier = 1f)
-        {
-            if (sfxDictionary.TryGetValue(sfxName, out AudioClip clip))
-            {
-                AudioSource source = GetAvailableSFXSource();
-                if (source != null)
-                {
-                    source.clip = clip;
-                    source.volume = masterVolume * sfxVolume * volumeMultiplier;
-                    source.pitch = Random.Range(minPitch, maxPitch);
-                    source.Play();
-                }
-            }
-        }
+
         
         /// <summary>
         /// Play a sound effect at a specific position in 3D space
         /// </summary>
-        public void PlaySFXAtPosition(string sfxName, Vector3 position, float volumeMultiplier = 1f)
+        public void PlaySFXAtPosition(string sfxId, Vector3 position, float volumeMultiplier = 1f)
         {
-            if (sfxDictionary.TryGetValue(sfxName, out AudioClip clip))
+            if (soundLookup.TryGetValue(sfxId, out var entry))
             {
-                AudioSource.PlayClipAtPoint(clip, position, masterVolume * sfxVolume * volumeMultiplier);
+                AudioSource.PlayClipAtPoint(entry.clip, position, masterVolume * sfxVolume * entry.volume * volumeMultiplier);
+            }
+        }
+        
+        private void PlaySFXInternal(AudioClip clip, float volume, float pitch)
+        {
+            AudioSource source = GetAvailableSFXSource();
+            if (source != null)
+            {
+                source.clip = clip;
+                source.volume = masterVolume * sfxVolume * volume;
+                source.pitch = pitch;
+                source.Play();
             }
         }
         
         /// <summary>
         /// Play background music
         /// </summary>
-        public void PlayMusic(AudioClip clip, bool loop = true, float fadeTime = 1f)
+        public void PlayMusic(AudioClip clip, bool loop = true)
         {
             if (musicSource == null)
             {
@@ -171,12 +183,5 @@ namespace HairRemovalSim.Core
             // All sources busy, use the first one (oldest)
             return sfxPool.Count > 0 ? sfxPool[0] : null;
         }
-    }
-    
-    [System.Serializable]
-    public class SoundEffect
-    {
-        public string name;
-        public AudioClip clip;
     }
 }

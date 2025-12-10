@@ -16,6 +16,24 @@ namespace HairRemovalSim.Tools
         public ToolType toolType = ToolType.Continuous;
         public float useInterval = 0.1f; // Time between uses for continuous tools
         public float painMultiplier = 1.0f;
+        
+        [Header("Hand Offset")]
+        [Tooltip("Local position offset when equipped in hand")]
+        public Vector3 handPositionOffset = Vector3.zero;
+        [Tooltip("Local rotation offset when equipped in hand (Euler angles)")]
+        public Vector3 handRotationOffset = Vector3.zero;
+        
+        [Header("Decal Tracking")]
+        [Tooltip("If true, tool will move to follow the decal position on the mesh surface")]
+        public bool followDecalPosition = false;
+        [Tooltip("Distance from the mesh surface along the normal")]
+        public float decalTrackingDistance = 0.1f;
+        [Tooltip("Additional local position offset when tracking decal")]
+        public Vector3 decalTrackingPositionOffset = Vector3.zero;
+        [Tooltip("Additional rotation offset when tracking decal (Euler angles)")]
+        public Vector3 decalTrackingRotationOffset = Vector3.zero;
+        [Tooltip("Smooth speed for position/rotation tracking (0 = instant)")]
+        public float decalTrackingSmoothSpeed = 10f;
 
         protected float lastUseTime;
 

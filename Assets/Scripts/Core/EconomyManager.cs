@@ -7,6 +7,13 @@ namespace HairRemovalSim.Core
     {
         public int CurrentMoney { get; private set; } = 10000; // Starting money
         public int CurrentDebt { get; private set; } = 0;
+        
+        [Header("Fixed Costs (Every 3 Days)")]
+        public int rent = 50000; // 家賃（3日ごと）
+        public int laborCost = 0; // 人件費（スタッフ数に依存、3日ごと）
+        public int utilities = 5000; // 水道光熱費（3日ごと）
+        public float loanInterestRate = 0.05f; // ローン利率 (5%)
+        public int paymentCycleDays = 3; // 支払いサイクル（日数）
 
         // No need to override Awake if just calling base, but Singleton handles it.
         // If we want to keep it simple, we can rely on base.Awake.

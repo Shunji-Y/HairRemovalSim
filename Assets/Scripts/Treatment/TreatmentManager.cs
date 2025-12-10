@@ -81,7 +81,7 @@ namespace HairRemovalSim.Treatment
             if (CurrentSession == null || !CurrentSession.IsActive) return;
 
             CurrentSession.EndSession();
-            Debug.Log($"Treatment Session Ended. Final Progress: {CurrentSession.OverallProgress:F1}%");
+            Debug.Log($"Treatment Session Ended for {CurrentSession.Customer.data.customerName}.");
             
             // Remove from active sessions
             CustomerController customerToRemove = null;
@@ -105,7 +105,7 @@ namespace HairRemovalSim.Treatment
             // EconomyManager.Instance.AddMoney(...);
             
             // Note: Customer.CompleteTreatment() handles the payment flow
-            // Called automatically when OverallProgress reaches 100%
+            // Called automatically when all target body parts reach 100%
             
             CurrentSession = null;
             StopTreatment(); // Ensure we exit zoom mode
@@ -177,21 +177,28 @@ namespace HairRemovalSim.Treatment
 
         private void Update()
         {
-            // Update all active sessions
+            // Update all active sessions and check for completion
             foreach (var session in activeSessions.Values)
             {
                 if (session != null && session.IsActive)
                 {
-                    session.UpdateProgress();
-                    
-                    // Check for completion and auto-complete (98% threshold to handle rounding)
-                    if (session.OverallProgress >= 98f)
+                    // Check if all target body parts are complete
+                    if (session.AreAllPartsComplete())
                     {
-                        Debug.Log($"[TreatmentManager] Treatment complete for {session.Customer.data.customerName}! Customer will now go to reception.");
+                        Debug.Log($"[TreatmentManager] Treatment complete for {session.Customer.data.customerName}! All parts done. Customer will now go to reception.");
                         
                         // Trigger customer to leave bed and go to reception
                         if (session.Customer != null)
                         {
+                            // Submit review to StoreManager
+                            if (Core.StoreManager.Instance != null)
+                            {
+                                Core.StoreManager.Instance.AddReview(
+                                    session.Customer.GetBaseReviewValue(),
+                                    session.Customer.GetPainMaxCount()
+                                );
+                            }
+                            
                             session.Customer.CompleteTreatment();
                         }
                         

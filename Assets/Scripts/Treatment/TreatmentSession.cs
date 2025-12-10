@@ -12,9 +12,6 @@ namespace HairRemovalSim.Treatment
         public Core.BodyPart TargetBodyPart { get; private set; } // Single body part for UV mask system
         public float StartTime { get; private set; }
         public bool IsActive { get; private set; }
-
-        // Progress tracking
-        public float OverallProgress { get; private set; }
         
         public TreatmentSession(CustomerController customer)
         {
@@ -34,26 +31,46 @@ namespace HairRemovalSim.Treatment
             
             StartTime = Time.time;
             IsActive = true;
-            OverallProgress = 0f;
         }
 
-        public void UpdateProgress()
+        /// <summary>
+        /// Check if all target body parts are complete
+        /// Simple count comparison: completed parts == total target parts
+        /// </summary>
+        public bool AreAllPartsComplete()
         {
-            if (TargetBodyPart == null)
+            if (TargetBodyPart == null) return false;
+            
+            var treatmentController = TargetBodyPart.GetComponent<HairTreatmentController>();
+            if (treatmentController == null) return false;
+            
+            // Get target count and completed count
+            int totalParts = treatmentController.GetTargetPartCount();
+            int completedParts = treatmentController.GetCompletedPartCount();
+            
+            if (totalParts <= 0) return false;
+            
+            bool allComplete = completedParts >= totalParts;
+            
+            if (allComplete)
             {
-                Debug.LogWarning("[TreatmentSession] No target body part!");
-                OverallProgress = 0f;
-                return;
+                Debug.Log($"[TreatmentSession] All parts complete! ({completedParts}/{totalParts})");
             }
-
-            // Overall progress is the single body part's completion
-            OverallProgress = TargetBodyPart.CompletionPercentage;
+            
+            return allComplete;
         }
-
-        public bool IsComplete()
+        
+        /// <summary>
+        /// Get per-part completion dictionary
+        /// </summary>
+        public Dictionary<string, float> GetPartCompletions()
         {
-            // Consider complete if overall progress is effectively 100%
-            return OverallProgress >= 99.9f;
+            if (TargetBodyPart == null) return null;
+            
+            var treatmentController = TargetBodyPart.GetComponent<HairTreatmentController>();
+            if (treatmentController == null) return null;
+            
+            return treatmentController.GetPerPartCompletion();
         }
 
         public void EndSession()
