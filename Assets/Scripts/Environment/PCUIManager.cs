@@ -80,14 +80,19 @@ namespace HairRemovalSim.Environment
             GameObject targetPanel = GetPanelForApp(appType);
             if (targetPanel == null) return;
             
-            // Push current to stack
-            if (currentPanel != null)
+            // Hide current app panel (but keep desktop visible)
+            if (currentPanel != null && currentPanel != desktopPanel)
             {
-                navigationStack.Push(currentPanel);
                 currentPanel.SetActive(false);
             }
             
-            // Show target
+            // Push to stack for back navigation (only if not desktop)
+            if (currentPanel != null && currentPanel != desktopPanel)
+            {
+                navigationStack.Push(currentPanel);
+            }
+            
+            // Show target app
             targetPanel.SetActive(true);
             currentPanel = targetPanel;
             
@@ -99,24 +104,18 @@ namespace HairRemovalSim.Environment
         /// </summary>
         public void GoBack()
         {
-            if (navigationStack.Count > 0)
+            // If viewing an app (not desktop), close it and return to desktop
+            if (currentPanel != null && currentPanel != desktopPanel)
             {
-                // Go to previous panel
-                if (currentPanel != null)
-                {
-                    currentPanel.SetActive(false);
-                }
-                
-                currentPanel = navigationStack.Pop();
-                currentPanel.SetActive(true);
-                
-                Debug.Log("[PCUIManager] Navigated back");
+                currentPanel.SetActive(false);
+                currentPanel = desktopPanel;
+                navigationStack.Clear();
+                Debug.Log("[PCUIManager] Closed app, returned to desktop");
+                return;
             }
-            else
-            {
-                // Already at desktop - exit PC
-                OnExitPC?.Invoke();
-            }
+            
+            // Already at desktop - exit PC
+            OnExitPC?.Invoke();
         }
         
         /// <summary>

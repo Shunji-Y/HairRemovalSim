@@ -208,7 +208,7 @@ namespace HairRemovalSim.Player
                 }
                 if (crosshairUI != null)
                 {
-                    crosshairUI.sizeDelta = new Vector2(25f, 25f);
+                    crosshairUI.sizeDelta = new Vector2(40f, 40f);
                 }
                 
                 Debug.Log("[PlayerController] Treatment mode OFF - resetting zoom and crosshair");
