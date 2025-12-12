@@ -257,6 +257,7 @@ Material:
     - _Completed_RightUpperArm: 0
     - _DebugMode: 0
     - _DecalEnabled: 0
+    - _DecalShape: 0
     - _DecalUVAngle: 0
     - _DisplacementLevel: 0.5
     - _DisplacementStrength: 0
@@ -367,10 +368,10 @@ Material:
     - _SubsurfaceFalloff: {r: 0.7411765, g: 0.2627451, b: 0.21960784, a: 1}
     - _WrinkleValueSet12CL: {r: 0, g: 0, b: 0, a: 0}
     - _WrinkleValueSet12CR: {r: 0, g: 0, b: 0, a: 0}
-    - _WrinkleValueSet1AL: {r: 0.042822566, g: 0, b: 0, a: 0}
-    - _WrinkleValueSet1AR: {r: 0.02987621, g: 0, b: 0, a: 0}
-    - _WrinkleValueSet1BL: {r: 0, g: 0, b: 0, a: 0.012846771}
-    - _WrinkleValueSet1BR: {r: 0, g: 0, b: 0, a: 0.008962863}
+    - _WrinkleValueSet1AL: {r: 0, g: 0, b: 0, a: 0}
+    - _WrinkleValueSet1AR: {r: 0, g: 0, b: 0, a: 0}
+    - _WrinkleValueSet1BL: {r: 0, g: 0, b: 0, a: 0}
+    - _WrinkleValueSet1BR: {r: 0, g: 0, b: 0, a: 0}
     - _WrinkleValueSet2L: {r: 0, g: 0, b: 0, a: 0}
     - _WrinkleValueSet2R: {r: 0, g: 0, b: 0, a: 0}
     - _WrinkleValueSet3DB: {r: 0, g: 0, b: 0, a: 0}

@@ -2,11 +2,13 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.Store
 {
     /// <summary>
     /// Purchase confirmation dialog with item details and Confirm/Cancel buttons.
+    /// Now uses unified ItemData.
     /// </summary>
     public class PurchaseDialog : MonoBehaviour
     {
@@ -19,7 +21,7 @@ namespace HairRemovalSim.Store
         [SerializeField] private Button confirmButton;
         [SerializeField] private Button cancelButton;
         
-        private StoreItemData currentItem;
+        private ItemData currentItem;
         private int currentQuantity;
         private Action<bool> onResult;
         
@@ -44,7 +46,7 @@ namespace HairRemovalSim.Store
         /// <summary>
         /// Show purchase confirmation dialog
         /// </summary>
-        public void Show(StoreItemData item, int quantity, Action<bool> callback)
+        public void Show(ItemData item, int quantity, Action<bool> callback)
         {
             currentItem = item;
             currentQuantity = quantity;
@@ -56,11 +58,11 @@ namespace HairRemovalSim.Store
             if (itemIcon != null)
                 itemIcon.sprite = item.icon;
             if (itemNameText != null)
-                itemNameText.text = item.itemName;
+                itemNameText.text = item.displayName;
             if (quantityText != null)
                 quantityText.text = $"x{quantity}";
             if (totalPriceText != null)
-                totalPriceText.text = $"${totalPrice:N0}";
+                totalPriceText.text = $"¥{totalPrice:N0}";
                 
             if (dialogPanel != null)
                 dialogPanel.SetActive(true);

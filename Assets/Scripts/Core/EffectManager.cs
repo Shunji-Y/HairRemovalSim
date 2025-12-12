@@ -133,6 +133,53 @@ namespace HairRemovalSim.Core
             }
         }
         
+        // Dictionary to track active loop effects
+        private Dictionary<string, GameObject> activeLoopEffects = new Dictionary<string, GameObject>();
+        
+        /// <summary>
+        /// Play a looping effect (stays active until manually stopped)
+        /// </summary>
+        public GameObject PlayLoopEffect(string effectId, Transform parent, Vector3 localOffset = default)
+        {
+            // If already playing this loop effect, return existing one
+            if (activeLoopEffects.TryGetValue(effectId, out var existing) && existing != null && existing.activeInHierarchy)
+            {
+                return existing;
+            }
+            
+            if (!effectLookup.TryGetValue(effectId, out var entry))
+            {
+                Debug.LogWarning($"[EffectManager] Loop Effect not found: {effectId}");
+                return null;
+            }
+            
+            GameObject obj = GetFromPool(effectId, entry);
+            if (obj == null) return null;
+            
+            obj.transform.SetParent(parent);
+            obj.transform.localPosition = localOffset;
+            obj.transform.localRotation = Quaternion.identity;
+            obj.transform.localScale = Vector3.one;
+            obj.SetActive(true);
+            
+            // Track this loop effect (don't auto-return)
+            activeLoopEffects[effectId] = obj;
+            
+            return obj;
+        }
+        
+        /// <summary>
+        /// Stop a looping effect and return it to pool
+        /// </summary>
+        public void StopLoopEffect(string effectId)
+        {
+            if (activeLoopEffects.TryGetValue(effectId, out var obj) && obj != null)
+            {
+                ReturnToPool(effectId, obj);
+                activeLoopEffects.Remove(effectId);
+            }
+        }
+        
         private GameObject GetFromPool(string effectId, EffectLibrary.EffectEntry entry)
         {
             if (effectPools[effectId].Count > 0)

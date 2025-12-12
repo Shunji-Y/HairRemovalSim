@@ -259,15 +259,20 @@ namespace HairRemovalSim.Tools
             camObj.transform.SetParent(player.transform);
             camObj.transform.localPosition = new Vector3(0, 0.6f, 0); // Eye level
 
-            // Setup HandPoint (Child of Camera so it follows look)
-            GameObject handPoint = FindOrCreateChild(camObj, "HandPoint");
-            handPoint.transform.localPosition = new Vector3(0.5f, -0.4f, 1.0f); // Right hand position
+            // Setup RightHandPoint (Child of Camera so it follows look)
+            GameObject rightHandPoint = FindOrCreateChild(camObj, "RightHandPoint");
+            rightHandPoint.transform.localPosition = new Vector3(0.5f, -0.4f, 1.0f); // Right hand position
+            
+            // Setup LeftHandPoint
+            GameObject leftHandPoint = FindOrCreateChild(camObj, "LeftHandPoint");
+            leftHandPoint.transform.localPosition = new Vector3(-0.3f, -0.4f, 0.8f); // Left hand position
 
             // Link references
             controller.cameraTransform = camObj.transform;
             var interaction = player.GetComponent<InteractionController>();
             interaction.cameraTransform = camObj.transform;
-            interaction.handPoint = handPoint.transform;
+            interaction.rightHandPoint = rightHandPoint.transform;
+            interaction.leftHandPoint = leftHandPoint.transform;
             
             // Set Interaction Layer
             interaction.interactionLayer = LayerMask.GetMask(GameConstants.Layers.Interactable);

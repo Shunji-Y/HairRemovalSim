@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 using HairRemovalSim.Interaction;
 using HairRemovalSim.Tools;
 using HairRemovalSim.UI;
+using HairRemovalSim.Effects;
 
 namespace HairRemovalSim.Player
 {
@@ -16,13 +17,18 @@ namespace HairRemovalSim.Player
         [Header("References")]
         public Transform cameraTransform;
 
-        [Header("Equipment")]
-        public Transform handPoint;
+        [Header("Right Hand Equipment")]
+        public Transform rightHandPoint;
         [Tooltip("Pivot point that follows decal position on mesh surface")]
         public Transform decalPivot;
-        public ToolBase currentTool;
+        public ToolBase currentTool; // Right hand tool (left click)
+        
+        [Header("Left Hand Equipment")]
+        public Transform leftHandPoint;
+        public ToolBase leftHandTool; // Left hand tool (right click)
 
         private IInteractable currentInteractable;
+        private OutlineHighlighter currentHighlighter;
         private PlayerInput playerInput;
         private InputAction interactAction;
         private InputAction attackAction;
@@ -50,11 +56,42 @@ namespace HairRemovalSim.Player
 
         private void HandleRaycast()
         {
-            Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
+            // Get ray from crosshair position (uses PlayerController's crosshair in treatment mode)
+            Ray ray;
+            var playerController = GetComponent<PlayerController>();
+            Camera mainCamera = Camera.main;
+            
+            if (playerController != null && playerController.IsInTreatmentMode && mainCamera != null)
+            {
+                // Use crosshair viewport position
+                Vector3 viewportPoint = new Vector3(
+                    playerController.CrosshairViewportPosition.x,
+                    playerController.CrosshairViewportPosition.y,
+                    0f
+                );
+                ray = mainCamera.ViewportPointToRay(viewportPoint);
+            }
+            else
+            {
+                // Default to camera center
+                ray = new Ray(cameraTransform.position, cameraTransform.forward);
+            }
             RaycastHit hit;
 
             if (Physics.Raycast(ray, out hit, interactionDistance, interactionLayer))
             {
+                // Handle OutlineHighlighter (automatic highlighting)
+                OutlineHighlighter highlighter = hit.collider.GetComponent<OutlineHighlighter>();
+                if (highlighter != currentHighlighter)
+                {
+                    // Unhighlight previous
+                    currentHighlighter?.Unhighlight();
+                    // Highlight new
+                    currentHighlighter = highlighter;
+                    currentHighlighter?.Highlight();
+                }
+                
+                // Handle IInteractable
                 IInteractable interactable = hit.collider.GetComponent<IInteractable>();
 
                 if (interactable != null)
@@ -76,15 +113,24 @@ namespace HairRemovalSim.Player
             }
             else
             {
+                // Clear highlighter when not looking at anything
+                if (currentHighlighter != null)
+                {
+                    currentHighlighter.Unhighlight();
+                    currentHighlighter = null;
+                }
+                
                 ClearCurrentInteractable();
             }
         }
 
         private void HandleInput()
         {
-            // Unified Input Handling (Left Click = Interact)
+            // Dual-Hand Input System:
+            // Left Click (interactAction) = Interact or Right Hand Tool
+            // Right Click (attackAction) = Left Hand Tool
             
-            // 1. Interaction (Priority)
+            // 1. Interaction (Priority - Left Click)
             if (interactAction.WasPressedThisFrame())
             {
                 if (currentInteractable != null)
@@ -95,12 +141,11 @@ namespace HairRemovalSim.Player
                 }
             }
 
-            // 2. Tool Usage (Fallback)
+            // 2. Right Hand Tool Usage (Left Click)
             if (currentTool != null)
             {
                 if (interactAction.WasPressedThisFrame())
                 {
-                    Debug.Log("Input: Interact (Tool Use Down)");
                     currentTool.OnUseDown();
                 }
                 else if (interactAction.WasReleasedThisFrame())
@@ -113,43 +158,71 @@ namespace HairRemovalSim.Player
                     currentTool.OnUseDrag(Vector3.zero);
                 }
             }
+            
+            // 3. Left Hand Tool Usage (Right Click)
+            if (leftHandTool != null)
+            {
+                if (attackAction.WasPressedThisFrame())
+                {
+                    leftHandTool.OnUseDown();
+                }
+                else if (attackAction.WasReleasedThisFrame())
+                {
+                    leftHandTool.OnUseUp();
+                }
+                
+                // Re-check null in case tool was destroyed during OnUseDown
+                if (leftHandTool != null && attackAction.IsPressed())
+                {
+                    leftHandTool.OnUseDrag(Vector3.zero);
+                }
+            }
         }
 
         public void EquipTool(ToolBase tool)
         {
+            if (tool.GetHandType() == ToolBase.HandType.RightHand)
+            {
+                EquipRightHand(tool);
+            }
+            else
+            {
+                EquipLeftHand(tool);
+            }
+        }
+        
+        private void EquipRightHand(ToolBase tool)
+        {
             if (currentTool != null)
             {
-                // Call Unequip if supported
-                var oldRectangleLaser = currentTool as RectangleLaser;
-                if (oldRectangleLaser != null) oldRectangleLaser.Unequip();
+                // Call Unequip on old right hand tool (hides decal etc)
+                var oldRightHandTool = currentTool as RightHandTool;
+                if (oldRightHandTool != null) oldRightHandTool.Unequip();
                 
                 // Drop current tool
-                currentTool.transform.SetParent(null);
-                currentTool.GetComponent<Collider>().enabled = true;
-                currentTool.gameObject.AddComponent<Rigidbody>();
+                DropTool(currentTool);
             }
 
             currentTool = tool;
             
             // Disable physics
-            Rigidbody rb = tool.GetComponent<Rigidbody>();
-            if (rb != null) Destroy(rb);
-            
-            Collider col = tool.GetComponent<Collider>();
-            if (col != null) col.enabled = false;
+            DisableToolPhysics(tool);
 
+            // Check if this is a RightHandTool with decal tracking
+            var rightHandTool = tool as RightHandTool;
+            
             // Parent to appropriate transform based on tool settings
-            if (tool.followDecalPosition && decalPivot != null)
+            if (rightHandTool != null && rightHandTool.followDecalPosition && decalPivot != null)
             {
                 // Parent to DecalPivot for surface-following tools
                 tool.transform.SetParent(decalPivot);
-                tool.transform.localPosition = tool.decalTrackingPositionOffset;
-                tool.transform.localRotation = Quaternion.Euler(tool.decalTrackingRotationOffset);
+                tool.transform.localPosition = rightHandTool.decalTrackingPositionOffset;
+                tool.transform.localRotation = Quaternion.Euler(rightHandTool.decalTrackingRotationOffset);
             }
             else
             {
-                // Parent to HandPoint for normal hand-held tools
-                tool.transform.SetParent(handPoint);
+                // Parent to RightHandPoint for normal hand-held tools
+                tool.transform.SetParent(rightHandPoint);
                 tool.transform.localPosition = tool.handPositionOffset;
                 tool.transform.localRotation = Quaternion.Euler(tool.handRotationOffset);
             }
@@ -158,7 +231,70 @@ namespace HairRemovalSim.Player
             var newRectangleLaser = tool as RectangleLaser;
             if (newRectangleLaser != null) newRectangleLaser.Equip();
             
-            Debug.Log($"Equipped: {tool.toolName} (followDecal: {tool.followDecalPosition})");
+            // Update UI
+            if (EquippedToolUI.Instance != null) EquippedToolUI.Instance.SetRightHandUI(tool);
+            
+            Debug.Log($"Equipped (Right Hand): {tool.toolName}");
+        }
+        
+        private void EquipLeftHand(ToolBase tool)
+        {
+            if (leftHandTool != null)
+            {
+                // Unequip current left hand tool
+                var oldLeftTool = leftHandTool as LeftHandTool;
+                if (oldLeftTool != null) oldLeftTool.Unequip();
+                
+                // Drop current left hand tool
+                DropTool(leftHandTool);
+            }
+
+            leftHandTool = tool;
+            
+            // Disable physics
+            DisableToolPhysics(tool);
+
+            // Parent to LeftHandPoint
+            tool.transform.SetParent(leftHandPoint);
+            tool.transform.localPosition = tool.handPositionOffset;
+            tool.transform.localRotation = Quaternion.Euler(tool.handRotationOffset);
+            
+            // Call Equip if LeftHandTool
+            var newLeftTool = tool as LeftHandTool;
+            if (newLeftTool != null) newLeftTool.Equip(this);
+            
+            // Update UI
+            if (EquippedToolUI.Instance != null) EquippedToolUI.Instance.SetLeftHandUI(tool);
+            
+            Debug.Log($"Equipped (Left Hand): {tool.toolName}");
+        }
+        
+        /// <summary>
+        /// Remove left hand tool (called when tool breaks)
+        /// </summary>
+        public void RemoveLeftHandTool()
+        {
+            leftHandTool = null;
+            
+            // Update UI
+            if (EquippedToolUI.Instance != null) EquippedToolUI.Instance.SetLeftHandUI(null);
+        }
+        
+        private void DropTool(ToolBase tool)
+        {
+            tool.transform.SetParent(null);
+            Collider col = tool.GetComponent<Collider>();
+            if (col != null) col.enabled = true;
+            tool.gameObject.AddComponent<Rigidbody>();
+        }
+        
+        private void DisableToolPhysics(ToolBase tool)
+        {
+            Rigidbody rb = tool.GetComponent<Rigidbody>();
+            if (rb != null) Destroy(rb);
+            
+            Collider col = tool.GetComponent<Collider>();
+            if (col != null) col.enabled = false;
         }
         
         /// <summary>
@@ -170,7 +306,8 @@ namespace HairRemovalSim.Player
             if (decalPivot != null)
             {
                 // Smooth speed from tool settings
-                float smoothSpeed = currentTool != null ? currentTool.decalTrackingSmoothSpeed : 10f;
+                var rightHandTool = currentTool as RightHandTool;
+                float smoothSpeed = rightHandTool != null ? rightHandTool.decalTrackingSmoothSpeed : 10f;
                 
                 // Smooth position to prevent snapping at polygon edges
                 if (smoothSpeed > 0)
@@ -187,17 +324,16 @@ namespace HairRemovalSim.Player
                 Quaternion targetRotation;
                 if (uvTangent.sqrMagnitude > 0.001f)
                 {
-                    // Calculate up vector that's perpendicular to normal using tangent as reference
-                    Vector3 right = Vector3.Cross(normal, uvTangent).normalized;
-                    Vector3 adjustedUp = Vector3.Cross(right, normal).normalized;
-                    targetRotation = Quaternion.LookRotation(normal, adjustedUp);
+                    // Use UV tangent as up direction
+                    targetRotation = Quaternion.LookRotation(normal, uvTangent);
                 }
                 else
                 {
-                    targetRotation = Quaternion.LookRotation(normal);
+                    // Fallback: use world up
+                    targetRotation = Quaternion.LookRotation(normal, Vector3.up);
                 }
                 
-                // Smooth rotation to prevent abrupt changes
+                // Smooth rotation
                 if (smoothSpeed > 0)
                 {
                     decalPivot.rotation = Quaternion.Slerp(decalPivot.rotation, targetRotation, Time.deltaTime * smoothSpeed);
@@ -214,11 +350,12 @@ namespace HairRemovalSim.Player
         /// </summary>
         public void ReturnToolToHand()
         {
-            if (currentTool != null && currentTool.followDecalPosition && handPoint != null)
+            var rightHandTool = currentTool as RightHandTool;
+            if (rightHandTool != null && rightHandTool.followDecalPosition && rightHandPoint != null)
             {
-                if (currentTool.transform.parent != handPoint)
+                if (currentTool.transform.parent != rightHandPoint)
                 {
-                    currentTool.transform.SetParent(handPoint);
+                    currentTool.transform.SetParent(rightHandPoint);
                     currentTool.transform.localPosition = currentTool.handPositionOffset;
                     currentTool.transform.localRotation = Quaternion.Euler(currentTool.handRotationOffset);
                 }
@@ -230,13 +367,14 @@ namespace HairRemovalSim.Player
         /// </summary>
         public void MoveToolToDecalPivot()
         {
-            if (currentTool != null && currentTool.followDecalPosition && decalPivot != null)
+            var rightHandTool = currentTool as RightHandTool;
+            if (rightHandTool != null && rightHandTool.followDecalPosition && decalPivot != null)
             {
                 if (currentTool.transform.parent != decalPivot)
                 {
                     currentTool.transform.SetParent(decalPivot);
-                    currentTool.transform.localPosition = currentTool.decalTrackingPositionOffset;
-                    currentTool.transform.localRotation = Quaternion.Euler(currentTool.decalTrackingRotationOffset);
+                    currentTool.transform.localPosition = rightHandTool.decalTrackingPositionOffset;
+                    currentTool.transform.localRotation = Quaternion.Euler(rightHandTool.decalTrackingRotationOffset);
                 }
             }
         }

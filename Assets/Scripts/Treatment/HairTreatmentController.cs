@@ -233,7 +233,7 @@ namespace HairRemovalSim.Treatment
         private int previousDecalSubMeshIndex = -1;
 
         // Update decal position on the mask
-        public void UpdateDecal(Vector2 uvPosition, float angle, Vector2 size, Color color, int subMeshIndex)
+        public void UpdateDecal(Vector2 uvPosition, float angle, Vector2 size, Color color, int subMeshIndex, int decalShape = 0)
         {
             if (subMeshIndex < 0 || subMeshIndex >= targetMaterials.Length) return;
             if (targetMaterials[subMeshIndex] == null) return;
@@ -255,6 +255,7 @@ namespace HairRemovalSim.Treatment
             mat.SetVector("_DecalUVSize", new Vector4(size.x, size.y, 0, 0));
             mat.SetColor("_DecalColor", color);
             mat.SetFloat("_DecalUVAngle", angle);
+            mat.SetFloat("_DecalShape", decalShape); // 0 = Rectangle, 1 = Circle
         }
 
         public void HideDecal()
@@ -266,7 +267,7 @@ namespace HairRemovalSim.Treatment
         }
 
         // Apply treatment (remove hair) at UV position
-        public void ApplyTreatment(Vector2 uvPosition, Vector2 size, float angle, int subMeshIndex)
+        public void ApplyTreatment(Vector2 uvPosition, Vector2 size, float angle, int subMeshIndex, int decalShape = 0)
         {
             if (paintMaterial == null)
             {
@@ -291,11 +292,21 @@ namespace HairRemovalSim.Treatment
                 Debug.Log($"[HairTreatmentController] Active submesh set to {activeSubmeshIndex}, initial pixels: {initialWhitePixels}");
             }
 
-            // Setup paint material to draw a rectangle (tape shape)
-            // Shader properties: _BrushMode (1=Rect), _BrushRect (x,y,w,h), _BrushAngle, _BrushColor
-            paintMaterial.SetFloat("_BrushMode", 1.0f); // Rect mode
-            paintMaterial.SetVector("_BrushRect", new Vector4(uvPosition.x, uvPosition.y, size.x, size.y));
-            paintMaterial.SetFloat("_BrushAngle", angle);
+            // Setup paint material based on shape
+            if (decalShape == 0)
+            {
+                // Rectangle mode
+                paintMaterial.SetFloat("_BrushMode", 1.0f);
+                paintMaterial.SetVector("_BrushRect", new Vector4(uvPosition.x, uvPosition.y, size.x, size.y));
+                paintMaterial.SetFloat("_BrushAngle", angle);
+            }
+            else
+            {
+                // Circle mode - use width as diameter
+                paintMaterial.SetFloat("_BrushMode", 0.0f);
+                paintMaterial.SetVector("_BrushPos", new Vector4(uvPosition.x, uvPosition.y, 0, 0));
+                paintMaterial.SetFloat("_BrushSize", size.x * 0.5f); // Radius = diameter / 2
+            }
             paintMaterial.SetColor("_BrushColor", Color.black); // Paint black to remove hair
             
             // Draw black shape on the specific mask texture

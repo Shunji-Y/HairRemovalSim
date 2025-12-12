@@ -102,6 +102,7 @@ Shader "Custom/HairShader"
         _DecalUVAngle("Decal UV Angle", Float) = 0
         _DecalColor("Decal Color", Color) = (2, 2, 0.5, 1)
         _DecalEnabled("Decal Enabled", Float) = 0
+        _DecalShape("Decal Shape (0=Rectangle, 1=Circle)", Float) = 0
         
         // === Per-Part Flash Properties ===
         _Flash_Beard("Flash Beard", Float) = 0
@@ -220,6 +221,7 @@ Shader "Custom/HairShader"
                 float _DecalUVAngle;
                 float4 _DecalColor;
                 float _DecalEnabled;
+                float _DecalShape; // 0 = Rectangle, 1 = Circle
                 
                 // Per-Part Flash Properties
                 float _Flash_Beard;
@@ -590,25 +592,45 @@ Shader "Custom/HairShader"
                         // Get UV offset from decal center
                         float2 uvOffset = input.uv - _DecalUVCenter.xy;
                         
-                        // Apply inverse rotation to check if point is inside rotated rectangle
+                        // Apply inverse rotation to check if point is inside rotated shape
                         float cosAngle = cos(-_DecalUVAngle);
                         float sinAngle = sin(-_DecalUVAngle);
                         float2 rotatedOffset;
                         rotatedOffset.x = uvOffset.x * cosAngle - uvOffset.y * sinAngle;
                         rotatedOffset.y = uvOffset.x * sinAngle + uvOffset.y * cosAngle;
                         
-                        // Check if within rectangular bounds
                         float halfWidth = _DecalUVSize.x * 0.5;
                         float halfHeight = _DecalUVSize.y * 0.5;
                         
-                        if (abs(rotatedOffset.x) < halfWidth && abs(rotatedOffset.y) < halfHeight)
+                        float alpha = 0;
+                        
+                        if (_DecalShape < 0.5)
                         {
-                            // Smooth falloff from edges
-                            float edgeDistX = 1.0 - (abs(rotatedOffset.x) / halfWidth);
-                            float edgeDistY = 1.0 - (abs(rotatedOffset.y) / halfHeight);
-                            float alpha = min(edgeDistX, edgeDistY);
-                            alpha = smoothstep(0.0, 1.0, alpha);
-                            
+                            // Rectangle shape
+                            if (abs(rotatedOffset.x) < halfWidth && abs(rotatedOffset.y) < halfHeight)
+                            {
+                                // Smooth falloff from edges
+                                float edgeDistX = 1.0 - (abs(rotatedOffset.x) / halfWidth);
+                                float edgeDistY = 1.0 - (abs(rotatedOffset.y) / halfHeight);
+                                alpha = min(edgeDistX, edgeDistY);
+                                alpha = smoothstep(0.0, 1.0, alpha);
+                            }
+                        }
+                        else
+                        {
+                            // Circle shape (use width as diameter)
+                            float radius = halfWidth; // Circle uses width as diameter
+                            float dist = length(rotatedOffset);
+                            if (dist < radius)
+                            {
+                                // Smooth falloff from edge
+                                alpha = 1.0 - (dist / radius);
+                                alpha = smoothstep(0.0, 1.0, alpha);
+                            }
+                        }
+                        
+                        if (alpha > 0)
+                        {
                             finalColor = lerp(finalColor, _DecalColor.rgb, alpha * 0.7);
                         }
                     }

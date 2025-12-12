@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace HairRemovalSim.Tools
 {
-    public class SimpleTool : ToolBase
+    public class SimpleTool : RightHandTool
     {
         public override void OnUseDown()
         {

@@ -84,6 +84,13 @@ namespace HairRemovalSim.Core
         public void StartNextDay()
         {
             DayCount++;
+            
+            // Deliver pending orders from previous day
+            if (Store.InventoryManager.Instance != null)
+            {
+                Store.InventoryManager.Instance.ProcessPendingOrders();
+            }
+            
             StartPreparation();
         }
         

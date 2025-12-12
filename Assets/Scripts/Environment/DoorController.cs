@@ -7,22 +7,26 @@ namespace HairRemovalSim.Environment
 {
     public class DoorController : MonoBehaviour, IInteractable
     {
-        private Effects.OutlineHighlighter highlighter;
+        // OutlineHighlighter is now managed automatically by InteractionController
+        // Just add OutlineHighlighter component to the door object in Unity
 
         private void Awake()
         {
-            highlighter = GetComponent<Effects.OutlineHighlighter>();
-            if (highlighter == null) highlighter = gameObject.AddComponent<Effects.OutlineHighlighter>();
+            // Ensure OutlineHighlighter exists for automatic highlighting
+            if (GetComponent<Effects.OutlineHighlighter>() == null)
+            {
+                gameObject.AddComponent<Effects.OutlineHighlighter>();
+            }
         }
 
         public void OnHoverEnter()
         {
-            highlighter?.Highlight();
+            // Highlighting now handled by InteractionController
         }
 
         public void OnHoverExit()
         {
-            highlighter?.Unhighlight();
+            // Highlighting now handled by InteractionController
         }
 
         public void OnInteract(InteractionController interactor)

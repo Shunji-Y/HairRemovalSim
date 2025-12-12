@@ -190,10 +190,10 @@ namespace HairRemovalSim.Treatment
                         // Trigger customer to leave bed and go to reception
                         if (session.Customer != null)
                         {
-                            // Submit review to StoreManager
-                            if (Core.StoreManager.Instance != null)
+                            // Submit review to ShopManager
+                            if (Core.ShopManager.Instance != null)
                             {
-                                Core.StoreManager.Instance.AddReview(
+                                Core.ShopManager.Instance.AddReview(
                                     session.Customer.GetBaseReviewValue(),
                                     session.Customer.GetPainMaxCount()
                                 );

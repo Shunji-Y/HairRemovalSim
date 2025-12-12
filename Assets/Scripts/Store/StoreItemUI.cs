@@ -2,18 +2,18 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.Store
 {
     /// <summary>
     /// UI component for displaying a store item.
-    /// Includes icon, name, quantity selector, and purchase button.
-    /// Tooltip is managed by StorePanel (shared).
+    /// Now uses unified ItemData instead of StoreItemData.
     /// </summary>
     public class StoreItemUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
         [Header("Data")]
-        [SerializeField] private StoreItemData itemData;
+        [SerializeField] private ItemData itemData;
         
         [Header("UI References")]
         [SerializeField] private Image iconImage;
@@ -57,7 +57,7 @@ namespace HairRemovalSim.Store
         /// <summary>
         /// Set item data and refresh UI
         /// </summary>
-        public void SetItemData(StoreItemData data)
+        public void SetItemData(ItemData data)
         {
             itemData = data;
             selectedQuantity = 1;
@@ -79,9 +79,9 @@ namespace HairRemovalSim.Store
             if (iconImage != null)
                 iconImage.sprite = itemData.icon;
             if (nameText != null)
-                nameText.text = itemData.itemName;
+                nameText.text = itemData.displayName;
             if (priceText != null)
-                priceText.text = $"${itemData.price * selectedQuantity}";
+                priceText.text = $"¥{itemData.price * selectedQuantity:N0}";
             if (quantityText != null)
                 quantityText.text = selectedQuantity.ToString();
         }
@@ -107,13 +107,8 @@ namespace HairRemovalSim.Store
         
         private void OnPurchaseClicked()
         {
-            Debug.Log($"[StoreItemUI] Purchase clicked. storePanel: {storePanel}, itemData: {itemData}");
-            
             if (storePanel == null)
-            {
-                // Try to find StorePanel in parents again
                 storePanel = GetComponentInParent<StorePanel>();
-            }
             
             if (storePanel != null && itemData != null)
             {
@@ -132,8 +127,10 @@ namespace HairRemovalSim.Store
                 
             if (storePanel != null && itemData != null)
             {
-                // Pass the RectTransform for proper positioning
-                storePanel.ShowTooltip(itemData.description, GetComponent<RectTransform>());
+                string tooltipText = !string.IsNullOrEmpty(itemData.storeDescription) 
+                    ? itemData.storeDescription 
+                    : itemData.description;
+                storePanel.ShowTooltip(tooltipText, GetComponent<RectTransform>());
             }
         }
         
@@ -146,6 +143,6 @@ namespace HairRemovalSim.Store
         }
         
         public int GetSelectedQuantity() => selectedQuantity;
-        public StoreItemData GetItemData() => itemData;
+        public ItemData GetItemData() => itemData;
     }
 }

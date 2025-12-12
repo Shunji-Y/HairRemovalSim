@@ -1,9 +1,14 @@
 using UnityEngine;
 using HairRemovalSim.Interaction;
 using HairRemovalSim.Player;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.Tools
 {
+    /// <summary>
+    /// Base class for all tools. Contains common functionality.
+    /// Use RightHandTool for main tools (left click) and LeftHandTool for support tools (right click).
+    /// </summary>
     public abstract class ToolBase : MonoBehaviour, IInteractable
     {
         public enum ToolType
@@ -11,31 +16,49 @@ namespace HairRemovalSim.Tools
             Single,
             Continuous
         }
+        
+        public enum HandType
+        {
+            RightHand,  // Main tools (laser, duct tape) - Left click
+            LeftHand,   // Support tools (cooling gel) - Right click
+            None        // Not holdable
+        }
 
-        public string toolName;
+        [Header("Item Data")]
+        [Tooltip("Reference to unified item data")]
+        public ItemData itemData;
+        
+        [Header("Tool Settings")]
         public ToolType toolType = ToolType.Continuous;
-        public float useInterval = 0.1f; // Time between uses for continuous tools
-        public float painMultiplier = 1.0f;
+        public float useInterval = 0.1f;
         
-        [Header("Hand Offset")]
-        [Tooltip("Local position offset when equipped in hand")]
-        public Vector3 handPositionOffset = Vector3.zero;
-        [Tooltip("Local rotation offset when equipped in hand (Euler angles)")]
-        public Vector3 handRotationOffset = Vector3.zero;
+        [Header("Durability Override")]
+        [Tooltip("Override itemData durability settings")]
+        public bool overrideDurability = false;
+        [Tooltip("If true, tool never breaks")]
+        public bool isUnbreakable = true;
+        [Tooltip("Maximum durability (uses before breaking)")]
+        public int maxDurability = 3;
+        [SerializeField] protected int currentDurability;
         
-        [Header("Decal Tracking")]
-        [Tooltip("If true, tool will move to follow the decal position on the mesh surface")]
-        public bool followDecalPosition = false;
-        [Tooltip("Distance from the mesh surface along the normal")]
-        public float decalTrackingDistance = 0.1f;
-        [Tooltip("Additional local position offset when tracking decal")]
-        public Vector3 decalTrackingPositionOffset = Vector3.zero;
-        [Tooltip("Additional rotation offset when tracking decal (Euler angles)")]
-        public Vector3 decalTrackingRotationOffset = Vector3.zero;
-        [Tooltip("Smooth speed for position/rotation tracking (0 = instant)")]
-        public float decalTrackingSmoothSpeed = 10f;
+        // Properties from ItemData
+        public string toolName => itemData != null ? itemData.displayName : gameObject.name;
+        public string itemId => itemData != null ? itemData.itemId : "";
+        public Sprite toolIcon => itemData?.icon;
+        public Vector3 handPositionOffset => itemData != null ? itemData.handPosition : Vector3.zero;
+        public Vector3 handRotationOffset => itemData != null ? itemData.handRotation : Vector3.zero;
+        
+        public abstract HandType GetHandType();
+        
+        /// <summary>
+        /// Event fired when tool breaks (durability reaches 0)
+        /// </summary>
+        public event System.Action<ToolBase> OnToolBroken;
 
         protected float lastUseTime;
+        
+        public int CurrentDurability => currentDurability;
+        public bool IsBroken => !isUnbreakable && currentDurability <= 0;
 
         public abstract void OnUseDown();
         public abstract void OnUseUp();
@@ -55,22 +78,46 @@ namespace HairRemovalSim.Tools
             }
         }
 
-        private Effects.OutlineHighlighter highlighter;
+        // OutlineHighlighter is now managed automatically by InteractionController
 
         protected virtual void Awake()
         {
-            highlighter = GetComponent<Effects.OutlineHighlighter>();
-            if (highlighter == null) highlighter = gameObject.AddComponent<Effects.OutlineHighlighter>();
+            // Ensure OutlineHighlighter exists for automatic highlighting
+            if (GetComponent<Effects.OutlineHighlighter>() == null)
+            {
+                gameObject.AddComponent<Effects.OutlineHighlighter>();
+            }
+            
+            // Initialize durability
+            currentDurability = maxDurability;
+        }
+        
+        /// <summary>
+        /// Use one durability point. Returns true if tool is still usable, false if broken.
+        /// </summary>
+        protected bool UseDurability()
+        {
+            if (isUnbreakable) return true;
+            
+            currentDurability--;
+            Debug.Log($"[{toolName}] Durability: {currentDurability}/{maxDurability}");
+            
+            if (currentDurability <= 0)
+            {
+                OnToolBroken?.Invoke(this);
+                return false;
+            }
+            return true;
         }
 
         public virtual void OnHoverEnter()
         {
-            highlighter?.Highlight();
+            // Highlighting now handled by InteractionController
         }
 
         public virtual void OnHoverExit()
         {
-            highlighter?.Unhighlight();
+            // Highlighting now handled by InteractionController
         }
 
         public virtual string GetInteractionPrompt()

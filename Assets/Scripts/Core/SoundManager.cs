@@ -159,6 +159,163 @@ namespace HairRemovalSim.Core
             }
         }
         
+        // Dictionary to track looping SFX by ID (stores both sources for crossfade)
+        private Dictionary<string, CrossfadeLoopData> loopingSFX = new Dictionary<string, CrossfadeLoopData>();
+        
+        private class CrossfadeLoopData
+        {
+            public AudioSource sourceA;
+            public AudioSource sourceB;
+            public Coroutine loopCoroutine;
+            public float targetVolume;
+            public bool isPlaying;
+            public GameObject loopObject; // Parent object to destroy on stop
+        }
+        
+        [Header("Loop Sound Settings")]
+        [SerializeField] private float crossfadeDuration = 0.3f; // Overlap duration at loop point
+        
+        /// <summary>
+        /// Play a looping sound effect with crossfade at loop points
+        /// </summary>
+        public AudioSource PlayLoopSFX(string sfxId)
+        {
+            // If already playing this loop, return existing source
+            if (loopingSFX.TryGetValue(sfxId, out var existingData) && existingData.isPlaying)
+            {
+                return existingData.sourceA;
+            }
+            
+            if (soundLookup.TryGetValue(sfxId, out var entry))
+            {
+                // Create two dedicated audio sources for crossfade loop
+                GameObject loopObj = new GameObject($"LoopSFX_{sfxId}");
+                loopObj.transform.SetParent(transform);
+                AudioSource sourceA = loopObj.AddComponent<AudioSource>();
+                AudioSource sourceB = loopObj.AddComponent<AudioSource>();
+                
+                float targetVolume = masterVolume * sfxVolume * entry.volume;
+                
+                // Setup source A
+                sourceA.clip = entry.clip;
+                sourceA.volume = 0f;
+                sourceA.pitch = 1f;
+                sourceA.playOnAwake = false;
+                sourceA.loop = false; // We handle looping manually
+                
+                // Setup source B
+                sourceB.clip = entry.clip;
+                sourceB.volume = 0f;
+                sourceB.pitch = 1f;
+                sourceB.playOnAwake = false;
+                sourceB.loop = false;
+                
+                var loopData = new CrossfadeLoopData
+                {
+                    sourceA = sourceA,
+                    sourceB = sourceB,
+                    targetVolume = targetVolume,
+                    isPlaying = true,
+                    loopObject = loopObj
+                };
+                
+                loopingSFX[sfxId] = loopData;
+                
+                // Start crossfade loop coroutine
+                loopData.loopCoroutine = StartCoroutine(CrossfadeLoopCoroutine(sfxId, loopData, entry.clip));
+                
+                return sourceA;
+            }
+            else
+            {
+                Debug.LogWarning($"[SoundManager] Loop SFX not found: {sfxId}");
+            }
+            return null;
+        }
+        
+        private System.Collections.IEnumerator CrossfadeLoopCoroutine(string sfxId, CrossfadeLoopData data, AudioClip clip)
+        {
+            float clipLength = clip.length;
+            float crossfadeStart = clipLength - crossfadeDuration;
+            bool useSourceA = true;
+            
+            // Start immediately at full volume
+            data.sourceA.volume = data.targetVolume;
+            data.sourceA.Play();
+            
+            while (data.isPlaying)
+            {
+                AudioSource currentSource = useSourceA ? data.sourceA : data.sourceB;
+                AudioSource nextSource = useSourceA ? data.sourceB : data.sourceA;
+                
+                // Wait until crossfade point
+                float timeToWait = crossfadeStart - currentSource.time;
+                if (timeToWait > 0)
+                {
+                    yield return new WaitForSeconds(timeToWait);
+                }
+                
+                if (!data.isPlaying) break;
+                
+                // Start next source and crossfade
+                nextSource.time = 0f;
+                nextSource.volume = 0f;
+                nextSource.Play();
+                
+                // Crossfade over duration
+                float elapsed = 0f;
+                while (elapsed < crossfadeDuration && data.isPlaying)
+                {
+                    elapsed += Time.deltaTime;
+                    float t = elapsed / crossfadeDuration;
+                    currentSource.volume = Mathf.Lerp(data.targetVolume, 0f, t);
+                    nextSource.volume = Mathf.Lerp(0f, data.targetVolume, t);
+                    yield return null;
+                }
+                
+                currentSource.Stop();
+                useSourceA = !useSourceA;
+            }
+        }
+        
+        /// <summary>
+        /// Stop a looping sound effect immediately
+        /// </summary>
+        public void StopLoopSFX(string sfxId)
+        {
+            if (loopingSFX.TryGetValue(sfxId, out var data) && data.isPlaying)
+            {
+                data.isPlaying = false;
+                
+                if (data.loopCoroutine != null)
+                {
+                    StopCoroutine(data.loopCoroutine);
+                }
+                
+                // Stop and cleanup
+                if (data.loopObject != null)
+                {
+                    Destroy(data.loopObject);
+                }
+                loopingSFX.Remove(sfxId);
+            }
+        }
+        
+        private System.Collections.IEnumerator FadeAudioSource(AudioSource source, float targetVolume, float duration)
+        {
+            float startVolume = source.volume;
+            float elapsed = 0f;
+            
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                source.volume = Mathf.Lerp(startVolume, targetVolume, elapsed / duration);
+                yield return null;
+            }
+            
+            source.volume = targetVolume;
+        }
+        
         /// <summary>
         /// Update all volumes (call after changing volume settings)
         /// </summary>

@@ -930,6 +930,16 @@ namespace HairRemovalSim.Customer
         }
         
         /// <summary>
+        /// Reduce pain by specified amount (used by cooling gel)
+        /// </summary>
+        public void ReducePain(float amount)
+        {
+            currentPain -= amount;
+            currentPain = Mathf.Max(0f, currentPain);
+            Debug.Log($"[CustomerController] {data.customerName} pain reduced by {amount}. Current: {currentPain}");
+        }
+        
+        /// <summary>
         /// Apply review penalty when customer reaches pain stage 3
         /// </summary>
         private void ApplyReviewPenalty()
@@ -1219,7 +1229,8 @@ namespace HairRemovalSim.Customer
             // Delay BakeMesh to allow animation to fully settle
             if (animator != null && animator.enabled)
             {
-                StartCoroutine(DelayedBakeMesh(0.5f));
+                Debug.Log("Baked");
+                StartCoroutine(DelayedBakeMesh(1f));
             }
             else
             {

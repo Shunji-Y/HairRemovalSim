@@ -6,14 +6,20 @@ using HairRemovalSim.Treatment;
 
 namespace HairRemovalSim.Tools
 {
-    public class RectangleLaser : ToolBase
+    public class RectangleLaser : RightHandTool
     {
         [Header("Rectangle Laser Settings")]
-        public float decalWidth = 0.08f;
-        public float decalHeight = 0.12f;
         public float uvScaleFactor = 1.0f; // Adjust this to match decal visual with removal area
         [ColorUsage(true, true)]
         public Color emissionColor = new Color(2f, 2f, 0.5f, 1f);
+        
+        [Header("Continuous Mode Sound/Effect")]
+        [Tooltip("Sound ID for loop sound (Continuous mode)")]
+        public string loopSoundId = "LaserLoop";
+        [Tooltip("Sound ID for single use sound (Single mode)")]
+        public string singleSoundId = "RectangleLaser";
+        [Tooltip("Effect ID for loop effect (Continuous mode)")]
+        public string loopEffectId = "LaserBeamEffect";
         
         private Camera mainCamera;
         private PlayerController playerController;
@@ -24,6 +30,7 @@ namespace HairRemovalSim.Tools
         private Material[] currentMaterials;
         private bool isEquipped = false;
         private HairTreatmentController previousTreatmentController;
+        private bool isUsingTool = false; // Track if tool is being used
 
         private struct UVRect
         {
@@ -85,6 +92,24 @@ namespace HairRemovalSim.Tools
             currentBodyPart = null;
             isHoveringBodyPart = false;
         }
+        
+        /// <summary>
+        /// Hide decals on ALL HairTreatmentControllers (used when unequipping)
+        /// </summary>
+        private void HideAllDecals()
+        {
+            var allControllers = FindObjectsOfType<HairTreatmentController>();
+            foreach (var controller in allControllers)
+            {
+                if (controller != null)
+                {
+                    controller.HideDecal();
+                }
+            }
+            currentBodyPart = null;
+            previousTreatmentController = null;
+            isHoveringBodyPart = false;
+        }
 
         private void UpdateDecalPosition()
         {
@@ -126,6 +151,20 @@ namespace HairRemovalSim.Tools
 
                 if (treatmentController != null)
                 {
+                    // Check if player is in treatment mode
+                    if (playerController == null || !playerController.IsInTreatmentMode)
+                    {
+                        // Player is not in treatment mode - hide decal and skip
+                        if (previousTreatmentController != null)
+                        {
+                            previousTreatmentController.HideDecal();
+                            previousTreatmentController = null;
+                        }
+                        isHoveringBodyPart = false;
+                        currentBodyPart = null;
+                        return;
+                    }
+                    
                     // Check if the customer is in treatment state
                     var customerController = treatmentController.GetComponentInParent<HairRemovalSim.Customer.CustomerController>();
                     if (customerController != null && customerController.CurrentState != HairRemovalSim.Customer.CustomerController.CustomerState.InTreatment)
@@ -171,8 +210,9 @@ namespace HairRemovalSim.Tools
                         // Determine submesh index to update the correct material/mask
                         int subMeshIndex = GetSubMeshIndex(hit);
                         
-                        // Update decal on the specific submesh
-                        treatmentController.UpdateDecal(uvRect.center, uvRect.angle, new Vector2(decalWidth, decalHeight), emissionColor, subMeshIndex);
+                        // Update decal on the specific submesh (pass shape: 0=Rectangle, 1=Circle)
+                        int shapeIndex = (decalShape == DecalShape.Circle) ? 1 : 0;
+                        treatmentController.UpdateDecal(uvRect.center, uvRect.angle, GetDecalSize(), emissionColor, subMeshIndex, shapeIndex);
                         
                         // Update DecalPivot position/rotation if enabled (tool will follow via parenting)
                         if (followDecalPosition && interactionController != null)
@@ -264,7 +304,7 @@ namespace HairRemovalSim.Tools
         {
             if (!isHoveringBodyPart || currentBodyPart == null) return;
 
-            // For Single type tools, use immediately
+            // For Single type tools, use immediately (sound/effect handled in PerformRemoval)
             if (toolType == ToolType.Single)
             {
                 if (Time.time - lastUseTime >= useInterval)
@@ -273,16 +313,47 @@ namespace HairRemovalSim.Tools
                     lastUseTime = Time.time;
                 }
             }
-            // Continuous tools also start on down
+            // Continuous tools start loop sound/effect on down
             else
             {
+                isUsingTool = true;
                 PerformRemoval();
                 lastUseTime = Time.time;
+                
+                // Start loop sound
+                if (SoundManager.Instance != null && !string.IsNullOrEmpty(loopSoundId))
+                {
+                    SoundManager.Instance.PlayLoopSFX(loopSoundId);
+                }
+                
+                // Start continuous effect via EffectManager
+                if (EffectManager.Instance != null && !string.IsNullOrEmpty(loopEffectId))
+                {
+                    EffectManager.Instance.PlayLoopEffect(loopEffectId, transform, new Vector3(0.083f, 0.371f, 0f));
+                }
             }
         }
 
         public override void OnUseUp()
         {
+            // Stop continuous sound/effect
+            if (toolType == ToolType.Continuous && isUsingTool)
+            {
+                isUsingTool = false;
+                
+                // Stop loop sound
+                if (SoundManager.Instance != null && !string.IsNullOrEmpty(loopSoundId))
+                {
+                    SoundManager.Instance.StopLoopSFX(loopSoundId);
+                }
+                
+                // Stop continuous effect via EffectManager
+                if (EffectManager.Instance != null && !string.IsNullOrEmpty(loopEffectId))
+                {
+                    EffectManager.Instance.StopLoopEffect(loopEffectId);
+                }
+            }
+            
             if (currentBodyPart != null)
             {
                 var controller = currentBodyPart.GetComponent<HairTreatmentController>();
@@ -319,8 +390,9 @@ namespace HairRemovalSim.Tools
                 // Use normalized UV (0-1) for mask painting, original UV is for decal display
                 Vector2 normalizedUV = GetNormalizedUV(uvRect.center);
                 
-                // Apply treatment to the specific submesh mask with size and angle
-                controller.ApplyTreatment(normalizedUV, new Vector2(decalWidth, decalHeight), uvRect.angle, subMeshIndex);
+                // Apply treatment to the specific submesh mask with size and angle (pass shape: 0=Rectangle, 1=Circle)
+                int shapeIndex = (decalShape == DecalShape.Circle) ? 1 : 0;
+                controller.ApplyTreatment(normalizedUV, GetDecalSize(), uvRect.angle, subMeshIndex, shapeIndex);
                 
                 // Add pain (Pain SE is handled by CustomerController)
                 if (customer != null)
@@ -328,19 +400,25 @@ namespace HairRemovalSim.Tools
                     customer.AddPain(painMultiplier);
                 }
                 
-                // Play laser sound effect
-                if (SoundManager.Instance != null)
+                // Single mode: play sound/effect each use
+                // Continuous mode: loop sound/effect are handled in OnUseDown/OnUseUp
+                if (toolType == ToolType.Single)
                 {
-                    SoundManager.Instance.PlaySFX("RectangleLaser");
-                }
-                
-                // Play laser smoke effect at hit point
-                if (EffectManager.Instance != null)
-                {
-                    EffectManager.Instance.PlayEffect("LaserSmokeEffect", currentHit.point);
+                    // Play laser sound effect
+                    if (SoundManager.Instance != null && !string.IsNullOrEmpty(singleSoundId))
+                    {
+                        SoundManager.Instance.PlaySFX(singleSoundId);
+                    }
                     
-                    // Play laser beam effect attached to the tool
-                    EffectManager.Instance.PlayEffectAttached("LaserBeamEffect", transform, new Vector3(0.083f, 0.371f, 0f));
+                    // Play laser effects
+                    if (EffectManager.Instance != null)
+                    {
+                        // Smoke effect at hit point
+                        EffectManager.Instance.PlayEffect("LaserSmokeEffect", currentHit.point);
+                        
+                        // Beam effect attached to tool
+                        EffectManager.Instance.PlayEffectAttached("LaserBeamEffect", transform, new Vector3(0.083f, 0.371f, 0f));
+                    }
                 }
             }
         }
@@ -425,7 +503,17 @@ namespace HairRemovalSim.Tools
         
         public override void OnUseDrag(Vector3 delta)
         {
-            // Optional: Implement drag logic if needed for duct tape (e.g. stretching)
+            // Continuous mode: keep performing removal while button is held
+            if (toolType == ToolType.Continuous)
+            {
+                if (!isHoveringBodyPart || currentBodyPart == null) return;
+                
+                if (Time.time - lastUseTime >= useInterval)
+                {
+                    PerformRemoval();
+                    lastUseTime = Time.time;
+                }
+            }
         }
         
         public void Equip()
@@ -434,19 +522,12 @@ namespace HairRemovalSim.Tools
             isEquipped = true;
         }
 
-        public void Unequip()
+        public override void Unequip()
         {
-            // base.Unequip(); // ToolBase doesn't have Unequip
+            base.Unequip();
             isEquipped = false;
-            // Hide decal
-            if (currentBodyPart != null)
-            {
-                var controller = currentBodyPart.GetComponent<HairTreatmentController>();
-                if (controller != null)
-                {
-                    controller.HideDecal();
-                }
-            }
+            // Hide all decals and reset state
+            HideAllDecals();
         }
         
         /// <summary>

@@ -22,6 +22,12 @@ namespace HairRemovalSim.Environment
         [Tooltip("Right curtain door")]
         public CurtainDoor rightDoor;
         
+        [Header("Treatment Shelves")]
+        [Tooltip("Transform positions where shelves can be placed (max 2)")]
+        public Transform[] shelfSlots = new Transform[2];
+        [Tooltip("Currently installed shelves")]
+        public TreatmentShelf[] installedShelves = new TreatmentShelf[2];
+        
         // Events
         public event System.Action OnDoorsOpened;
         public event System.Action OnDoorsClosed;
@@ -236,6 +242,82 @@ namespace HairRemovalSim.Environment
         {
             CurrentCustomer = null;
             IsOccupied = false;
+        }
+        
+        /// <summary>
+        /// Check if bed has an available shelf slot
+        /// </summary>
+        public bool HasAvailableShelfSlot()
+        {
+            for (int i = 0; i < shelfSlots.Length; i++)
+            {
+                if (shelfSlots[i] != null && installedShelves[i] == null)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        /// <summary>
+        /// Get the first available shelf slot index (-1 if none)
+        /// </summary>
+        public int GetAvailableShelfSlotIndex()
+        {
+            for (int i = 0; i < shelfSlots.Length; i++)
+            {
+                if (shelfSlots[i] != null && installedShelves[i] == null)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        
+        /// <summary>
+        /// Install a shelf at the specified slot
+        /// </summary>
+        public bool InstallShelf(TreatmentShelf shelfPrefab, int slotIndex = -1)
+        {
+            // Auto-select slot if not specified
+            if (slotIndex < 0)
+            {
+                slotIndex = GetAvailableShelfSlotIndex();
+            }
+            
+            if (slotIndex < 0 || slotIndex >= shelfSlots.Length)
+            {
+                Debug.LogWarning("[BedController] No available shelf slot");
+                return false;
+            }
+            
+            if (shelfSlots[slotIndex] == null)
+            {
+                Debug.LogWarning($"[BedController] Shelf slot {slotIndex} has no transform");
+                return false;
+            }
+            
+            if (installedShelves[slotIndex] != null)
+            {
+                Debug.LogWarning($"[BedController] Shelf slot {slotIndex} already occupied");
+                return false;
+            }
+            
+            // Instantiate shelf at slot position
+            TreatmentShelf shelf = Instantiate(shelfPrefab, shelfSlots[slotIndex].position, shelfSlots[slotIndex].rotation);
+            shelf.transform.SetParent(shelfSlots[slotIndex]);
+            installedShelves[slotIndex] = shelf;
+            
+            Debug.Log($"[BedController] Installed shelf at slot {slotIndex}");
+            return true;
+        }
+        
+        /// <summary>
+        /// Get all installed shelves
+        /// </summary>
+        public TreatmentShelf[] GetInstalledShelves()
+        {
+            return installedShelves;
         }
         
         // Player detection

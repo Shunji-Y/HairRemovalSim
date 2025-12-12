@@ -278,7 +278,7 @@ namespace HairRemovalSim.Tools
             {
                 toolScript = tool.AddComponent<SimpleTool>();
             }
-            toolScript.toolName = name;
+            // toolName is now derived from ItemData
         }
     }
 }

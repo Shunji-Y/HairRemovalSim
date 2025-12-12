@@ -9,12 +9,10 @@ namespace HairRemovalSim.Store
     /// <summary>
     /// Manages the store panel UI.
     /// Displays items, handles purchase flow and shared tooltip.
+    /// Now uses unified ItemData instead of StoreItemData.
     /// </summary>
     public class StorePanel : MonoBehaviour
     {
-        [Header("Item Catalog")]
-        [SerializeField] private List<StoreItemData> storeItems = new List<StoreItemData>();
-        
         [Header("UI References")]
         [SerializeField] private Transform itemContainer;
         [SerializeField] private GameObject itemPrefab;
@@ -23,7 +21,6 @@ namespace HairRemovalSim.Store
         [Header("Shared Tooltip")]
         [SerializeField] private GameObject tooltipPanel;
         [SerializeField] private TextMeshProUGUI tooltipText;
-        [SerializeField] private Vector3 tooltipOffset = new Vector3(0.1f, 0, 0);
         
         private List<StoreItemUI> itemUIs = new List<StoreItemUI>();
         
@@ -34,7 +31,7 @@ namespace HairRemovalSim.Store
         }
         
         /// <summary>
-        /// Populate store with items from catalog
+        /// Populate store with items from ItemDataRegistry
         /// </summary>
         private void PopulateStore()
         {
@@ -46,6 +43,15 @@ namespace HairRemovalSim.Store
                 Destroy(child.gameObject);
             }
             itemUIs.Clear();
+            
+            // Get store items from registry
+            if (ItemDataRegistry.Instance == null)
+            {
+                Debug.LogWarning("[StorePanel] ItemDataRegistry not found");
+                return;
+            }
+            
+            var storeItems = ItemDataRegistry.Instance.GetStoreItems();
             
             // Create item UIs
             foreach (var itemData in storeItems)
@@ -70,14 +76,9 @@ namespace HairRemovalSim.Store
             
             tooltipPanel.SetActive(true);
             
-            // Position tooltip relative to the item
-            RectTransform tooltipRect = tooltipPanel.GetComponent<RectTransform>();
-            if (tooltipRect != null)
-            {
-                // Get item's world position and offset to the right
-                Vector3 itemPos = itemRect.position;
-                tooltipRect.position = itemPos + tooltipOffset;
-            }
+            Transform tooltipTransform = tooltipPanel.transform;
+            tooltipTransform.position = itemRect.position;
+            tooltipTransform.rotation = itemRect.rotation;
             
             if (tooltipText != null)
                 tooltipText.text = text;
@@ -95,9 +96,15 @@ namespace HairRemovalSim.Store
         /// <summary>
         /// Show purchase confirmation dialog
         /// </summary>
-        public void ShowPurchaseDialog(StoreItemData item, int quantity)
+        public void ShowPurchaseDialog(ItemData item, int quantity)
         {
-            if (purchaseDialog == null) return;
+            Debug.Log($"[StorePanel] ShowPurchaseDialog called. purchaseDialog: {purchaseDialog}");
+            
+            if (purchaseDialog == null)
+            {
+                Debug.LogWarning("[StorePanel] purchaseDialog is null!");
+                return;
+            }
             
             purchaseDialog.Show(item, quantity, (confirmed) =>
             {
@@ -111,7 +118,7 @@ namespace HairRemovalSim.Store
         /// <summary>
         /// Process the actual purchase
         /// </summary>
-        private void ProcessPurchase(StoreItemData item, int quantity)
+        private void ProcessPurchase(ItemData item, int quantity)
         {
             int totalCost = item.price * quantity;
             
@@ -120,24 +127,23 @@ namespace HairRemovalSim.Store
             {
                 if (EconomyManager.Instance.SpendMoney(totalCost))
                 {
-                    // Add to inventory
+                    // Add to pending orders (delivered next day)
                     if (InventoryManager.Instance != null)
                     {
-                        InventoryManager.Instance.AddItem(item, quantity);
+                        InventoryManager.Instance.AddPendingOrder(item, quantity);
                     }
                     
-                    Debug.Log($"[StorePanel] Purchased {quantity}x {item.itemName} for ${totalCost}");
+                    Debug.Log($"[StorePanel] Ordered {quantity}x {item.displayName} for ${totalCost} (delivered next day)");
                 }
                 else
                 {
                     Debug.Log($"[StorePanel] Not enough money! Need ${totalCost}");
-                    // TODO: Show error message to player
                 }
             }
         }
         
         /// <summary>
-        /// Refresh store display (call when items change)
+        /// Refresh store display
         /// </summary>
         public void RefreshStore()
         {
