@@ -188,41 +188,53 @@ namespace HairRemovalSim.Customer
                 data.hairiness = useTestSettings ? testHairinessLevel : (HairinessLevel)Random.Range(0, 4);
                 data.wealth = useTestSettings ? testWealthLevel : (WealthLevel)Random.Range(0, 4);
                 
-                // Calculate budget based on wealth level
+                
+                // Generate pain tolerance level
+                data.painTolerance = Random.Range(0f, 1f);
+                if (data.painTolerance < 0.33f)
+                    data.painToleranceLevel = PainToleranceLevel.Low;
+                else if (data.painTolerance < 0.66f)
+                    data.painToleranceLevel = PainToleranceLevel.Medium;
+                else
+                    data.painToleranceLevel = PainToleranceLevel.High;
+                
+                // Generate customer request plan (one of 12 plans)
+                int requestPlanIndex = Random.Range(0, 12); // 0-11 for 12 plans
+                data.requestPlan = (CustomerRequestPlan)requestPlanIndex;
+                
+                // Adjust budget based on plan complexity (number of parts)
+                // Get required parts and count detailed treatment parts
+                var requiredParts = CustomerPlanHelper.GetRequiredParts(data.requestPlan);
+                var detailedParts = CustomerPlanHelper.GetDetailedTreatmentParts(requiredParts);
+                int partCount = detailedParts.Length;
+                
+                // Budget per part based on wealth level
+                int budgetPerPart;
                 switch (data.wealth)
                 {
                     case WealthLevel.Poor:
-                        data.baseBudget = Random.Range(20, 50);
+                        budgetPerPart = Random.Range(15, 21); // $15-20 per part
                         break;
                     case WealthLevel.Average:
-                        data.baseBudget = Random.Range(50, 100);
+                        budgetPerPart = Random.Range(20, 31); // $20-30 per part
                         break;
                     case WealthLevel.Rich:
-                        data.baseBudget = Random.Range(100, 200);
+                        budgetPerPart = Random.Range(30, 46); // $30-45 per part
                         break;
                     case WealthLevel.Tycoon:
-                        data.baseBudget = Random.Range(200, 500);
+                        budgetPerPart = Random.Range(30, 61); // $30-60 per part
+                        break;
+                    default:
+                        budgetPerPart = 20;
                         break;
                 }
+                
+                // Final budget = budget per part × parts (minimum parts = 1)
+                data.baseBudget = budgetPerPart * Mathf.Max(1, partCount);
                 
                 customer.Initialize(data, exitPoint, receptionPoint, cashRegisterPoint, this);
                 
-                // Select treatment plan (use test settings if enabled)
-                // Valid plans are 0 (UpperArms) to 12 (FullBody), excluding -1 (None)
-                TreatmentPlan selectedPlan;
-                if (useTestSettings)
-                {
-                    selectedPlan = testTreatmentPlan;
-                }
-                else
-                {
-                    // Random.Range: 0 to 12 (inclusive min, exclusive max = 13)
-                    int planIndex = Random.Range(0, 13); // UpperArms(0) to FullBody(12)
-                    selectedPlan = (TreatmentPlan)planIndex;
-                }
-                data.selectedTreatmentPlan = selectedPlan;
-                
-                Debug.Log($"[CustomerSpawner] {data.customerName} selected plan: {selectedPlan.GetDisplayName()} (value: {(int)selectedPlan}) (Test Mode: {useTestSettings})");
+                Debug.Log($"[CustomerSpawner] {data.customerName} requested plan: {data.GetPlanDisplayName()} ({partCount} parts), budget: ${data.baseBudget} (${budgetPerPart}/part), tolerance: {data.painToleranceLevel}");
                 
                 // Register with reception to get queue position
                 if (receptionManager != null)

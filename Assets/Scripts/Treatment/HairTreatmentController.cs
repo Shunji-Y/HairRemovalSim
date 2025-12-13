@@ -132,6 +132,58 @@ namespace HairRemovalSim.Treatment
             Debug.Log($"[HairTreatmentController] Set {targetBodyParts.Count} target parts. Total initial pixels: {initialWhitePixels}");
         }
         
+        /// <summary>
+        /// Set target body parts by name for the new reception-based system.
+        /// Called by CustomerController with confirmedParts mapped to detailed parts.
+        /// </summary>
+        public void SetTargetBodyPartNames(string[] partNames, HairRemovalSim.Core.BodyPartsDatabase bodyPartsDatabase = null)
+        {
+            if (partNames == null || partNames.Length == 0)
+            {
+                Debug.LogWarning("[HairTreatmentController] No part names provided");
+                return;
+            }
+            
+            // Clear per-part tracking
+            perPartInitialPixels.Clear();
+            perPartCompletion.Clear();
+            completedParts.Clear();
+            targetBodyParts.Clear();
+            
+            // Lookup BodyPartDefinition for each name if database is provided
+            foreach (var partName in partNames)
+            {
+                HairRemovalSim.Core.BodyPartDefinition partDef = null;
+                if (bodyPartsDatabase != null)
+                {
+                    partDef = bodyPartsDatabase.GetPartByName(partName);
+                }
+                
+                if (partDef != null)
+                {
+                    // Add to targetBodyParts for proper per-part tracking
+                    targetBodyParts.Add(partDef);
+                    
+                    // Calculate initial pixels for this part
+                    int partPixels = CountWhitePixelsForPart(partDef);
+                    perPartInitialPixels[partName] = partPixels;
+                    perPartCompletion[partName] = 0f;
+                    Debug.Log($"[HairTreatmentController] Added target part: {partName} with {partPixels} initial pixels");
+                }
+                else
+                {
+                    // Fallback: just add to tracking without UV region
+                    perPartInitialPixels[partName] = 0;
+                    perPartCompletion[partName] = 0f;
+                    Debug.LogWarning($"[HairTreatmentController] Part '{partName}' not found in database, using overall tracking");
+                }
+            }
+            
+            // Recalculate total initial pixels
+            initialWhitePixels = CountWhitePixels();
+            Debug.Log($"[HairTreatmentController] Set {partNames.Length} target parts by name. Total initial pixels: {initialWhitePixels}");
+        }
+        
 
         
         /// <summary>
@@ -334,43 +386,64 @@ namespace HairRemovalSim.Treatment
             
             // Calculate overall percentage based on initial white pixels
             float percentage = 0f;
-            if (initialWhitePixels > 0)
-            {
-                int removedPixels = initialWhitePixels - currentWhitePixels;
-                percentage = (float)removedPixels / initialWhitePixels * 100f;
+            //if (initialWhitePixels > 0)
+            //{
+            //    int removedPixels = initialWhitePixels - currentWhitePixels;
+            //    percentage = (float)removedPixels / initialWhitePixels * 100f;
                 
-                Debug.Log($"[HairTreatmentController] {name}: Removed {removedPixels}/{initialWhitePixels} pixels = {percentage:F1}%");
-            }
+            //    Debug.Log($"[HairTreatmentController] {name}: Removed {removedPixels}/{initialWhitePixels} pixels = {percentage:F1}%");
+            //}
             
             // Update per-part completion
-            foreach (var part in targetBodyParts)
+            // First, try old BodyPartDefinition system
+            if (targetBodyParts.Count > 0)
             {
-                if (completedParts.Contains(part.partName)) continue; // Already completed
-                
-                int initialPartPixels = perPartInitialPixels.ContainsKey(part.partName) ? perPartInitialPixels[part.partName] : 0;
-                if (initialPartPixels <= 0) continue;
-                
-                int currentPartPixels = CountWhitePixelsForPart(part);
-                int removedPartPixels = initialPartPixels - currentPartPixels;
-                float partPercentage = Mathf.Clamp((float)removedPartPixels / initialPartPixels * 100f + completionBuffer, 0f, 100f);
-                
-                // Round up to 100% when reaching 99.5% or higher
-                if (partPercentage >= 99.5f)
+                foreach (var part in targetBodyParts)
                 {
-                    partPercentage = 100f;
+                    if (completedParts.Contains(part.partName)) continue; // Already completed
+                    
+                    int initialPartPixels = perPartInitialPixels.ContainsKey(part.partName) ? perPartInitialPixels[part.partName] : 0;
+                    if (initialPartPixels <= 0) continue;
+                    
+                    int currentPartPixels = CountWhitePixelsForPart(part);
+                    int removedPartPixels = initialPartPixels - currentPartPixels;
+                    float partPercentage = Mathf.Clamp((float)removedPartPixels / initialPartPixels * 100f + completionBuffer, 0f, 100f);
+                    
+                    // Round up to 100% when reaching 99.5% or higher
+                    if (partPercentage >= 99.5f)
+                    {
+                        partPercentage = 100f;
+                    }
+                    
+                    perPartCompletion[part.partName] = partPercentage;
+                    
+                    // Check if this part is now completed
+                    if (partPercentage >= 100f && !completedParts.Contains(part.partName))
+                    {
+                        completedParts.Add(part.partName);
+                        OnPartCompleted?.Invoke(part.partName);
+                        Debug.Log($"[HairTreatmentController] Part {part.partName} completed!");
+                    }
                 }
+            }
+            else if (perPartCompletion.Count > 0)
+            {
+                // New reception-based system: use overall percentage for all parts
+                // Since we don't have UV regions, use overall progress for all
+                percentage = Mathf.Clamp(percentage + completionBuffer, 0f, 100f);
                 
-                perPartCompletion[part.partName] = partPercentage;
-                
-                // Debug: Log detailed calculation for this part
-                Debug.Log($"[HairTreatmentController] Part '{part.partName}': Initial={initialPartPixels}, Current={currentPartPixels}, Removed={removedPartPixels}, Final%={partPercentage:F1}");
-                
-                // Check if this part is now completed
-                if (partPercentage >= 100f && !completedParts.Contains(part.partName))
+                foreach (var partName in new List<string>(perPartCompletion.Keys))
                 {
-                    completedParts.Add(part.partName);
-                    OnPartCompleted?.Invoke(part.partName);
-                    Debug.Log($"[HairTreatmentController] Part {part.partName} completed!");
+                    if (completedParts.Contains(partName)) continue;
+                    
+                    perPartCompletion[partName] = percentage;
+                    
+                    if (percentage >= 100f && !completedParts.Contains(partName))
+                    {
+                        completedParts.Add(partName);
+                        OnPartCompleted?.Invoke(partName);
+                        Debug.Log($"[HairTreatmentController] Part {partName} completed!");
+                    }
                 }
             }
             

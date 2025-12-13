@@ -1,0 +1,82 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6961713900631525652
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2391131736535791661}
+  - component: {fileID: 4626351925129476523}
+  m_Layer: 0
+  m_Name: Slots
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2391131736535791661
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6961713900631525652}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
+--- !u!114 &4626351925129476523
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6961713900631525652}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 395fd776b3cdb854eab0ee304a71bffb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rowCount: 3
+  columnCount: 3
+  slotWidth: 0.28
+  slotDepth: 0.28
+  columnGap: 0.01
+  rowHeight: 0.332
+  bottomRowY: 0.428
+  originOffsetX: -0.29
+  originOffsetZ: 0
+  highlightColor: {r: 2.9960785, g: 2.5852919, b: 1.1294118, a: 0.50980395}
+  emptySlotColor: {r: 0.6, g: 1.6, b: 0.6, a: 0.5}
+  initialItems:
+  - row: 2
+    col: 3
+    itemData: {fileID: 11400000, guid: e8e605c4bc84ab547ad03e0657ad3d9a, type: 2}
+    quantity: 0
+  - row: 2
+    col: 2
+    itemData: {fileID: 11400000, guid: 5bcb471327542d44f8fcc2713335b64f, type: 2}
+    quantity: 0
+  - row: 2
+    col: 1
+    itemData: {fileID: 11400000, guid: a350710964637f44992a34eb431531a0, type: 2}
+    quantity: 0
+  - row: 2
+    col: 0
+    itemData: {fileID: 11400000, guid: a7843433be77bc64f936e29f3c7ec756, type: 2}
+    quantity: 0
+  - row: 1
+    col: 3
+    itemData: {fileID: 11400000, guid: 3b288a4568568c448a5af684beb215c5, type: 2}
+    quantity: 4
+  - row: 1
+    col: 2
+    itemData: {fileID: 11400000, guid: 3b288a4568568c448a5af684beb215c5, type: 2}
+    quantity: 4

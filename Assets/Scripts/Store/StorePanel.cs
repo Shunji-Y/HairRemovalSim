@@ -24,8 +24,9 @@ namespace HairRemovalSim.Store
         
         private List<StoreItemUI> itemUIs = new List<StoreItemUI>();
         
-        private void Start()
+        private void OnEnable()
         {
+            // Refresh store items each time panel is shown
             PopulateStore();
             HideTooltip();
         }
@@ -65,6 +66,41 @@ namespace HairRemovalSim.Store
                     itemUIs.Add(itemUI);
                 }
             }
+            
+            // Adjust grid height for ScrollView
+            AdjustGridHeight(itemContainer);
+        }
+        
+        /// <summary>
+        /// Adjust RectTransform height based on GridLayoutGroup settings and row count
+        /// </summary>
+        private void AdjustGridHeight(Transform gridParent)
+        {
+            var gridLayout = gridParent.GetComponent<GridLayoutGroup>();
+            var rectTransform = gridParent.GetComponent<RectTransform>();
+            
+            if (gridLayout == null || rectTransform == null) return;
+            
+            int childCount = gridParent.childCount;
+            if (childCount == 0) return;
+            
+            // Calculate columns based on container width
+            float containerWidth = rectTransform.rect.width;
+            float cellWidth = gridLayout.cellSize.x;
+            float spacingX = gridLayout.spacing.x;
+            float paddingLR = gridLayout.padding.left + gridLayout.padding.right;
+            
+            int columns = Mathf.Max(1, Mathf.FloorToInt((containerWidth - paddingLR + spacingX) / (cellWidth + spacingX)));
+            int rows = Mathf.CeilToInt((float)childCount / columns);
+            
+            float cellHeight = gridLayout.cellSize.y;
+            float spacingY = gridLayout.spacing.y;
+            float paddingTop = gridLayout.padding.top;
+            float paddingBottom = gridLayout.padding.bottom;
+            
+            float totalHeight = paddingTop + paddingBottom + (rows * cellHeight) + (Mathf.Max(0, rows - 1) * spacingY);
+            
+            rectTransform.sizeDelta = new Vector2(rectTransform.sizeDelta.x, totalHeight);
         }
         
         /// <summary>
@@ -122,18 +158,28 @@ namespace HairRemovalSim.Store
         {
             int totalCost = item.price * quantity;
             
+            // Check if warehouse has space
+            if (WarehouseManager.Instance != null)
+            {
+                if (!WarehouseManager.Instance.CanAddItem(item.itemId, quantity))
+                {
+                    Debug.Log($"[StorePanel] 倉庫がいっぱいです！");
+                    // TODO: Show "warehouse full" message to user
+                    return;
+                }
+            }
+            
             // Check if player has enough money
             if (EconomyManager.Instance != null)
             {
                 if (EconomyManager.Instance.SpendMoney(totalCost))
                 {
-                    // Add to pending orders (delivered next day)
-                    if (InventoryManager.Instance != null)
+                    // Add directly to warehouse (instant delivery for now)
+                    if (WarehouseManager.Instance != null)
                     {
-                        InventoryManager.Instance.AddPendingOrder(item, quantity);
+                        int added = WarehouseManager.Instance.AddItem(item.itemId, quantity);
+                        Debug.Log($"[StorePanel] Purchased {added}x {item.displayName} for ${totalCost}");
                     }
-                    
-                    Debug.Log($"[StorePanel] Ordered {quantity}x {item.displayName} for ${totalCost} (delivered next day)");
                 }
                 else
                 {

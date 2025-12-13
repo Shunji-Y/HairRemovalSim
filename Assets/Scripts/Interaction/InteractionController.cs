@@ -50,6 +50,16 @@ namespace HairRemovalSim.Player
 
         private void Update()
         {
+            // Skip input when UI panels are open
+            if (UI.WarehousePanel.Instance != null && UI.WarehousePanel.Instance.IsOpen)
+            {
+                return;
+            }
+            if (UI.ReceptionPanel.Instance != null && UI.ReceptionPanel.Instance.IsOpen)
+            {
+                return;
+            }
+            
             HandleRaycast();
             HandleInput();
         }

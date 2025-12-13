@@ -63,6 +63,16 @@ namespace HairRemovalSim.Core
         [Range(1, 4)]
         public int maxStackOnShelf = 1;
         
+        [Tooltip("Maximum stack count in a single warehouse slot")]
+        [Range(1, 99)]
+        public int maxWarehouseStack = 10;
+        
+        [Tooltip("Can this item be placed on treatment shelf from warehouse?")]
+        public bool canPlaceOnShelf = true;
+        
+        [Tooltip("Can this item be placed in reception desk slots (EXTRA ITEMS)?")]
+        public bool canPlaceAtReception = false;
+        
         // ==========================================
         // 【その他】Store / Other Settings
         // ==========================================

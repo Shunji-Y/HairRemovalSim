@@ -49,20 +49,34 @@ namespace HairRemovalSim.UI
                 return;
             }
             
-            // Get individual body part names from the treatment controller
-            var partNames = treatmentController.GetTargetPartNames();
+            // Use confirmedParts from reception if available
+            var confirmedParts = session.Customer.data.confirmedParts;
             
-            if (partNames.Count == 0)
+            if (confirmedParts != TreatmentBodyPart.None)
             {
-                // Fallback: Create single entry with treatment plan name
-                CreateEntry(session.Customer.data.selectedTreatmentPlan.GetDisplayName(), "overall");
+                // Get detailed 14-part breakdown from 7 reception selections
+                var detailedParts = CustomerPlanHelper.GetDetailedTreatmentParts(confirmedParts);
+                
+                foreach (var partName in detailedParts)
+                {
+                    CreateEntry(partName, partName);
+                }
             }
             else
             {
-                // Create an entry for each individual body part
-                foreach (var partName in partNames)
+                // Fallback: Use old UV-based system
+                var partNames = treatmentController.GetTargetPartNames();
+                
+                if (partNames.Count == 0)
                 {
-                    CreateEntry(partName, partName);
+                    CreateEntry(session.Customer.data.selectedTreatmentPlan.GetDisplayName(), "overall");
+                }
+                else
+                {
+                    foreach (var partName in partNames)
+                    {
+                        CreateEntry(partName, partName);
+                    }
                 }
             }
 

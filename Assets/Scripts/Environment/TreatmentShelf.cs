@@ -257,6 +257,50 @@ namespace HairRemovalSim.Environment
         }
         
         /// <summary>
+        /// Add quantity to an existing slot (for UI warehouse transfer)
+        /// </summary>
+        public bool AddToSlot(int row, int col, int quantity)
+        {
+            if (row < 0 || row >= rowCount || col < 0 || col >= columnCount) return false;
+            
+            var slot = slots[row, col];
+            if (string.IsNullOrEmpty(slot.itemId)) return false;
+            
+            var itemData = ItemDataRegistry.Instance?.GetItem(slot.itemId);
+            if (itemData == null) return false;
+            
+            int newQuantity = slot.quantity + quantity;
+            if (newQuantity > itemData.maxStackOnShelf) return false;
+            
+            slot.quantity = newQuantity;
+            RefreshSlotInstances(row, col);
+            return true;
+        }
+        
+        /// <summary>
+        /// Remove quantity from a slot (for UI warehouse transfer)
+        /// </summary>
+        public int RemoveFromSlot(int row, int col, int quantity)
+        {
+            if (row < 0 || row >= rowCount || col < 0 || col >= columnCount) return 0;
+            
+            var slot = slots[row, col];
+            if (string.IsNullOrEmpty(slot.itemId)) return 0;
+            
+            int toRemove = Mathf.Min(quantity, slot.quantity);
+            slot.quantity -= toRemove;
+            
+            if (slot.quantity <= 0)
+            {
+                slot.itemId = null;
+                slot.quantity = 0;
+            }
+            
+            RefreshSlotInstances(row, col);
+            return toRemove;
+        }
+        
+        /// <summary>
         /// Place an existing item GameObject directly on shelf (no pool involved)
         /// </summary>
         public bool PlaceItemDirect(int row, int col, string itemId, GameObject itemObject)
@@ -394,9 +438,17 @@ namespace HairRemovalSim.Environment
             // Clear existing instances
             foreach (var instance in slot.instances)
             {
-                if (instance != null && ItemPoolManager.Instance != null)
+                if (instance != null)
                 {
-                    ItemPoolManager.Instance.ReturnItem(slot.itemId, instance);
+                    // If itemId is valid, try to return to pool, otherwise just destroy
+                    if (!string.IsNullOrEmpty(slot.itemId) && ItemPoolManager.Instance != null)
+                    {
+                        ItemPoolManager.Instance.ReturnItem(slot.itemId, instance);
+                    }
+                    else
+                    {
+                        Destroy(instance);
+                    }
                 }
             }
             slot.instances.Clear();

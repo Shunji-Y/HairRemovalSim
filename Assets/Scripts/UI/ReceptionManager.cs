@@ -58,7 +58,7 @@ namespace HairRemovalSim.UI
             if (currentCustomer == null && customerQueue.Count > 0)
             {
                 currentCustomer = customerQueue.Dequeue();
-                UpdateQueuePositions();
+                // Don't update queue positions yet - wait until customer confirms and moves to bed
             }
             
             if (currentCustomer != null)
@@ -93,9 +93,28 @@ namespace HairRemovalSim.UI
             if (currentCustomer == null) return;
             
             var partNames = currentCustomer.data.requestedBodyParts.ConvertAll(bp => bp.partName);
-            Debug.Log($"[ReceptionManager] Hello {currentCustomer.data.customerName}! Requested parts: {string.Join(", ", partNames)}");
+            Debug.Log($"[ReceptionManager] Hello {currentCustomer.data.customerName}! Requested plan: {currentCustomer.data.GetPlanDisplayName()}");
             
-            // Auto-assign to first available bed
+            // Show reception panel
+            if (ReceptionPanel.Instance != null)
+            {
+                ReceptionPanel.Instance.Show(currentCustomer, OnReceptionConfirmed);
+            }
+            else
+            {
+                Debug.LogWarning("[ReceptionManager] ReceptionPanel not found! Auto-assigning to bed.");
+                AssignToAvailableBed();
+            }
+        }
+        
+        /// <summary>
+        /// Called when player confirms in reception panel
+        /// </summary>
+        private void OnReceptionConfirmed(CustomerController customer, Customer.TreatmentBodyPart selectedParts, Customer.TreatmentMachine machine, bool useAnesthesia, int price)
+        {
+            Debug.Log($"[ReceptionManager] Confirmed: {customer.data.customerName} - Parts: {selectedParts}, Machine: {machine}, Anesthesia: {useAnesthesia}, Price: ${price}");
+            
+            // Assign to bed
             AssignToAvailableBed();
         }
 
@@ -114,6 +133,9 @@ namespace HairRemovalSim.UI
                     // Remove from processed set so they can be processed again if needed
                     processedCustomers.Remove(currentCustomer);
                     currentCustomer = null;
+                    
+                    // NOW advance the queue since customer is heading to bed
+                    UpdateQueuePositions();
                     ProcessNextCustomer();
                     return;
                 }

@@ -174,18 +174,35 @@ namespace HairRemovalSim.Customer
 
         private void SetupRequestedPartsForHighlighting()
         {
-            Debug.Log($"[Highlight] === SETUP === data={data}, plan={data?.selectedTreatmentPlan}");
+            Debug.Log($"[Highlight] === SETUP === data={data}, confirmedParts={data?.confirmedParts}");
             
-            // Validation
-            if (data == null || data.selectedTreatmentPlan == TreatmentPlan.None)
+            // Use confirmedParts from reception if available
+            string[] targetPartNames;
+            
+            if (data != null && data.confirmedParts != TreatmentBodyPart.None)
             {
-                Debug.LogWarning("[Highlight] No treatment plan selected");
-                return;
+                // New system: use confirmed parts from reception
+                targetPartNames = CustomerPlanHelper.GetDetailedTreatmentParts(data.confirmedParts);
+                Debug.Log($"[Highlight] Using confirmedParts: {data.confirmedParts} -> {string.Join(", ", targetPartNames)}");
             }
-            
-            if (bodyPartsDatabase == null)
+            else if (data != null && data.selectedTreatmentPlan != TreatmentPlan.None && bodyPartsDatabase != null)
             {
-                Debug.LogError("[Highlight] BodyPartsDatabase is not assigned!");
+                // Fallback: old UV-based system
+                var targetParts = data.selectedTreatmentPlan.GetBodyPartDefinitions(bodyPartsDatabase);
+                if (targetParts == null || targetParts.Count == 0)
+                {
+                    Debug.LogWarning("[Highlight] No target parts found for treatment plan");
+                    return;
+                }
+                targetPartNames = new string[targetParts.Count];
+                for (int i = 0; i < targetParts.Count; i++)
+                {
+                    targetPartNames[i] = targetParts[i].partName;
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[Highlight] No treatment plan or confirmed parts selected");
                 return;
             }
             
@@ -215,21 +232,9 @@ namespace HairRemovalSim.Customer
             
             Debug.Log($"[Highlight] Renderer found: {cachedRenderer.name}");
             
-            // Get target parts from treatment plan
-            var targetParts = data.selectedTreatmentPlan.GetBodyPartDefinitions(bodyPartsDatabase);
-            
-            if (targetParts == null || targetParts.Count == 0)
-            {
-                Debug.LogWarning("[Highlight] No target parts found for treatment plan");
-                return;
-            }
-            
             // Store requested part names for completion tracking
             requestedPartNames.Clear();
-            foreach (var part in targetParts)
-            {
-                requestedPartNames.Add(part.partName);
-            }
+            requestedPartNames.AddRange(targetPartNames);
             
             // Apply to each material - set Request flags for target parts
             Material[] materials = cachedRenderer.materials;
@@ -243,9 +248,9 @@ namespace HairRemovalSim.Customer
                 ResetAllPartFlags(mat);
                 
                 // Set request flags for target parts
-                foreach (var part in targetParts)
+                foreach (var partName in targetPartNames)
                 {
-                    string propName = $"_Request_{part.partName}";
+                    string propName = $"_Request_{partName}";
                     mat.SetFloat(propName, 1.0f);
                     Debug.Log($"[Highlight] Set {propName} = 1.0 on {mat.name}");
                 }
@@ -260,16 +265,16 @@ namespace HairRemovalSim.Customer
             // Reset completion counter
             completedPartCount = 0;
             
-            // Setup Treatment Controllers
+            // Setup Treatment Controllers with target part names
             var treatmentControllers = GetComponentsInChildren<Treatment.HairTreatmentController>();
             foreach (var controller in treatmentControllers)
             {
-                controller.SetTargetBodyParts(targetParts);
+                controller.SetTargetBodyPartNames(targetPartNames, bodyPartsDatabase);
                 controller.OnPartCompleted -= OnBodyPartCompleted;
                 controller.OnPartCompleted += OnBodyPartCompleted;
             }
             
-            Debug.Log($"[Highlight] === COMPLETE === Setup {targetParts.Count} parts for highlighting");
+            Debug.Log($"[Highlight] === COMPLETE === Setup {targetPartNames.Length} parts for highlighting");
         }
         
         /// <summary>
@@ -866,6 +871,13 @@ namespace HairRemovalSim.Customer
         {
             // Scale pain by tolerance (0 = no tolerance, 1 = full tolerance)
             float scaledAmount = amount * (1f - data.painTolerance);
+            
+            // Apply anesthesia cream effect (50% pain reduction)
+            if (data.useAnesthesiaCream)
+            {
+                scaledAmount *= 0.5f;
+            }
+            
             currentPain += scaledAmount;
             currentPain = Mathf.Clamp(currentPain, 0f, maxPain);
             
