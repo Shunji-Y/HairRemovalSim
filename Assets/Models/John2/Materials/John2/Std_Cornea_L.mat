@@ -1,0 +1,124 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-1862294851274785837
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  version: 10
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Std_Cornea_L
+  m_Shader: {fileID: -6465566751694194690, guid: 28d12b9b79962d04fb6b50a9ccf15d3b, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords:
+  - BOOLEAN_ISCORNEA_ON
+  - BOOLEAN_USE_DEPTH_ON
+  - _DISABLE_SSR_TRANSPARENT
+  - _ENABLE_FOG_ON_TRANSPARENT
+  - _SURFACE_TYPE_TRANSPARENT
+  m_LightmapFlags: 2
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap:
+    MotionVector: User
+  disabledShaderPasses:
+  - MOTIONVECTORS
+  - TransparentDepthPostpass
+  - TransparentBackface
+  - RayTracingPrepass
+  - TransparentDepthPrepass
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _ColorBlendMap:
+        m_Texture: {fileID: 2800000, guid: d6fb5ba50d5308447a0e21a884d90ce6, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _CorneaDiffuseMap:
+        m_Texture: {fileID: 2800000, guid: 1a5d1021884bdc34d8e5866165f7a4b2, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _EmissionMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MaskMap:
+        m_Texture: {fileID: 2800000, guid: db0333a4d6b2da94faf9dcdcf0464c85, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ScleraDiffuseMap:
+        m_Texture: {fileID: 2800000, guid: 9192d2168c7522c488e4c203541e0b03, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ScleraNormalMap:
+        m_Texture: {fileID: 2800000, guid: b12eb2d3a8b4d63478b0cb828981b07b, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_Lightmaps:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_LightmapsInd:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_ShadowMasks:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _AOStrength: 0
+    - _ColorBlendStrength: 0
+    - _CorneaSmoothness: 0.897
+    - _IOR: 1.457
+    - _IrisBrightness: 2.5770001
+    - _IrisDepth: 0.247419
+    - _IrisHue: 0.5
+    - _IrisRadius: 0.16
+    - _IrisSaturation: 1
+    - _IrisScale: 1
+    - _IsLeftEye: 1
+    - _LimbusContrast: 1.1
+    - _LimbusDarkRadius: 0.085
+    - _LimbusDarkWidth: 0.04
+    - _LimbusWidth: 0.022
+    - _PMod: 6.4
+    - _PupilScale: 0.966
+    - _QueueControl: 0
+    - _QueueOffset: 0
+    - _ScleraBrightness: 0.8880129
+    - _ScleraHue: 0.51
+    - _ScleraNormalStrength: -0.20000005
+    - _ScleraNormalTiling: 0.2
+    - _ScleraSaturation: 1
+    - _ScleraScale: 0.94
+    - _ScleraSmoothness: 1.41726
+    - _ShadowHardness: 0
+    - _ShadowRadius: 0.28
+    - _UseDepth: 1
+    m_Colors:
+    - _CornerShadowColor: {r: 0.9463904, g: 0.7883768, b: 0.71296, a: 1}
+    - _EmissiveColor: {r: 0, g: 0, b: 0, a: 0}
+    - _IrisCloudyColor: {r: 0, g: 0, b: 0, a: 1}
+    - _IrisColor: {r: 0.3652521, g: 0.40066284, b: 0.47107124, a: 1}
+    - _LimbusColor: {r: 0.77589566, g: 0.77589566, b: 0.77589566, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

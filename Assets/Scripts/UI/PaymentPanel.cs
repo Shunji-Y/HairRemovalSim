@@ -71,10 +71,10 @@ namespace HairRemovalSim.UI
         {
             if (!IsOpen) return;
             
-            // Close on ESC
+            // Close on ESC (cancel, not complete)
             if (UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame)
             {
-                Hide();
+                Cancel();
             }
         }
         
@@ -108,16 +108,44 @@ namespace HairRemovalSim.UI
             Debug.Log($"[PaymentPanel] Opened for {data.customerName}, fee: ${treatmentFee}, budget: ${data.baseBudget}");
         }
         
+        /// <summary>
+        /// Cancel payment (ESC key) - does not complete payment, just closes UI
+        /// </summary>
+        public void Cancel()
+        {
+            Debug.Log($"[PaymentPanel] Cancelled for {currentCustomer?.data?.customerName ?? "NULL"} - customer still at register");
+            
+            if (panel != null)
+                panel.SetActive(false);
+            
+            // Do NOT clear currentCustomer - they're still at the register!
+            // CashRegister.currentCustomer also remains
+            
+            // Re-lock cursor
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+        
+        /// <summary>
+        /// Hide after payment complete - clears current customer and all payment info
+        /// </summary>
         public void Hide()
         {
             if (panel != null)
                 panel.SetActive(false);
             
+            // Clear all payment info for next customer
             currentCustomer = null;
+            treatmentFee = 0;
+            addedItemPrice = 0;
+            addedItemReviewBonus = 0;
+            addedItemId = null;
             
             // Re-lock cursor
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
+            
+            Debug.Log("[PaymentPanel] Hidden and cleared all payment info");
         }
         
         /// <summary>
@@ -264,6 +292,9 @@ namespace HairRemovalSim.UI
             
             Debug.Log($"[PaymentPanel] Confirming payment - Amount: ${totalAmount}, Review: {finalReview}");
             
+            // Save customer reference before Hide() clears it
+            var customerToProcess = currentCustomer;
+            
             // Check if customer leaves without paying
             if (finalReview <= -50)
             {
@@ -272,14 +303,14 @@ namespace HairRemovalSim.UI
                 // Submit negative review
                 if (ShopManager.Instance != null)
                 {
-                    ShopManager.Instance.AddReview(finalReview, currentCustomer.GetPainMaxCount());
+                    ShopManager.Instance.AddReview(finalReview, customerToProcess.GetPainMaxCount());
                 }
                 
-                currentCustomer.LeaveShop();
-                Hide();
+                // Notify CashRegister FIRST (before Hide clears currentCustomer)
+                OnPaymentComplete(customerToProcess, false);
                 
-                // Notify CashRegister
-                OnPaymentComplete(false);
+                customerToProcess.LeaveShop();
+                Hide();
                 return;
             }
             
@@ -289,7 +320,7 @@ namespace HairRemovalSim.UI
             // Submit review
             if (ShopManager.Instance != null)
             {
-                ShopManager.Instance.AddReview(finalReview, currentCustomer.GetPainMaxCount());
+                ShopManager.Instance.AddReview(finalReview, customerToProcess.GetPainMaxCount());
             }
             
             Debug.Log($"[PaymentPanel] {data.customerName} paid ${totalAmount}, review: {finalReview}");
@@ -297,11 +328,11 @@ namespace HairRemovalSim.UI
             // NOTE: Item is already consumed when dropped onto PaymentItemDropTarget
             // No need to consume here again
             
-            currentCustomer.LeaveShop();
-            Hide();
+            // Notify CashRegister FIRST (before Hide clears currentCustomer)
+            OnPaymentComplete(customerToProcess, true);
             
-            // Notify CashRegister
-            OnPaymentComplete(true);
+            customerToProcess.LeaveShop();
+            Hide();
         }
         
         /// <summary>
@@ -325,13 +356,13 @@ namespace HairRemovalSim.UI
         /// <summary>
         /// Called when payment is complete (success or customer left)
         /// </summary>
-        private void OnPaymentComplete(bool paid)
+        private void OnPaymentComplete(CustomerController customer, bool paid)
         {
             // Find CashRegister and notify
             var cashRegister = FindObjectOfType<CashRegister>();
             if (cashRegister != null)
             {
-                cashRegister.OnPaymentProcessed(currentCustomer);
+                cashRegister.OnPaymentProcessed(customer);
             }
         }
         

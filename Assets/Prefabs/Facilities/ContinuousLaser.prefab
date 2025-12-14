@@ -111,7 +111,7 @@ MonoBehaviour:
   painMultiplier: 0
   decalShape: 0
   decalWidth: 0.15
-  decalHeight: 0.01
+  decalHeight: 0.03
   followDecalPosition: 1
   decalTrackingDistance: 0
   decalTrackingPositionOffset: {x: -0.045, y: 0, z: 0.2}

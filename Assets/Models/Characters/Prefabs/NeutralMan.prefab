@@ -3089,7 +3089,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.4
-  m_Speed: 3
+  m_Speed: 2.2
   m_Acceleration: 8
   avoidancePriority: 50
   m_AngularSpeed: 120
@@ -3119,16 +3119,23 @@ MonoBehaviour:
     hairiness: 0
     wealth: 0
     painTolerance: 0
+    painToleranceLevel: 0
     patience: 0
     baseBudget: 0
+    requestPlan: 0
     selectedTreatmentPlan: -1
     requestedBodyParts: []
+    confirmedParts: 0
+    confirmedMachine: 0
+    useAnesthesiaCream: 0
+    reviewPenalty: 0
+    confirmedPrice: 0
   agent: {fileID: 0}
   bodyPartsDatabase: {fileID: 11400000, guid: abc316df15da5114085f978b8d7a32be, type: 2}
-  partOffsets: {fileID: 11400000, guid: 69dc0f86fbadb254c84dd30dc3642f8b, type: 2}
   currentPain: 0
   maxPain: 100
   IsCompleted: 0
+  baseReviewValue: 30
   assignedBed: {fileID: 0}
   isInitialized: 0
   paymentDelay: 2
@@ -3137,6 +3144,10 @@ MonoBehaviour:
   rotationDuration: 1
   playerLeaveDistance: 3
   painReactionProbability: 0.3
+  painReactionProbabilityStage2: 0.5
+  painDecayRate: 5
+  painRecoveryThreshold: 60
+  painHoldDuration: 1
   doorDetectionDistance: 1.5
   bedArrivalDistance: 0.75
 --- !u!4 &5561351504326307096 stripped

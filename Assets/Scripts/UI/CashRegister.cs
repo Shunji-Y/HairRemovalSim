@@ -57,6 +57,24 @@ namespace HairRemovalSim.UI
                 return transform; // Fallback to register point
             }
         }
+        
+        /// <summary>
+        /// Unregister a customer (called when customer returns to pool)
+        /// </summary>
+        public void UnregisterCustomer(CustomerController customer)
+        {
+            if (customer == null) return;
+            
+            processedCustomers.Remove(customer);
+            
+            if (customer == currentCustomer)
+            {
+                currentCustomer = null;
+            }
+            
+            // Note: We don't remove from queue here as CleanupQueue will handle it
+            Debug.Log($"[CashRegister] Unregistered customer {customer.data?.customerName}");
+        }
 
         public void OnInteract(InteractionController interactor)
         {
@@ -67,13 +85,31 @@ namespace HairRemovalSim.UI
                 return;
             }
             
-            // Process first customer in queue
-            if (currentCustomer == null && customerQueue.Count > 0)
+            Debug.Log($"[CashRegister] OnInteract - currentCustomer: {currentCustomer?.data?.customerName ?? "NULL"}, queue: {customerQueue.Count}");
+            
+            // Clear invalid currentCustomer (destroyed or inactive)
+            try
             {
-                currentCustomer = customerQueue.Dequeue();
-                UpdateQueuePositions();
+                if (currentCustomer != null && (currentCustomer.gameObject == null || !currentCustomer.gameObject.activeInHierarchy))
+                {
+                    Debug.LogWarning("[CashRegister] currentCustomer is invalid, clearing");
+                    currentCustomer = null;
+                }
+            }
+            catch (System.Exception)
+            {
+                Debug.LogWarning("[CashRegister] currentCustomer reference is broken, clearing");
+                currentCustomer = null;
             }
             
+            // PEEK first customer in queue (don't dequeue yet - wait for Payment button)
+            if (currentCustomer == null && customerQueue.Count > 0)
+            {
+                currentCustomer = customerQueue.Peek(); // PEEK, not Dequeue!
+                Debug.Log($"[CashRegister] Peeked {currentCustomer.data?.customerName}, still in queue: {customerQueue.Count}");
+            }
+            
+            // Open payment panel if we have a customer
             if (currentCustomer != null)
             {
                 ProcessPayment();
@@ -128,12 +164,67 @@ namespace HairRemovalSim.UI
         /// </summary>
         public void OnPaymentProcessed(CustomerController customer)
         {
-            if (customer == currentCustomer)
+            Debug.Log($"[CashRegister] OnPaymentProcessed called for {customer?.data?.customerName ?? "NULL"}");
+            
+            // NOW dequeue the customer (they were only Peeked before)
+            if (customerQueue.Count > 0 && customerQueue.Peek() == customer)
             {
-                processedCustomers.Remove(currentCustomer);
-                currentCustomer = null;
-                ProcessNextCustomer();
+                customerQueue.Dequeue();
+                Debug.Log($"[CashRegister] Dequeued {customer?.data?.customerName} after payment, remaining: {customerQueue.Count}");
             }
+            
+            // Clear current customer
+            if (customer != null)
+            {
+                processedCustomers.Remove(customer);
+            }
+            currentCustomer = null;
+            
+            // Clean up queue - remove any invalid customers
+            CleanupQueue();
+            
+            // NOW update queue positions - remaining customers move forward
+            UpdateQueuePositions();
+            
+            ProcessNextCustomer();
+        }
+        
+        /// <summary>
+        /// Remove invalid (destroyed/inactive) customers from queue
+        /// </summary>
+        private void CleanupQueue()
+        {
+            var validCustomers = new System.Collections.Generic.Queue<CustomerController>();
+            int originalCount = customerQueue.Count;
+            
+            while (customerQueue.Count > 0)
+            {
+                var customer = customerQueue.Dequeue();
+                
+                // Use Unity's null coalescing - returns true if object is destroyed
+                bool isValid = false;
+                try
+                {
+                    // Unity overrides == operator, so this properly checks for destroyed objects
+                    isValid = customer != null && customer.gameObject != null && customer.gameObject.activeInHierarchy;
+                }
+                catch (System.Exception)
+                {
+                    isValid = false;
+                }
+                
+                if (isValid)
+                {
+                    validCustomers.Enqueue(customer);
+                }
+                else
+                {
+                    Debug.LogWarning($"[CashRegister] Removed invalid customer from queue");
+                }
+            }
+            
+            customerQueue = validCustomers;
+            Debug.Log($"[CashRegister] CleanupQueue: kept {validCustomers.Count} of {originalCount} customers");
         }
         
         private void UpdateQueuePositions()

@@ -49,6 +49,16 @@ namespace HairRemovalSim.Customer
         [Header("Visuals")]
         public Animator animator;
         
+        [Header("Clothing")]
+        [Tooltip("Shirt/top clothing - hidden when ARM, CHEST, ABS, BACK, or ARMPIT is requested")]
+        [SerializeField] private GameObject shirtObject;
+        [Tooltip("Pants - hidden when LEG is requested")]
+        [SerializeField] private GameObject pantsObject;
+        [Tooltip("Boxer/underwear - shown when pants are hidden, hidden when pants are shown")]
+        [SerializeField] private GameObject boxerObject;
+        [Tooltip("Shoes - always hidden when lying down")]
+        [SerializeField] private GameObject shoesObject;
+        
         [Header("Rotation")]
         public bool isSupine = true; // true = face-up, false = face-down
         private bool isRotating = false;
@@ -128,6 +138,16 @@ namespace HairRemovalSim.Customer
             // Reset state to initial
             currentState = CustomerState.Waiting;
             
+            // Reset animator state for pool reuse
+            if (animator != null)
+            {
+                animator.enabled = true;
+                animator.SetBool("IsLyingDown", false);
+                animator.SetBool("IsLieDownFaceDown", false);
+                animator.SetBool("TreatmentFinished", false);
+                animator.Rebind(); // Force reset to initial state
+            }
+            
             // Reset pain state
             currentPain = 0f;
             isInPainStage3 = false;
@@ -148,7 +168,24 @@ namespace HairRemovalSim.Customer
             // Reset completed parts counter
             completedPartCount = 0;
             
-            Debug.Log($"[CustomerController] Reset state for {data.customerName} (baseReview: {baseReviewValue})");
+            // Reset CustomerData treatment state for pool reuse
+            if (data != null)
+            {
+                data.confirmedParts = TreatmentBodyPart.None;
+                data.confirmedMachine = TreatmentMachine.Shaver;
+                data.confirmedPrice = 0;
+                data.useAnesthesiaCream = false;
+                data.reviewPenalty = 0;
+            }
+            
+            // Reset initialization flag so Bake will be called again
+            isInitialized = false;
+            
+            // Reset clothing to visible state
+            SetClothingForStanding();
+            
+            Debug.Log($"[CustomerController] ===== POOL REUSE RESET =====");
+            Debug.Log($"[CustomerController] Reset state for {data?.customerName ?? "NULL"} - confirmedParts: {data?.confirmedParts}, confirmedPrice: {data?.confirmedPrice}, isInitialized: {isInitialized}");
         }
         
         /// <summary>
@@ -484,15 +521,75 @@ namespace HairRemovalSim.Customer
         public void LeaveShop()
         {
             currentState = CustomerState.Leaving;
-            agent.isStopped = false;
-            agent.updateRotation = true; // Re-enable rotation for walking
-            if (exitPoint != null)
+            
+            if (agent != null)
             {
-                agent.SetDestination(exitPoint.position);
+                // Ensure agent is on NavMesh
+                if (!agent.isOnNavMesh)
+                {
+                    agent.enabled = true;
+                    agent.Warp(transform.position);
+                    
+                    if (!agent.isOnNavMesh)
+                    {
+                        UnityEngine.AI.NavMeshHit hit;
+                        if (UnityEngine.AI.NavMesh.SamplePosition(transform.position, out hit, 5f, UnityEngine.AI.NavMesh.AllAreas))
+                        {
+                            agent.Warp(hit.position);
+                        }
+                    }
+                }
+                
+                if (agent.isOnNavMesh)
+                {
+                    agent.isStopped = false;
+                    agent.updateRotation = true;
+                    
+                    if (exitPoint != null)
+                    {
+                        agent.SetDestination(exitPoint.position);
+                    }
+                    else
+                    {
+                        // No exit point - return to pool instead of destroying
+                        Debug.LogWarning("[CustomerController] LeaveShop: No exit point, returning to pool");
+                        ReturnToPool();
+                    }
+                }
+                else
+                {
+                    // NavMesh failed - return to pool instead of destroying
+                    Debug.LogWarning("[CustomerController] LeaveShop: Agent not on NavMesh, returning to pool");
+                    ReturnToPool();
+                }
             }
             else
             {
-                Destroy(gameObject); // Fallback
+                // No agent - return to pool
+                ReturnToPool();
+            }
+        }
+        
+        /// <summary>
+        /// Safely return this customer to the pool
+        /// </summary>
+        private void ReturnToPool()
+        {
+            // Unregister from CashRegister first
+            var cashRegister = FindObjectOfType<UI.CashRegister>();
+            if (cashRegister != null)
+            {
+                cashRegister.UnregisterCustomer(this);
+            }
+            
+            if (spawner != null)
+            {
+                spawner.ReturnToPool(this);
+            }
+            else
+            {
+                // Fallback: just deactivate
+                gameObject.SetActive(false);
             }
         }
 
@@ -635,6 +732,9 @@ namespace HairRemovalSim.Customer
         /// </summary>
         private void StandUpSequence()
         {
+            // Show clothing when standing up after treatment
+            SetClothingVisible(true);
+            
             // Set TreatmentFinished = false (stand up animation)
             if (animator != null && animator.enabled)
             {
@@ -725,12 +825,35 @@ namespace HairRemovalSim.Customer
         
         private void StandUpAndWalkToReception()
         {
-            // Re-enable NavMeshAgent
+            // Re-enable NavMeshAgent and warp to current position
             if (agent != null)
             {
                 agent.enabled = true;
-                agent.isStopped = false;
-                agent.updateRotation = true;
+                
+                // Warp agent to current position to place on NavMesh
+                agent.Warp(transform.position);
+                
+                // Check if agent is on NavMesh before using
+                if (!agent.isOnNavMesh)
+                {
+                    Debug.LogWarning("[CustomerController] Agent not on NavMesh after warp, trying to find nearest point");
+                    UnityEngine.AI.NavMeshHit hit;
+                    if (UnityEngine.AI.NavMesh.SamplePosition(transform.position, out hit, 5f, UnityEngine.AI.NavMesh.AllAreas))
+                    {
+                        agent.Warp(hit.position);
+                    }
+                }
+                
+                if (agent.isOnNavMesh)
+                {
+                    agent.isStopped = false;
+                    agent.updateRotation = true;
+                }
+                else
+                {
+                    Debug.LogError("[CustomerController] Failed to place agent on NavMesh!");
+                    return;
+                }
             }
             
             // Stand up (reverse lie down animation if applicable)
@@ -752,7 +875,7 @@ namespace HairRemovalSim.Customer
                 if (queuePos == null)
                 {
                     Debug.LogWarning($"[CustomerController] Could not register to payment queue, going to register point");
-                    if (agent != null && cashRegisterPoint != null)
+                    if (agent != null && agent.isOnNavMesh && cashRegisterPoint != null)
                     {
                         agent.SetDestination(cashRegisterPoint.position);
                     }
@@ -761,7 +884,7 @@ namespace HairRemovalSim.Customer
             else
             {
                 Debug.LogError("[CustomerController] CashRegister not found!");
-                if (agent != null && cashRegisterPoint != null)
+                if (agent != null && agent.isOnNavMesh && cashRegisterPoint != null)
                 {
                     agent.SetDestination(cashRegisterPoint.position);
                 }
@@ -778,7 +901,7 @@ namespace HairRemovalSim.Customer
         private void GoToExit()
         {
             currentState = CustomerState.Leaving;
-            if (exitPoint != null)
+            if (exitPoint != null && agent != null && agent.isOnNavMesh)
             {
                 agent.SetDestination(exitPoint.position);
                 Debug.Log($"{data.customerName} heading to exit...");
@@ -1236,7 +1359,7 @@ namespace HairRemovalSim.Customer
                 targetPos = targetBed.position;
             }
             
-            float duration = 0.3f;
+            float duration = 0f;
             float elapsed = 0f;
             
             while (elapsed < duration)
@@ -1259,7 +1382,7 @@ namespace HairRemovalSim.Customer
             if (animator != null && animator.enabled)
             {
                 Debug.Log("Baked");
-                StartCoroutine(DelayedBakeMesh(1.5f));
+                StartCoroutine(DelayedBakeMesh(1f));
             }
             else
             {
@@ -1286,6 +1409,8 @@ namespace HairRemovalSim.Customer
         /// </summary>
         public void OnLieDownComplete()
         {
+            // Hide clothing when lying down for treatment
+            
             var bodyParts = GetComponentsInChildren<HairRemovalSim.Core.BodyPart>();
             foreach (var part in bodyParts)
             {
@@ -1300,6 +1425,8 @@ namespace HairRemovalSim.Customer
         /// </summary>
         private System.Collections.IEnumerator DelayedBakeMesh(float delay)
         {
+            SetClothingVisible(false);
+
             yield return new WaitForSeconds(delay);
             OnLieDownComplete();
         }
@@ -1429,6 +1556,72 @@ namespace HairRemovalSim.Customer
                 assignedBed.ClearCustomer();
                 assignedBed = null;
             }
+        }
+        
+        /// <summary>
+        /// Set clothing visibility based on confirmed body parts (called when lying down)
+        /// </summary>
+        public void SetClothingForTreatment()
+        {
+            // Get confirmed parts from customer data (set at reception)
+            TreatmentBodyPart parts = data?.confirmedParts ?? TreatmentBodyPart.None;
+            
+            if (parts == TreatmentBodyPart.None)
+            {
+                Debug.Log("[CustomerController] No confirmed parts, only hiding shoes");
+                if (shoesObject != null) shoesObject.SetActive(false);
+                return;
+            }
+            
+            // Check if upper body treatment is needed (Arms, Chest, Abs, Back, Armpits)
+            bool needsShirtRemoval = (parts & (TreatmentBodyPart.Arms | TreatmentBodyPart.Chest | 
+                TreatmentBodyPart.Abs | TreatmentBodyPart.Back | TreatmentBodyPart.Armpits)) != 0;
+            
+            // Check if lower body treatment is needed (Legs)
+            bool needsPantsRemoval = (parts & TreatmentBodyPart.Legs) != 0;
+            
+            // Apply clothing visibility
+            if (shirtObject != null) shirtObject.SetActive(!needsShirtRemoval);
+            if (pantsObject != null) pantsObject.SetActive(!needsPantsRemoval);
+            if (boxerObject != null) boxerObject.SetActive(needsPantsRemoval); // Show boxer when pants removed
+            if (shoesObject != null) shoesObject.SetActive(false); // Always hide shoes when lying down
+            
+            Debug.Log($"[CustomerController] Clothing for treatment - Shirt: {!needsShirtRemoval}, Pants: {!needsPantsRemoval}, Boxer: {needsPantsRemoval}, Shoes: false");
+        }
+        
+        /// <summary>
+        /// Restore all clothing (called when standing up after treatment)
+        /// </summary>
+        public void SetClothingForStanding()
+        {
+            if (shirtObject != null) shirtObject.SetActive(true);
+            if (pantsObject != null) pantsObject.SetActive(true);
+            if (boxerObject != null) boxerObject.SetActive(false); // Hide boxer when pants are on
+            if (shoesObject != null) shoesObject.SetActive(true);
+            
+            Debug.Log("[CustomerController] All clothing restored for standing");
+        }
+        
+        /// <summary>
+        /// Helper to set all clothing active/inactive
+        /// </summary>
+        private void SetAllClothingActive(bool active, bool showBoxerIfInactive)
+        {
+            if (shirtObject != null) shirtObject.SetActive(active);
+            if (pantsObject != null) pantsObject.SetActive(active);
+            if (boxerObject != null) boxerObject.SetActive(!active && showBoxerIfInactive);
+            if (shoesObject != null) shoesObject.SetActive(active);
+        }
+        
+        /// <summary>
+        /// Legacy method - redirects to SetClothingForStanding/SetClothingForTreatment
+        /// </summary>
+        public void SetClothingVisible(bool visible)
+        {
+            if (visible)
+                SetClothingForStanding();
+            else
+                SetClothingForTreatment();
         }
     }
 }

@@ -457,7 +457,24 @@ namespace HairRemovalSim.Tools
             }
             
             Mesh mesh = meshCollider.sharedMesh;
-            Vector4[] tangents = mesh.tangents;
+            
+            // Check if mesh is readable
+            if (!mesh.isReadable)
+            {
+                // Mesh is not readable, fallback
+                return Vector3.ProjectOnPlane(Vector3.up, hit.normal).normalized;
+            }
+            
+            Vector4[] tangents;
+            try
+            {
+                tangents = mesh.tangents;
+            }
+            catch (System.Exception)
+            {
+                // Failed to read tangents, fallback
+                return Vector3.ProjectOnPlane(Vector3.up, hit.normal).normalized;
+            }
             
             if (tangents == null || tangents.Length == 0)
             {

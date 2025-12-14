@@ -254,6 +254,7 @@ Material:
     - _Completed_RightUpperArm: 0
     - _DebugMode: 0
     - _DecalEnabled: 0
+    - _DecalShape: 0
     - _DecalUVAngle: 0
     - _DisplacementLevel: 0.5
     - _DisplacementStrength: 0
