@@ -74,6 +74,19 @@ namespace HairRemovalSim.Core
         public bool canPlaceAtReception = false;
         
         // ==========================================
+        // 【レジ】Checkout Settings
+        // ==========================================
+        [Header("【レジ】")]
+        [Tooltip("Can this item be used at checkout?")]
+        public bool canUseAtCheckout = false;
+        
+        [Tooltip("Review bonus when used at checkout (positive = good)")]
+        public int reviewBonus = 0;
+        
+        [Tooltip("Upsell price added to total (0 = free review compensation item)")]
+        public int upsellPrice = 0;
+        
+        // ==========================================
         // 【その他】Store / Other Settings
         // ==========================================
         [Header("【その他】")]

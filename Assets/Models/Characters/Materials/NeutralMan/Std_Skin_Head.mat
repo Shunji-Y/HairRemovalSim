@@ -368,10 +368,10 @@ Material:
     - _SubsurfaceFalloff: {r: 0.7411765, g: 0.2627451, b: 0.21960784, a: 1}
     - _WrinkleValueSet12CL: {r: 0, g: 0, b: 0, a: 0}
     - _WrinkleValueSet12CR: {r: 0, g: 0, b: 0, a: 0}
-    - _WrinkleValueSet1AL: {r: 0, g: 0, b: 0, a: 0}
-    - _WrinkleValueSet1AR: {r: 0, g: 0, b: 0, a: 0}
-    - _WrinkleValueSet1BL: {r: 0, g: 0, b: 0, a: 0}
-    - _WrinkleValueSet1BR: {r: 0, g: 0, b: 0, a: 0}
+    - _WrinkleValueSet1AL: {r: 0.124141514, g: 0, b: 0, a: 0}
+    - _WrinkleValueSet1AR: {r: 0.14121918, g: 0, b: 0, a: 0}
+    - _WrinkleValueSet1BL: {r: 0, g: 0, b: 0, a: 0.037242457}
+    - _WrinkleValueSet1BR: {r: 0, g: 0, b: 0, a: 0.042365756}
     - _WrinkleValueSet2L: {r: 0, g: 0, b: 0, a: 0}
     - _WrinkleValueSet2R: {r: 0, g: 0, b: 0, a: 0}
     - _WrinkleValueSet3DB: {r: 0, g: 0, b: 0, a: 0}

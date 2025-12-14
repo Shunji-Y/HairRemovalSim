@@ -3,32 +3,61 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using TMPro;
 using HairRemovalSim.Core;
+using UnityEngine.Localization.Settings;
 
 namespace HairRemovalSim.Store
 {
     /// <summary>
-    /// Manages the store panel UI.
-    /// Displays items, handles purchase flow and shared tooltip.
-    /// Now uses unified ItemData instead of StoreItemData.
+    /// Cart entry data
+    /// </summary>
+    [System.Serializable]
+    public class CartEntry
+    {
+        public ItemData itemData;
+        public int quantity;
+        public CartItemUI uiInstance;
+    }
+    
+    /// <summary>
+    /// Manages the store panel UI with cart functionality.
     /// </summary>
     public class StorePanel : MonoBehaviour
     {
-        [Header("UI References")]
+        [Header("Store UI References")]
         [SerializeField] private Transform itemContainer;
         [SerializeField] private GameObject itemPrefab;
-        [SerializeField] private PurchaseDialog purchaseDialog;
+        
+        [Header("Cart UI References")]
+        [SerializeField] private Transform cartContainer;
+        [SerializeField] private GameObject cartItemPrefab;
+        [SerializeField] private TextMeshProUGUI totalText;
+        [SerializeField] private Button purchaseButton;
         
         [Header("Shared Tooltip")]
         [SerializeField] private GameObject tooltipPanel;
         [SerializeField] private TextMeshProUGUI tooltipText;
         
         private List<StoreItemUI> itemUIs = new List<StoreItemUI>();
+        private Dictionary<string, CartEntry> cart = new Dictionary<string, CartEntry>();
+        
+        private void Awake()
+        {
+            if (purchaseButton != null)
+                purchaseButton.onClick.AddListener(OnPurchaseClicked);
+        }
+        
+        private void OnDestroy()
+        {
+            if (purchaseButton != null)
+                purchaseButton.onClick.RemoveListener(OnPurchaseClicked);
+        }
         
         private void OnEnable()
         {
             // Refresh store items each time panel is shown
             PopulateStore();
             HideTooltip();
+            RefreshCartDisplay();
         }
         
         /// <summary>
@@ -103,6 +132,8 @@ namespace HairRemovalSim.Store
             rectTransform.sizeDelta = new Vector2(rectTransform.sizeDelta.x, totalHeight);
         }
         
+        #region Tooltip
+        
         /// <summary>
         /// Show shared tooltip at item position
         /// </summary>
@@ -115,9 +146,12 @@ namespace HairRemovalSim.Store
             Transform tooltipTransform = tooltipPanel.transform;
             tooltipTransform.position = itemRect.position;
             tooltipTransform.rotation = itemRect.rotation;
-            
+
             if (tooltipText != null)
-                tooltipText.text = text;
+            {
+                var t = LocalizationSettings.StringDatabase.GetLocalizedString("DescriptionTable", text);
+                tooltipText.text = t;
+            }
         }
         
         /// <summary>
@@ -129,64 +163,188 @@ namespace HairRemovalSim.Store
                 tooltipPanel.SetActive(false);
         }
         
+        #endregion
+        
+        #region Cart Management
+        
         /// <summary>
-        /// Show purchase confirmation dialog
+        /// Add item to cart
         /// </summary>
-        public void ShowPurchaseDialog(ItemData item, int quantity)
+        public void AddToCart(ItemData item, int quantity)
         {
-            Debug.Log($"[StorePanel] ShowPurchaseDialog called. purchaseDialog: {purchaseDialog}");
+            if (item == null || quantity <= 0) return;
             
-            if (purchaseDialog == null)
+            if (cart.TryGetValue(item.itemId, out CartEntry entry))
             {
-                Debug.LogWarning("[StorePanel] purchaseDialog is null!");
-                return;
+                // Already in cart, add quantity
+                entry.quantity += quantity;
+            }
+            else
+            {
+                // New item
+                cart[item.itemId] = new CartEntry
+                {
+                    itemData = item,
+                    quantity = quantity,
+                    uiInstance = null
+                };
             }
             
-            purchaseDialog.Show(item, quantity, (confirmed) =>
-            {
-                if (confirmed)
-                {
-                    ProcessPurchase(item, quantity);
-                }
-            });
+            RefreshCartDisplay();
+            Debug.Log($"[StorePanel] Added {quantity}x {item.displayName} to cart");
         }
         
         /// <summary>
-        /// Process the actual purchase
+        /// Remove item from cart
         /// </summary>
-        private void ProcessPurchase(ItemData item, int quantity)
+        public void RemoveFromCart(string itemId)
         {
-            int totalCost = item.price * quantity;
-            
-            // Check if warehouse has space
-            if (WarehouseManager.Instance != null)
+            if (cart.TryGetValue(itemId, out CartEntry entry))
             {
-                if (!WarehouseManager.Instance.CanAddItem(item.itemId, quantity))
+                if (entry.uiInstance != null)
                 {
-                    Debug.Log($"[StorePanel] 倉庫がいっぱいです！");
-                    // TODO: Show "warehouse full" message to user
-                    return;
+                    Destroy(entry.uiInstance.gameObject);
                 }
-            }
-            
-            // Check if player has enough money
-            if (EconomyManager.Instance != null)
-            {
-                if (EconomyManager.Instance.SpendMoney(totalCost))
-                {
-                    // Add directly to warehouse (instant delivery for now)
-                    if (WarehouseManager.Instance != null)
-                    {
-                        int added = WarehouseManager.Instance.AddItem(item.itemId, quantity);
-                        Debug.Log($"[StorePanel] Purchased {added}x {item.displayName} for ${totalCost}");
-                    }
-                }
-                else
-                {
-                    Debug.Log($"[StorePanel] Not enough money! Need ${totalCost}");
-                }
+                cart.Remove(itemId);
+                RefreshCartDisplay();
+                Debug.Log($"[StorePanel] Removed {itemId} from cart");
             }
         }
+        
+        /// <summary>
+        /// Clear the entire cart
+        /// </summary>
+        public void ClearCart()
+        {
+            foreach (var entry in cart.Values)
+            {
+                if (entry.uiInstance != null)
+                {
+                    Destroy(entry.uiInstance.gameObject);
+                }
+            }
+            cart.Clear();
+            RefreshCartDisplay();
+        }
+        
+        /// <summary>
+        /// Refresh cart display
+        /// </summary>
+        private void RefreshCartDisplay()
+        {
+            if (cartContainer == null || cartItemPrefab == null) return;
+            
+            // Clear existing cart UI
+            foreach (Transform child in cartContainer)
+            {
+                Destroy(child.gameObject);
+            }
+            
+            // Recreate cart items
+            foreach (var kvp in cart)
+            {
+                var entry = kvp.Value;
+                GameObject cartObj = Instantiate(cartItemPrefab, cartContainer);
+                CartItemUI cartUI = cartObj.GetComponent<CartItemUI>();
+                if (cartUI != null)
+                {
+                    cartUI.SetData(
+                        entry.itemData.itemId,
+                        entry.itemData.displayName,
+                        entry.quantity,
+                        entry.itemData.price,
+                        this
+                    );
+                    entry.uiInstance = cartUI;
+                }
+            }
+            
+            // Update total
+            UpdateTotalDisplay();
+        }
+        
+        /// <summary>
+        /// Calculate total price
+        /// </summary>
+        private int CalculateTotal()
+        {
+            int total = 0;
+            foreach (var entry in cart.Values)
+            {
+                total += entry.itemData.price * entry.quantity;
+            }
+            return total;
+        }
+        
+        /// <summary>
+        /// Update total display
+        /// </summary>
+        private void UpdateTotalDisplay()
+        {
+            if (totalText != null)
+            {
+                totalText.text = $"${CalculateTotal():N0}";
+            }
+        }
+        
+        /// <summary>
+        /// Purchase all items in cart
+        /// </summary>
+        private void OnPurchaseClicked()
+        {
+            if (cart.Count == 0)
+            {
+                Debug.Log("[StorePanel] Cart is empty");
+                return;
+            }
+            
+            int totalCost = CalculateTotal();
+            
+            // Check if player has enough money
+            if (EconomyManager.Instance == null)
+            {
+                Debug.LogWarning("[StorePanel] EconomyManager not found");
+                return;
+            }
+            
+            if (EconomyManager.Instance.CurrentMoney < totalCost)
+            {
+                Debug.Log($"[StorePanel] Not enough money! Need ${totalCost}");
+                return;
+            }
+            
+            // Check if warehouse has space for all items
+            if (WarehouseManager.Instance != null)
+            {
+                foreach (var entry in cart.Values)
+                {
+                    if (!WarehouseManager.Instance.CanAddItem(entry.itemData.itemId, entry.quantity))
+                    {
+                        Debug.Log($"[StorePanel] Warehouse full for {entry.itemData.displayName}");
+                        return;
+                    }
+                }
+            }
+            
+            // Process purchase
+            if (EconomyManager.Instance.SpendMoney(totalCost))
+            {
+                // Add all items to warehouse
+                if (WarehouseManager.Instance != null)
+                {
+                    foreach (var entry in cart.Values)
+                    {
+                        int added = WarehouseManager.Instance.AddItem(entry.itemData.itemId, entry.quantity);
+                        Debug.Log($"[StorePanel] Purchased {added}x {entry.itemData.displayName}");
+                    }
+                }
+                
+                Debug.Log($"[StorePanel] Purchase complete! Total: ${totalCost}");
+                ClearCart();
+            }
+        }
+        
+        #endregion
         
         /// <summary>
         /// Refresh store display

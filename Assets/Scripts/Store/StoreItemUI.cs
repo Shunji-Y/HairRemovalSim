@@ -8,7 +8,7 @@ namespace HairRemovalSim.Store
 {
     /// <summary>
     /// UI component for displaying a store item.
-    /// Now uses unified ItemData instead of StoreItemData.
+    /// Allows adding items to cart with quantity selection.
     /// </summary>
     public class StoreItemUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
@@ -22,7 +22,7 @@ namespace HairRemovalSim.Store
         [SerializeField] private TextMeshProUGUI quantityText;
         [SerializeField] private Button decreaseButton;
         [SerializeField] private Button increaseButton;
-        [SerializeField] private Button purchaseButton;
+        [SerializeField] private Button addToCartButton;
         
         private int selectedQuantity = 1;
         private StorePanel storePanel;
@@ -33,8 +33,8 @@ namespace HairRemovalSim.Store
                 decreaseButton.onClick.AddListener(DecreaseQuantity);
             if (increaseButton != null)
                 increaseButton.onClick.AddListener(IncreaseQuantity);
-            if (purchaseButton != null)
-                purchaseButton.onClick.AddListener(OnPurchaseClicked);
+            if (addToCartButton != null)
+                addToCartButton.onClick.AddListener(OnAddToCartClicked);
                 
             storePanel = GetComponentInParent<StorePanel>();
         }
@@ -45,8 +45,8 @@ namespace HairRemovalSim.Store
                 decreaseButton.onClick.RemoveListener(DecreaseQuantity);
             if (increaseButton != null)
                 increaseButton.onClick.RemoveListener(IncreaseQuantity);
-            if (purchaseButton != null)
-                purchaseButton.onClick.RemoveListener(OnPurchaseClicked);
+            if (addToCartButton != null)
+                addToCartButton.onClick.RemoveListener(OnAddToCartClicked);
         }
         
         private void Start()
@@ -81,7 +81,7 @@ namespace HairRemovalSim.Store
             if (nameText != null)
                 nameText.text = itemData.displayName;
             if (priceText != null)
-                priceText.text = $"¥{itemData.price * selectedQuantity:N0}";
+                priceText.text = $"${itemData.price * selectedQuantity:N0}";
             if (quantityText != null)
                 quantityText.text = selectedQuantity.ToString();
         }
@@ -105,18 +105,22 @@ namespace HairRemovalSim.Store
             }
         }
         
-        private void OnPurchaseClicked()
+        private void OnAddToCartClicked()
         {
             if (storePanel == null)
                 storePanel = GetComponentInParent<StorePanel>();
             
             if (storePanel != null && itemData != null)
             {
-                storePanel.ShowPurchaseDialog(itemData, selectedQuantity);
+                storePanel.AddToCart(itemData, selectedQuantity);
+                
+                // Reset quantity after adding to cart
+                selectedQuantity = 1;
+                RefreshUI();
             }
             else
             {
-                Debug.LogWarning("[StoreItemUI] Cannot show purchase dialog - missing storePanel or itemData");
+                Debug.LogWarning("[StoreItemUI] Cannot add to cart - missing storePanel or itemData");
             }
         }
         

@@ -239,6 +239,20 @@ namespace HairRemovalSim.UI
             {
                 cart.RefreshFromShelf();
             }
+            
+            // Sync checkout stock slots FROM checkout panel (to reflect changes made at register)
+            var checkoutStockSlots = GetComponentsInChildren<CheckoutStockSlotUI>(true);
+            foreach (var slot in checkoutStockSlots)
+            {
+                slot.SyncFromCheckoutPanel();
+            }
+            
+            // Sync reception stock slots FROM reception panel (to reflect changes made at reception)
+            var receptionStockSlots = GetComponentsInChildren<ReceptionStockSlotUI>(true);
+            foreach (var slot in receptionStockSlots)
+            {
+                slot.SyncFromReceptionPanel();
+            }
         }
     }
 }

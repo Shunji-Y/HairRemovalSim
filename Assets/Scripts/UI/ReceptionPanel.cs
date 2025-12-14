@@ -235,8 +235,9 @@ namespace HairRemovalSim.UI
             // Save confirmed selections to customer data
             data.confirmedParts = selectedParts;
             data.confirmedMachine = selectedMachine;
+            data.confirmedPrice = calculatedPrice;
             
-            Debug.Log($"[ReceptionPanel] Confirmed - Parts: {selectedParts}, Machine: {selectedMachine}, Anesthesia: {useAnesthesia}");
+            Debug.Log($"[ReceptionPanel] Confirmed - Parts: {selectedParts}, Machine: {selectedMachine}, Price: ${calculatedPrice}");
             
             // Invoke callback
             onConfirm?.Invoke(currentCustomer, selectedParts, selectedMachine, useAnesthesia, calculatedPrice);

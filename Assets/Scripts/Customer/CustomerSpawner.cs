@@ -26,13 +26,21 @@ namespace HairRemovalSim.Customer
         [Tooltip("Enable to use fixed settings instead of random")]
         public bool useTestSettings = false;
         [Tooltip("Fixed treatment plan for testing")]
-        public TreatmentPlan testTreatmentPlan = TreatmentPlan.Beard;
+        public CustomerRequestPlan testRequestPlan = CustomerRequestPlan.Beard;
         [Tooltip("Fixed hairiness level for testing")]
         public HairinessLevel testHairinessLevel = HairinessLevel.Medium;
         [Tooltip("Fixed wealth level for testing")]
         public WealthLevel testWealthLevel = WealthLevel.Rich;
         [Tooltip("Spawn customer immediately on play")]
         public bool spawnOnStart = false;
+        
+        [Header("Checkout Test Mode")]
+        [Tooltip("Enable to spawn customer directly at register (skip reception/treatment)")]
+        public bool checkoutTestMode = false;
+        [Tooltip("Test review value for checkout test (randomized if 0)")]
+        public int testReviewValue = 0;
+        [Tooltip("Test confirmed price for checkout test (randomized if 0)")]
+        public int testConfirmedPrice = 0;
 
         private List<CustomerController> customerPool = new List<CustomerController>();
         private List<CustomerController> activeCustomers = new List<CustomerController>();
@@ -188,7 +196,6 @@ namespace HairRemovalSim.Customer
                 data.hairiness = useTestSettings ? testHairinessLevel : (HairinessLevel)Random.Range(0, 4);
                 data.wealth = useTestSettings ? testWealthLevel : (WealthLevel)Random.Range(0, 4);
                 
-                
                 // Generate pain tolerance level
                 data.painTolerance = Random.Range(0f, 1f);
                 if (data.painTolerance < 0.33f)
@@ -198,12 +205,18 @@ namespace HairRemovalSim.Customer
                 else
                     data.painToleranceLevel = PainToleranceLevel.High;
                 
-                // Generate customer request plan (one of 12 plans)
-                int requestPlanIndex = Random.Range(0, 12); // 0-11 for 12 plans
-                data.requestPlan = (CustomerRequestPlan)requestPlanIndex;
+                // Generate customer request plan (use test setting if enabled)
+                if (useTestSettings)
+                {
+                    data.requestPlan = testRequestPlan;
+                }
+                else
+                {
+                    int requestPlanIndex = Random.Range(0, 12); // 0-11 for 12 plans
+                    data.requestPlan = (CustomerRequestPlan)requestPlanIndex;
+                }
                 
                 // Adjust budget based on plan complexity (number of parts)
-                // Get required parts and count detailed treatment parts
                 var requiredParts = CustomerPlanHelper.GetRequiredParts(data.requestPlan);
                 var detailedParts = CustomerPlanHelper.GetDetailedTreatmentParts(requiredParts);
                 int partCount = detailedParts.Length;
@@ -233,6 +246,32 @@ namespace HairRemovalSim.Customer
                 data.baseBudget = budgetPerPart * Mathf.Max(1, partCount);
                 
                 customer.Initialize(data, exitPoint, receptionPoint, cashRegisterPoint, this);
+                
+                // Checkout Test Mode: Skip reception/treatment, go directly to register
+                if (checkoutTestMode)
+                {
+                    // Set test values
+                    data.confirmedPrice = testConfirmedPrice > 0 ? testConfirmedPrice : Random.Range(30, 150);
+                    data.confirmedParts = requiredParts;
+                    data.reviewPenalty = testReviewValue != 0 ? -testReviewValue + customer.GetBaseReviewValue() : Random.Range(0, 40);
+                    
+                    Debug.Log($"[CustomerSpawner] CHECKOUT TEST: {data.customerName} -> Register, Price: ${data.confirmedPrice}, ReviewPenalty: {data.reviewPenalty}");
+                    
+                    // Register with CashRegister queue
+                    var cashRegister = FindObjectOfType<UI.CashRegister>();
+                    if (cashRegister != null)
+                    {
+                        cashRegister.RegisterCustomer(customer);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[CustomerSpawner] CashRegister not found! Customer going directly.");
+                        customer.GoToCashRegister();
+                    }
+                    
+                    activeCustomers.Add(customer);
+                    return;
+                }
                 
                 Debug.Log($"[CustomerSpawner] {data.customerName} requested plan: {data.GetPlanDisplayName()} ({partCount} parts), budget: ${data.baseBudget} (${budgetPerPart}/part), tolerance: {data.painToleranceLevel}");
                 

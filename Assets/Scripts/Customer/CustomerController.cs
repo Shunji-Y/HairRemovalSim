@@ -396,6 +396,23 @@ namespace HairRemovalSim.Customer
         }
         
         /// <summary>
+        /// Go directly to cash register (for checkout test mode)
+        /// </summary>
+        public void GoToCashRegister()
+        {
+            if (agent != null && cashRegisterPoint != null)
+            {
+                agent.enabled = true;
+                agent.isStopped = false;
+                agent.updateRotation = true;
+                agent.SetDestination(cashRegisterPoint.position);
+                currentState = CustomerState.WalkingToReception; // Use existing state for going to payment
+                
+                Debug.Log($"[CustomerController] {data.customerName} going directly to cash register");
+            }
+        }
+        
+        /// <summary>
         /// Navigate to a queue position while waiting, optionally via a waypoint
         /// </summary>
         public void GoToQueuePosition(Transform queuePos, Transform faceTarget = null, Transform waypoint = null)
@@ -1242,7 +1259,7 @@ namespace HairRemovalSim.Customer
             if (animator != null && animator.enabled)
             {
                 Debug.Log("Baked");
-                StartCoroutine(DelayedBakeMesh(1f));
+                StartCoroutine(DelayedBakeMesh(1.5f));
             }
             else
             {

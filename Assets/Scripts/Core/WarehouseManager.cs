@@ -195,6 +195,33 @@ namespace HairRemovalSim.Core
         }
         
         /// <summary>
+        /// Set slot data directly (for sync from external UI)
+        /// </summary>
+        public void SetSlot(int slotIndex, string itemId, int quantity)
+        {
+            if (slotIndex < 0 || slotIndex >= slots.Length) return;
+            
+            slots[slotIndex].itemId = itemId;
+            slots[slotIndex].quantity = quantity;
+            
+            OnSlotChanged?.Invoke(slotIndex);
+            OnWarehouseUpdated?.Invoke();
+        }
+        
+        /// <summary>
+        /// Clear a specific slot
+        /// </summary>
+        public void ClearSlot(int slotIndex)
+        {
+            if (slotIndex < 0 || slotIndex >= slots.Length) return;
+            
+            slots[slotIndex].Clear();
+            
+            OnSlotChanged?.Invoke(slotIndex);
+            OnWarehouseUpdated?.Invoke();
+        }
+        
+        /// <summary>
         /// Move items from one slot to another (or to shelf)
         /// Returns quantity actually moved
         /// </summary>

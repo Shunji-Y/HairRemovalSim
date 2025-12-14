@@ -150,7 +150,7 @@ GameObject:
   - component: {fileID: 9038739007106552480}
   - component: {fileID: 8958796173151253286}
   m_Layer: 0
-  m_Name: PurchaseButton
+  m_Name: AddToCartButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -270,7 +270,7 @@ GameObject:
   - component: {fileID: 1477702905950226053}
   - component: {fileID: 7018814652468062823}
   m_Layer: 0
-  m_Name: PurchaseText
+  m_Name: AddToCartText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -323,7 +323,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Purchase
+  m_text: Add To Cart
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -829,7 +829,7 @@ MonoBehaviour:
   quantityText: {fileID: 6150508281409366113}
   decreaseButton: {fileID: 298903750753829037}
   increaseButton: {fileID: 2177654886774165286}
-  purchaseButton: {fileID: 8958796173151253286}
+  addToCartButton: {fileID: 8958796173151253286}
 --- !u!1 &6957929576733715717
 GameObject:
   m_ObjectHideFlags: 0

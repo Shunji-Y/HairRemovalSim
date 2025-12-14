@@ -9,8 +9,9 @@ namespace HairRemovalSim.UI
     /// <summary>
     /// UI slot for extra items in reception panel (e.g., anesthesia cream)
     /// Can be dragged to the EXTRA ITEM drop target
+    /// Supports slot-to-slot movement
     /// </summary>
-    public class ExtraItemSlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler
+    public class ExtraItemSlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler, IPointerEnterHandler, IPointerExitHandler
     {
         [Header("UI References")]
         [SerializeField] private Image backgroundImage;
@@ -153,6 +154,56 @@ namespace HairRemovalSim.UI
             }
             
             DragSource = null;
+        }
+        
+        #endregion
+        
+        #region Drop Handler
+        
+        public void OnDrop(PointerEventData eventData)
+        {
+            // Handle drop from another ExtraItemSlotUI
+            var sameTypeSource = eventData.pointerDrag?.GetComponent<ExtraItemSlotUI>();
+            if (sameTypeSource != null && sameTypeSource != this && !sameTypeSource.IsEmpty)
+            {
+                HandleSameSlotDrop(sameTypeSource);
+            }
+        }
+        
+        private void HandleSameSlotDrop(ExtraItemSlotUI source)
+        {
+            string dropItemId = source.ItemId;
+            int qty = source.Quantity;
+            
+            // If this slot is empty or has same item, merge
+            if (IsEmpty || itemId == dropItemId)
+            {
+                itemId = dropItemId;
+                quantity += qty;
+                
+                source.itemId = null;
+                source.quantity = 0;
+                source.RefreshDisplay();
+                
+                RefreshDisplay();
+                Debug.Log($"[ExtraItemSlotUI] Moved {qty}x {dropItemId} from another slot");
+            }
+            // If different item, swap
+            else
+            {
+                string tempId = itemId;
+                int tempQty = quantity;
+                
+                itemId = dropItemId;
+                quantity = qty;
+                
+                source.itemId = tempId;
+                source.quantity = tempQty;
+                source.RefreshDisplay();
+                
+                RefreshDisplay();
+                Debug.Log($"[ExtraItemSlotUI] Swapped items between slots");
+            }
         }
         
         #endregion

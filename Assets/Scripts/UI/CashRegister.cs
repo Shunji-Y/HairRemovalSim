@@ -60,6 +60,13 @@ namespace HairRemovalSim.UI
 
         public void OnInteract(InteractionController interactor)
         {
+            // Block interaction if PaymentPanel is already open
+            if (PaymentPanel.Instance != null && PaymentPanel.Instance.IsOpen)
+            {
+                Debug.Log("[CashRegister] PaymentPanel is already open, ignoring interaction");
+                return;
+            }
+            
             // Process first customer in queue
             if (currentCustomer == null && customerQueue.Count > 0)
             {
@@ -95,18 +102,38 @@ namespace HairRemovalSim.UI
         {
             if (currentCustomer == null) return;
             
-            // Calculate payment based on completed requested parts only
-            int finalAmount = currentCustomer.CalculateFinalPayment();
-            
-            EconomyManager.Instance.AddMoney(finalAmount);
-            Debug.Log($"[CashRegister] {currentCustomer.data.customerName} paid ${finalAmount}");
-            
-            currentCustomer.LeaveShop();
-            
-            // Remove from processed set
-            processedCustomers.Remove(currentCustomer);
-            currentCustomer = null;
-            ProcessNextCustomer();
+            // Open PaymentPanel instead of direct payment
+            if (PaymentPanel.Instance != null)
+            {
+                PaymentPanel.Instance.Show(currentCustomer);
+            }
+            else
+            {
+                Debug.LogWarning("[CashRegister] PaymentPanel not found! Processing direct payment.");
+                
+                // Fallback: direct payment
+                int finalAmount = currentCustomer.CalculateFinalPayment();
+                EconomyManager.Instance.AddMoney(finalAmount);
+                Debug.Log($"[CashRegister] {currentCustomer.data.customerName} paid ${finalAmount}");
+                
+                currentCustomer.LeaveShop();
+                processedCustomers.Remove(currentCustomer);
+                currentCustomer = null;
+                ProcessNextCustomer();
+            }
+        }
+        
+        /// <summary>
+        /// Called by PaymentPanel when payment is processed (success or customer left)
+        /// </summary>
+        public void OnPaymentProcessed(CustomerController customer)
+        {
+            if (customer == currentCustomer)
+            {
+                processedCustomers.Remove(currentCustomer);
+                currentCustomer = null;
+                ProcessNextCustomer();
+            }
         }
         
         private void UpdateQueuePositions()

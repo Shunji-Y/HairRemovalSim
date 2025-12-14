@@ -28,6 +28,7 @@ namespace HairRemovalSim.Customer
         public TreatmentMachine confirmedMachine = TreatmentMachine.Shaver; // Machine confirmed at reception
         public bool useAnesthesiaCream = false;
         public int reviewPenalty = 0;
+        public int confirmedPrice = 0; // Price confirmed at reception
 
         public CustomerData()
         {

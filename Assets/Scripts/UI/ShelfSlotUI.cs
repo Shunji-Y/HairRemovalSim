@@ -160,6 +160,14 @@ namespace HairRemovalSim.UI
         
         public void OnDrop(PointerEventData eventData)
         {
+            // Handle drop from another ShelfSlotUI
+            var shelfSource = eventData.pointerDrag?.GetComponent<ShelfSlotUI>();
+            if (shelfSource != null && shelfSource != this && !shelfSource.IsEmpty)
+            {
+                HandleShelfToShelfDrop(shelfSource);
+                return;
+            }
+            
             // Handle drop from WarehouseSlotUI
             var warehouseSource = eventData.pointerDrag?.GetComponent<WarehouseSlotUI>();
             if (warehouseSource != null && !warehouseSource.IsEmpty)
@@ -167,12 +175,66 @@ namespace HairRemovalSim.UI
                 HandleWarehouseToShelfDrop(warehouseSource);
                 return;
             }
+        }
+        
+        /// <summary>
+        /// Handle drop from another ShelfSlotUI
+        /// </summary>
+        private void HandleShelfToShelfDrop(ShelfSlotUI source)
+        {
+            string dropItemId = source.ItemId;
+            int qty = source.Quantity;
             
-            // Handle drop from another ShelfSlotUI (return to warehouse)
-            if (dragSource != null && dragSource != this)
+            // If this slot is empty or has same item, merge
+            if (IsEmpty || currentItemId == dropItemId)
             {
-                // For shelf-to-shelf, we don't support direct move
-                // Items must go through warehouse
+                // Clear source first
+                if (source.LinkedShelf != null)
+                {
+                    source.LinkedShelf.RemoveFromSlot(source.Row, source.Col, qty);
+                }
+                
+                // Add to this slot
+                if (linkedShelf != null)
+                {
+                    linkedShelf.PlaceItem(row, col, dropItemId, qty);
+                }
+                
+                source.RefreshFromShelf();
+                RefreshFromShelf();
+                
+                Debug.Log($"[ShelfSlotUI] Moved {qty}x {dropItemId} from another shelf slot");
+            }
+            // If different item, swap
+            else
+            {
+                string tempId = currentItemId;
+                int tempQty = currentQuantity;
+                
+                // Clear both slots first
+                if (linkedShelf != null)
+                {
+                    linkedShelf.RemoveFromSlot(row, col, tempQty);
+                }
+                if (source.LinkedShelf != null)
+                {
+                    source.LinkedShelf.RemoveFromSlot(source.Row, source.Col, qty);
+                }
+                
+                // Place swapped items
+                if (linkedShelf != null)
+                {
+                    linkedShelf.PlaceItem(row, col, dropItemId, qty);
+                }
+                if (source.LinkedShelf != null)
+                {
+                    source.LinkedShelf.PlaceItem(source.Row, source.Col, tempId, tempQty);
+                }
+                
+                source.RefreshFromShelf();
+                RefreshFromShelf();
+                
+                Debug.Log($"[ShelfSlotUI] Swapped items between shelf slots");
             }
         }
         

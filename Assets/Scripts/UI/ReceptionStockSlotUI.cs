@@ -9,8 +9,9 @@ namespace HairRemovalSim.UI
     /// <summary>
     /// Reception desk stock slot in Warehouse UI
     /// Accepts drops from warehouse slots and syncs with ReceptionPanel ExtraItemSlots
+    /// Can drag items back to warehouse
     /// </summary>
-    public class ReceptionStockSlotUI : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPointerExitHandler
+    public class ReceptionStockSlotUI : MonoBehaviour, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler
     {
         [Header("UI References")]
         [SerializeField] private Image backgroundImage;
@@ -40,6 +41,15 @@ namespace HairRemovalSim.UI
         
         public void OnDrop(PointerEventData eventData)
         {
+            // Check for drop from same type (ReceptionStockSlotUI)
+            var sameTypeSource = eventData.pointerDrag?.GetComponent<ReceptionStockSlotUI>();
+            if (sameTypeSource != null && sameTypeSource != this && !sameTypeSource.IsEmpty)
+            {
+                HandleSameSlotDrop(sameTypeSource);
+                return;
+            }
+            
+            // Check for drop from WarehouseSlotUI
             var warehouseSource = eventData.pointerDrag?.GetComponent<WarehouseSlotUI>();
             if (warehouseSource == null || warehouseSource.IsEmpty) return;
             
@@ -78,6 +88,53 @@ namespace HairRemovalSim.UI
             SyncWithReceptionPanel();
             
             Debug.Log($"[ReceptionStockSlotUI] Added {qty}x {itemId}. Total: {quantity}");
+        }
+        
+        /// <summary>
+        /// Handle drop from another ReceptionStockSlotUI
+        /// </summary>
+        private void HandleSameSlotDrop(ReceptionStockSlotUI source)
+        {
+            string dropItemId = source.ItemId;
+            int qty = source.Quantity;
+            
+            // If this slot is empty or has same item, merge
+            if (IsEmpty || itemId == dropItemId)
+            {
+                itemId = dropItemId;
+                quantity += qty;
+                
+                // Clear source
+                source.itemId = null;
+                source.quantity = 0;
+                source.RefreshDisplay();
+                source.SyncWithReceptionPanel();
+                
+                RefreshDisplay();
+                SyncWithReceptionPanel();
+                
+                Debug.Log($"[ReceptionStockSlotUI] Moved {qty}x {dropItemId} from another slot");
+            }
+            // If different item, swap
+            else
+            {
+                string tempId = itemId;
+                int tempQty = quantity;
+                
+                itemId = dropItemId;
+                quantity = qty;
+                
+                source.itemId = tempId;
+                source.quantity = tempQty;
+                
+                source.RefreshDisplay();
+                source.SyncWithReceptionPanel();
+                
+                RefreshDisplay();
+                SyncWithReceptionPanel();
+                
+                Debug.Log($"[ReceptionStockSlotUI] Swapped items between slots");
+            }
         }
         
         private void RefreshDisplay()
@@ -149,5 +206,136 @@ namespace HairRemovalSim.UI
             RefreshDisplay();
             SyncWithReceptionPanel();
         }
+        
+        /// <summary>
+        /// Sync this stock slot FROM ReceptionPanel's ExtraItemSlot (called when warehouse panel opens)
+        /// This ensures Stock reflects the current state of Reception after operations
+        /// </summary>
+        public void SyncFromReceptionPanel()
+        {
+            if (ReceptionPanel.Instance != null)
+            {
+                var slots = ReceptionPanel.Instance.GetExtraItemSlots();
+                if (slots != null && syncSlotIndex >= 0 && syncSlotIndex < slots.Length)
+                {
+                    var extraSlot = slots[syncSlotIndex];
+                    if (extraSlot != null)
+                    {
+                        itemId = extraSlot.ItemId;
+                        quantity = extraSlot.Quantity;
+                        RefreshDisplay();
+                    }
+                }
+            }
+        }
+        
+        #region Drag to Warehouse
+        
+        private static GameObject dragIcon;
+        private Canvas rootCanvas;
+        
+        public void OnBeginDrag(PointerEventData eventData)
+        {
+            if (IsEmpty) return;
+            
+            if (rootCanvas == null)
+                rootCanvas = GetComponentInParent<Canvas>();
+            
+            var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
+            if (itemData == null || itemData.icon == null) return;
+            
+            dragIcon = new GameObject("DragIcon");
+            dragIcon.transform.SetParent(rootCanvas.transform, false);
+            
+            var img = dragIcon.AddComponent<Image>();
+            img.sprite = itemData.icon;
+            img.raycastTarget = false;
+            
+            var rt = dragIcon.GetComponent<RectTransform>();
+            rt.sizeDelta = new Vector2(60, 60);
+            
+            iconImage.color = new Color(1, 1, 1, 0.5f);
+        }
+        
+        public void OnDrag(PointerEventData eventData)
+        {
+            if (dragIcon == null) return;
+            
+            Vector2 pos;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                rootCanvas.transform as RectTransform,
+                eventData.position,
+                eventData.pressEventCamera,
+                out pos
+            );
+            dragIcon.transform.localPosition = pos;
+        }
+        
+        public void OnEndDrag(PointerEventData eventData)
+        {
+            if (dragIcon != null)
+            {
+                Destroy(dragIcon);
+                dragIcon = null;
+            }
+            
+            iconImage.color = Color.white;
+            
+            // Check if dropped on warehouse slot
+            var results = new System.Collections.Generic.List<RaycastResult>();
+            EventSystem.current.RaycastAll(eventData, results);
+            
+            foreach (var result in results)
+            {
+                var warehouseSlot = result.gameObject.GetComponent<WarehouseSlotUI>();
+                if (warehouseSlot != null)
+                {
+                    TransferToWarehouse(warehouseSlot);
+                    break;
+                }
+            }
+        }
+        
+        private void TransferToWarehouse(WarehouseSlotUI targetSlot)
+        {
+            if (IsEmpty || WarehouseManager.Instance == null) return;
+            
+            var slot = WarehouseManager.Instance.GetSlot(targetSlot.SlotIndex);
+            if (slot == null) return;
+            
+            var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
+            if (itemData == null) return;
+            
+            int maxStack = itemData.maxWarehouseStack;
+            
+            // If target is empty or has same item
+            if (slot.IsEmpty)
+            {
+                int toMove = Mathf.Min(quantity, maxStack);
+                slot.itemId = itemId;
+                slot.quantity = toMove;
+                quantity -= toMove;
+            }
+            else if (slot.itemId == itemId)
+            {
+                int space = maxStack - slot.quantity;
+                int toMove = Mathf.Min(quantity, space);
+                slot.quantity += toMove;
+                quantity -= toMove;
+            }
+            
+            if (quantity <= 0)
+            {
+                itemId = null;
+            }
+            
+            targetSlot.RefreshFromWarehouse();
+            RefreshDisplay();
+            SyncWithReceptionPanel();
+            
+            Debug.Log($"[ReceptionStockSlotUI] Transferred to warehouse slot {targetSlot.SlotIndex}");
+        }
+        
+        #endregion
     }
 }
