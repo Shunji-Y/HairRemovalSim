@@ -129,13 +129,27 @@ namespace HairRemovalSim.UI
         }
         
         /// <summary>
-        /// Clear the item
+        /// Clear the item (for confirm - item is consumed)
         /// </summary>
         public void Clear()
         {
+            Debug.Log($"[PaymentItemDropTarget] Clear called, had item: {currentItemId}");
             currentItemId = null;
             if (iconImage != null)
                 iconImage.enabled = false;
+        }
+        
+        /// <summary>
+        /// Return item to stock and clear (for ESC/Cancel - item is not consumed)
+        /// </summary>
+        public void ReturnToStockAndClear()
+        {
+            if (HasItem)
+            {
+                Debug.Log($"[PaymentItemDropTarget] Returning {currentItemId} to stock before clearing");
+                ReturnItemToCheckout(currentItemId);
+            }
+            Clear();
         }
         
         #region Drag back to CheckoutItemSlotUI

@@ -82,11 +82,11 @@ namespace HairRemovalSim.UI
         {
             if (!IsOpen) return;
             
-            // Close on ESC or right-click
+            // Close on ESC or right-click (cancel, not confirm)
             if (UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame ||
                 UnityEngine.InputSystem.Mouse.current.rightButton.wasPressedThisFrame)
             {
-                Hide();
+                Cancel();
             }
         }
         
@@ -117,8 +117,34 @@ namespace HairRemovalSim.UI
             Cursor.visible = true;
         }
         
+        /// <summary>
+        /// Cancel reception (ESC/right-click) - just close panel, keep DropItem
+        /// </summary>
+        public void Cancel()
+        {
+            Debug.Log($"[ReceptionPanel] Cancelled for {currentCustomer?.data?.customerName ?? "NULL"}");
+            
+            // Don't clear dropTarget - keep item there for next open
+            
+            if (panel != null) panel.SetActive(false);
+            currentCustomer = null;
+            
+            // Hide cursor
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+        
+        /// <summary>
+        /// Hide after confirm - item was consumed, don't return to stock
+        /// </summary>
         public void Hide()
         {
+            // Just clear display without returning item to slot (item was used)
+            if (extraItemDropTarget != null)
+            {
+                extraItemDropTarget.ClearWithoutReturn();
+            }
+            
             if (panel != null) panel.SetActive(false);
             currentCustomer = null;
             
@@ -144,8 +170,7 @@ namespace HairRemovalSim.UI
             if (shaverToggle != null) shaverToggle.SetIsOnWithoutNotify(true);
             if (laserToggle != null) laserToggle.SetIsOnWithoutNotify(false);
             
-            // Clear extra item drop target
-            if (extraItemDropTarget != null) extraItemDropTarget.Clear();
+            // Don't clear extra item drop target - keep it across panel opens
             
             if (confirmButton != null) confirmButton.interactable = false;
         }
@@ -227,8 +252,15 @@ namespace HairRemovalSim.UI
             if (priceTable.ShouldCustomerLeave(data.reviewPenalty))
             {
                 Debug.Log($"[ReceptionPanel] Customer {data.customerName} leaving due to penalty: {data.reviewPenalty}");
+                
+                // Don't clear dropTarget - keep item there
+                
                 currentCustomer.LeaveShop();
-                Hide();
+                
+                if (panel != null) panel.SetActive(false);
+                currentCustomer = null;
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
                 return;
             }
             

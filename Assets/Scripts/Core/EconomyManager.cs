@@ -5,7 +5,7 @@ namespace HairRemovalSim.Core
 {
     public class EconomyManager : Singleton<EconomyManager>
     {
-        public int CurrentMoney { get; private set; } = 10000; // Starting money
+        public int CurrentMoney { get; private set; } = 1000; // Starting money
         public int CurrentDebt { get; private set; } = 0;
         
         [Header("Fixed Costs (Every 3 Days)")]

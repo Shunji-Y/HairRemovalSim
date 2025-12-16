@@ -73,6 +73,7 @@ namespace HairRemovalSim.UI
                     itemId = null;
                 }
                 RefreshDisplay();
+                SyncToStockSlot(); // Keep CheckoutStockSlotUI in sync
             }
         }
         
@@ -86,6 +87,24 @@ namespace HairRemovalSim.UI
                 itemId = addItemId;
                 quantity++;
                 RefreshDisplay();
+                SyncToStockSlot(); // Keep CheckoutStockSlotUI in sync
+            }
+        }
+        
+        /// <summary>
+        /// Sync this slot's data to CheckoutStockSlotUI (Warehouse side)
+        /// </summary>
+        private void SyncToStockSlot()
+        {
+            // Find the corresponding CheckoutStockSlotUI
+            var stockSlots = FindObjectsOfType<CheckoutStockSlotUI>(true);
+            foreach (var stockSlot in stockSlots)
+            {
+                if (stockSlot.SyncSlotIndex == syncSlotIndex)
+                {
+                    stockSlot.SetFromCheckout(itemId, quantity);
+                    break;
+                }
             }
         }
         

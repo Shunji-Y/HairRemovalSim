@@ -313,33 +313,22 @@ namespace HairRemovalSim.Store
                 return;
             }
             
-            // Check if warehouse has space for all items
-            if (WarehouseManager.Instance != null)
-            {
-                foreach (var entry in cart.Values)
-                {
-                    if (!WarehouseManager.Instance.CanAddItem(entry.itemData.itemId, entry.quantity))
-                    {
-                        Debug.Log($"[StorePanel] Warehouse full for {entry.itemData.displayName}");
-                        return;
-                    }
-                }
-            }
-            
+            // Note: No warehouse space check for pending orders
+            // Items will be delivered next day and space will be checked then
             // Process purchase
             if (EconomyManager.Instance.SpendMoney(totalCost))
             {
-                // Add all items to warehouse
-                if (WarehouseManager.Instance != null)
+                // Add all items as pending orders (delivered next day)
+                if (InventoryManager.Instance != null)
                 {
                     foreach (var entry in cart.Values)
                     {
-                        int added = WarehouseManager.Instance.AddItem(entry.itemData.itemId, entry.quantity);
-                        Debug.Log($"[StorePanel] Purchased {added}x {entry.itemData.displayName}");
+                        InventoryManager.Instance.AddPendingOrder(entry.itemData, entry.quantity);
+                        Debug.Log($"[StorePanel] Ordered {entry.quantity}x {entry.itemData.displayName} (delivered tomorrow)");
                     }
                 }
                 
-                Debug.Log($"[StorePanel] Purchase complete! Total: ${totalCost}");
+                Debug.Log($"[StorePanel] Order placed! Total: ${totalCost} - Items will be delivered next day");
                 ClearCart();
             }
         }

@@ -7,7 +7,8 @@ namespace HairRemovalSim.Customer
     public class CustomerSpawner : MonoBehaviour
     {
         [Header("Spawn Settings")]
-        public GameObject customerPrefab;
+        [Tooltip("List of customer prefabs to spawn randomly")]
+        public List<GameObject> customerPrefabs = new List<GameObject>();
         public Transform spawnPoint;
         public Transform exitPoint;
         public Transform receptionPoint; // Pre-treatment reception
@@ -59,19 +60,28 @@ namespace HairRemovalSim.Customer
         
         private System.Collections.IEnumerator InitializePool()
         {
-            Debug.Log($"[CustomerSpawner] Initializing customer pool with {poolSize} customers...");
+            if (customerPrefabs.Count == 0)
+            {
+                Debug.LogError("[CustomerSpawner] No customer prefabs assigned!");
+                yield break;
+            }
+            
+            Debug.Log($"[CustomerSpawner] Initializing customer pool with {poolSize} customers from {customerPrefabs.Count} prefab(s)...");
             
             for (int i = 0; i < poolSize; i++)
             {
-                GameObject obj = Instantiate(customerPrefab, Vector3.zero, Quaternion.identity);
-                obj.name = $"Customer_Pooled_{i}";
+                // Select prefab sequentially (0, 1, 2, 0, 1, 2, ...)
+                GameObject prefab = customerPrefabs[i % customerPrefabs.Count];
+                
+                GameObject obj = Instantiate(prefab, Vector3.zero, Quaternion.identity);
+                obj.name = $"Customer_Pooled_{i}_{prefab.name}";
                 CustomerController customer = obj.GetComponent<CustomerController>();
                 
                 if (customer != null)
                 {
                     // IMPORTANT: Activate to trigger Start() and initialization
                     customer.gameObject.SetActive(true);
-                    Debug.Log($"[CustomerSpawner] Pre-initializing customer {i + 1}/{poolSize} (activated)...");
+                    Debug.Log($"[CustomerSpawner] Pre-initializing customer {i + 1}/{poolSize} from {prefab.name} (activated)...");
                     
                     // Wait for initialization to complete
                     while (!customer.isInitialized)
@@ -126,7 +136,7 @@ namespace HairRemovalSim.Customer
                     }
                     else
                     {
-                        Debug.Log($"[CustomerSpawner] Max customers reached ({activeCustomers.Count}/{maxCustomers}), waiting...");
+                        //Debug.Log($"[CustomerSpawner] Max customers reached ({activeCustomers.Count}/{maxCustomers}), waiting...");
                     }
                 }
             }
@@ -134,7 +144,10 @@ namespace HairRemovalSim.Customer
         
         private CustomerController GetFromPool()
         {
+            // Collect all available (inactive) customers
+            var availableCustomers = new List<CustomerController>();
             int activeCount = 0;
+            
             foreach (var customer in customerPool)
             {
                 if (customer.gameObject.activeInHierarchy)
@@ -143,9 +156,16 @@ namespace HairRemovalSim.Customer
                 }
                 else
                 {
-                    Debug.Log($"[CustomerSpawner] Retrieved {customer.name} from pool");
-                    return customer;
+                    availableCustomers.Add(customer);
                 }
+            }
+            
+            if (availableCustomers.Count > 0)
+            {
+                // Randomly select from available customers
+                var selected = availableCustomers[Random.Range(0, availableCustomers.Count)];
+                Debug.Log($"[CustomerSpawner] Randomly retrieved {selected.name} from pool ({availableCustomers.Count} available)");
+                return selected;
             }
             
             Debug.LogWarning($"[CustomerSpawner] No available customers in pool! All {activeCount}/{customerPool.Count} are active. Consider increasing pool size.");
@@ -174,7 +194,7 @@ namespace HairRemovalSim.Customer
 
         private void SpawnCustomer()
         {
-            if (customerPrefab == null || spawnPoint == null) return;
+            if (customerPrefabs.Count == 0 || spawnPoint == null) return;
 
             // Get customer from pool instead of Instantiate
             CustomerController customer = GetFromPool();

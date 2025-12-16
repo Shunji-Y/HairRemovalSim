@@ -22,6 +22,10 @@ namespace HairRemovalSim.UI
         [SerializeField] private Color normalColor = Color.white;
         [SerializeField] private Color highlightColor = new Color(0.8f, 1f, 0.8f);
         
+        [Header("Sync Settings")]
+        [Tooltip("Index to sync with ReceptionStockSlotUI")]
+        [SerializeField] private int syncSlotIndex = 0;
+        
         // Item data
         private string itemId;
         private int quantity;
@@ -34,6 +38,7 @@ namespace HairRemovalSim.UI
         public string ItemId => itemId;
         public int Quantity => quantity;
         public bool IsEmpty => string.IsNullOrEmpty(itemId) || quantity <= 0;
+        public int SyncSlotIndex => syncSlotIndex;
         
         private void Awake()
         {
@@ -48,6 +53,7 @@ namespace HairRemovalSim.UI
             itemId = id;
             quantity = qty;
             RefreshDisplay();
+            SyncToStockSlot();
         }
         
         /// <summary>
@@ -58,6 +64,7 @@ namespace HairRemovalSim.UI
             itemId = null;
             quantity = 0;
             RefreshDisplay();
+            SyncToStockSlot();
         }
         
         /// <summary>
@@ -69,6 +76,7 @@ namespace HairRemovalSim.UI
             {
                 quantity--;
                 RefreshDisplay();
+                SyncToStockSlot();
                 return true;
             }
             return false;
@@ -81,6 +89,23 @@ namespace HairRemovalSim.UI
         {
             quantity += amount;
             RefreshDisplay();
+            SyncToStockSlot();
+        }
+        
+        /// <summary>
+        /// Sync to ReceptionStockSlotUI
+        /// </summary>
+        private void SyncToStockSlot()
+        {
+            var stockSlots = FindObjectsOfType<ReceptionStockSlotUI>(true);
+            foreach (var stockSlot in stockSlots)
+            {
+                if (stockSlot.SyncSlotIndex == syncSlotIndex)
+                {
+                    stockSlot.SetFromExtraItem(itemId, quantity);
+                    break;
+                }
+            }
         }
         
         private void RefreshDisplay()

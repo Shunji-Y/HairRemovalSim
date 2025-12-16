@@ -46,12 +46,34 @@ namespace HairRemovalSim.Store
                 return;
             }
             
+            int totalOrders = pendingOrders.Count;
+            int delivered = 0;
+            
             foreach (var order in pendingOrders)
             {
-                AddItemById(order.Key, order.Value);
+                // Add items to WarehouseManager
+                if (WarehouseManager.Instance != null)
+                {
+                    int added = WarehouseManager.Instance.AddItem(order.Key, order.Value);
+                    if (added > 0)
+                    {
+                        delivered++;
+                        Debug.Log($"[InventoryManager] Delivered {added}x {order.Key}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[InventoryManager] Could not deliver {order.Value}x {order.Key} - warehouse full?");
+                    }
+                }
+                else
+                {
+                    // Fallback: add to internal inventory
+                    AddItemById(order.Key, order.Value);
+                    delivered++;
+                }
             }
             
-            Debug.Log($"[InventoryManager] Processed {pendingOrders.Count} orders - items delivered!");
+            Debug.Log($"[InventoryManager] Processed {delivered}/{totalOrders} orders - items delivered!");
             pendingOrders.Clear();
         }
         

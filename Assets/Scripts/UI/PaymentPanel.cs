@@ -39,6 +39,9 @@ namespace HairRemovalSim.UI
         [Header("Checkout Item Slots (synced from CheckoutStockSlotUI)")]
         [SerializeField] private CheckoutItemSlotUI[] checkoutItemSlots;
         
+        [Header("Item Drop Target")]
+        [SerializeField] private PaymentItemDropTarget itemDropTarget;
+        
         // Current state
         private CustomerController currentCustomer;
         private int treatmentFee;
@@ -115,6 +118,8 @@ namespace HairRemovalSim.UI
         {
             Debug.Log($"[PaymentPanel] Cancelled for {currentCustomer?.data?.customerName ?? "NULL"} - customer still at register");
             
+            // Don't clear dropTarget - keep item there for next open
+            
             if (panel != null)
                 panel.SetActive(false);
             
@@ -140,6 +145,12 @@ namespace HairRemovalSim.UI
             addedItemPrice = 0;
             addedItemReviewBonus = 0;
             addedItemId = null;
+            
+            // Clear the item drop target display (item was consumed)
+            if (itemDropTarget != null)
+            {
+                itemDropTarget.Clear();
+            }
             
             // Re-lock cursor
             Cursor.lockState = CursorLockMode.Locked;
@@ -305,6 +316,8 @@ namespace HairRemovalSim.UI
                 {
                     ShopManager.Instance.AddReview(finalReview, customerToProcess.GetPainMaxCount());
                 }
+                
+                // Don't clear dropTarget - keep item there
                 
                 // Notify CashRegister FIRST (before Hide clears currentCustomer)
                 OnPaymentComplete(customerToProcess, false);

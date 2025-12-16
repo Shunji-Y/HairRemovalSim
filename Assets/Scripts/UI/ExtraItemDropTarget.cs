@@ -77,6 +77,16 @@ namespace HairRemovalSim.UI
             RefreshDisplay();
         }
         
+        /// <summary>
+        /// Clear the drop target WITHOUT returning item to source (item was consumed)
+        /// </summary>
+        public void ClearWithoutReturn()
+        {
+            currentItemId = null;
+            sourceSlot = null;
+            RefreshDisplay();
+        }
+        
         private void RefreshDisplay()
         {
             if (HasItem)

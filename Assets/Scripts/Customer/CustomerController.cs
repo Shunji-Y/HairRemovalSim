@@ -1428,7 +1428,7 @@ namespace HairRemovalSim.Customer
             SetClothingVisible(false);
 
             yield return new WaitForSeconds(delay);
-            OnLieDownComplete();
+          //  OnLieDownComplete();
         }
 
         public void OnHoverEnter() { }

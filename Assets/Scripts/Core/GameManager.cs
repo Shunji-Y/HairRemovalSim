@@ -29,7 +29,20 @@ namespace HairRemovalSim.Core
 
         private void Start()
         {
+            // Subscribe to loan game over event
+            if (LoanManager.Instance != null)
+            {
+                LoanManager.Instance.OnGameOverDueToDebt += OnLoanGameOver;
+            }
+            
             StartPreparation();
+        }
+        
+        private void OnLoanGameOver()
+        {
+            Debug.Log("[GameManager] GAME OVER - Debt collection!");
+            // TODO: Show game over screen
+            CurrentState = GameState.Preparation;
         }
 
         private void Update()
@@ -48,6 +61,27 @@ namespace HairRemovalSim.Core
             
             GameEvents.TriggerDayChanged(DayCount);
             GameEvents.TriggerTimeUpdated(0f); // 9:00 AM
+            
+            // Process unpaid loans (mark as overdue if past due)
+            if (LoanManager.Instance != null)
+            {
+                LoanManager.Instance.ProcessDayStart(DayCount);
+            }
+            
+            // Process rent (check for overdue)
+            if (RentManager.Instance != null)
+            {
+                RentManager.Instance.ProcessDayStart(DayCount);
+            }
+            
+            // Refresh payment panel
+            bool hasLoans = LoanManager.Instance != null && LoanManager.Instance.HasPaymentsDue();
+            bool hasRent = RentManager.Instance != null && RentManager.Instance.HasPendingPayment(DayCount);
+            
+            if (hasLoans || hasRent)
+            {
+                UI.PaymentListPanel.Instance?.RefreshDisplay();
+            }
         }
 
         public void OpenShop()

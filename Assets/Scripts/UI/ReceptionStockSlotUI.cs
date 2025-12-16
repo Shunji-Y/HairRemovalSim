@@ -33,10 +33,22 @@ namespace HairRemovalSim.UI
         public string ItemId => itemId;
         public int Quantity => quantity;
         public bool IsEmpty => string.IsNullOrEmpty(itemId) || quantity <= 0;
+        public int SyncSlotIndex => syncSlotIndex;
         
         private void Start()
         {
             RefreshDisplay();
+        }
+        
+        /// <summary>
+        /// Set from ExtraItemSlotUI (called when extra item slot changes)
+        /// </summary>
+        public void SetFromExtraItem(string id, int qty)
+        {
+            itemId = id;
+            quantity = qty;
+            RefreshDisplay();
+            Debug.Log($"[ReceptionStockSlotUI] Synced from extra item: {id} x{qty}");
         }
         
         public void OnDrop(PointerEventData eventData)
