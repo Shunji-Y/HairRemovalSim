@@ -39,6 +39,9 @@ namespace HairRemovalSim.UI
         private System.Action onPaymentMade;
         private bool isPrepaymentMode = false;
         
+        // Shorthand for localization
+        private LocalizationManager L => LocalizationManager.Instance;
+        
         private void Awake()
         {
             if (payButton != null)
@@ -46,6 +49,19 @@ namespace HairRemovalSim.UI
             
             if (prepaymentToggle != null)
                 prepaymentToggle.onValueChanged.AddListener(OnPrepaymentToggleChanged);
+        }
+        
+        private void OnEnable()
+        {
+            // Subscribe to locale changes
+            if (L != null)
+                L.OnLocaleChanged += RefreshDisplay;
+        }
+        
+        private void OnDisable()
+        {
+            if (L != null)
+                L.OnLocaleChanged -= RefreshDisplay;
         }
         
         public void Setup(LoanPaymentCard paymentCard, int day, System.Action callback)
@@ -82,7 +98,7 @@ namespace HairRemovalSim.UI
         {
             if (card == null) return;
             
-            // Loan name
+            // Loan name (not localized - uses LoanData.displayName)
             if (loanNameText != null)
                 loanNameText.text = card.parentLoan.loanData.displayName;
             
@@ -92,11 +108,11 @@ namespace HairRemovalSim.UI
                 if (isPrepaymentMode)
                 {
                     int remaining = card.parentLoan.termDays - card.parentLoan.paidDays;
-                    dayInfoText.text = $"Prepay ({remaining} days left)";
+                    dayInfoText.text = L?.Get("loan.prepay_days", remaining) ?? $"Prepay ({remaining} days left)";
                 }
                 else
                 {
-                    dayInfoText.text = $"Today: ${card.TotalAmount:N0}";
+                    dayInfoText.text = L?.Get("loan.today_amount", card.TotalAmount) ?? $"Today: ${card.TotalAmount:N0}";
                 }
             }
             
@@ -111,7 +127,7 @@ namespace HairRemovalSim.UI
             
             int paymentAmount = isPrepaymentMode ? prepaymentAmount : normalPayment;
             
-            // Amount display
+            // Amount display (numbers don't need localization, just formatting)
             if (amountText != null)
             {
                 if (isPrepaymentMode)
@@ -134,19 +150,19 @@ namespace HairRemovalSim.UI
             {
                 if (isPrepaymentMode)
                 {
-                    deadlineText.text = "Full Payment";
+                    deadlineText.text = L?.Get("loan.full_payment") ?? "Full Payment";
                 }
                 else if (card.isOverdue)
                 {
-                    deadlineText.text = "<color=red>Overdue</color>";
+                    deadlineText.text = $"<color=red>{L?.Get("loan.overdue") ?? "Overdue"}</color>";
                 }
                 else if (daysUntilDue == 0)
                 {
-                    deadlineText.text = "<color=orange>Due: Today</color>";
+                    deadlineText.text = $"<color=orange>{L?.Get("loan.due_today") ?? "Due: Today"}</color>";
                 }
                 else
                 {
-                    deadlineText.text = $"Due: {daysUntilDue} days";
+                    deadlineText.text = L?.Get("loan.due_days", daysUntilDue) ?? $"Due: {daysUntilDue} days";
                 }
             }
             
@@ -160,13 +176,17 @@ namespace HairRemovalSim.UI
                     int fee = LoanManager.Instance?.GetPrepaymentFee(card.parentLoan) ?? 0;
                     int lateFees = LoanManager.Instance?.GetAccumulatedLateFees(card.parentLoan) ?? 0;
                     
+                    string principal = L?.Get("loan.principal") ?? "Principal";
+                    string feeLabel = L?.Get("loan.fee") ?? "Fee";
+                    string lateLabel = L?.Get("loan.late") ?? "Late";
+                    
                     if (lateFees > 0)
                     {
-                        statusText.text = $"Principal: ${remainingPrincipal:N0} + Fee: ${fee:N0} + <color=red>Late: ${lateFees:N0}</color>";
+                        statusText.text = $"{principal}: ${remainingPrincipal:N0} + {feeLabel}: ${fee:N0} + <color=red>{lateLabel}: ${lateFees:N0}</color>";
                     }
                     else
                     {
-                        statusText.text = $"Principal: ${remainingPrincipal:N0} + Fee: ${fee:N0}";
+                        statusText.text = $"{principal}: ${remainingPrincipal:N0} + {feeLabel}: ${fee:N0}";
                     }
                     statusText.gameObject.SetActive(true);
                 }
@@ -174,11 +194,11 @@ namespace HairRemovalSim.UI
                 {
                     if (card.lateFee > 0)
                     {
-                        statusText.text = $"<color=red>⚠ Late Fee: ${card.lateFee:N0}</color>";
+                        statusText.text = $"<color=red>⚠ {L?.Get("loan.late_fee", card.lateFee) ?? $"Late Fee: ${card.lateFee:N0}"}</color>";
                     }
                     else
                     {
-                        statusText.text = "<color=red>⚠ Overdue</color>";
+                        statusText.text = $"<color=red>⚠ {L?.Get("loan.overdue") ?? "Overdue"}</color>";
                     }
                     statusText.gameObject.SetActive(true);
                 }
@@ -215,24 +235,25 @@ namespace HairRemovalSim.UI
             {
                 if (isPrepaymentMode)
                 {
-                    payButtonText.text = $"Pay All (${prepaymentAmount:N0})";
+                    payButtonText.text = L?.Get("loan.pay_all", prepaymentAmount) ?? $"Pay All (${prepaymentAmount:N0})";
                 }
                 else
                 {
-                    payButtonText.text = $"Pay Now (${normalPayment:N0})";
+                    payButtonText.text = L?.Get("loan.pay_now", normalPayment) ?? $"Pay Now (${normalPayment:N0})";
                 }
             }
             
             // Prepayment info
             if (prepaymentInfoText != null)
             {
+                string prepayLabel = L?.Get("loan.prepay") ?? "Prepay";
                 if (isPrepaymentMode)
                 {
-                    prepaymentInfoText.text = "▽ Prepay";
+                    prepaymentInfoText.text = $"▽ {prepayLabel}";
                 }
                 else
                 {
-                    prepaymentInfoText.text = "△ Prepay";
+                    prepaymentInfoText.text = $"△ {prepayLabel}";
                 }
             }
         }

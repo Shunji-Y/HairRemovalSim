@@ -33,6 +33,9 @@ namespace HairRemovalSim.UI
         
         public bool IsOpen => panel != null && panel.activeSelf;
         
+        // Shorthand for localization
+        private LocalizationManager L => LocalizationManager.Instance;
+        
         private void Awake()
         {
             Instance = this;
@@ -52,12 +55,18 @@ namespace HairRemovalSim.UI
             
             RefreshDisplay();
             
+            // Subscribe to locale changes
+            if (L != null)
+                L.OnLocaleChanged += RefreshDisplay;
+            
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
         
         private void OnDisable()
         {
+            if (L != null)
+                L.OnLocaleChanged -= RefreshDisplay;
             // Don't hide cursor here - PCUIManager handles cursor visibility
             // when switching between PC apps or closing PC
         }
@@ -104,7 +113,8 @@ namespace HairRemovalSim.UI
                 if (overdueCount > 0)
                 {
                     int maxCards = LoanManager.Instance?.MaxOverdueCards ?? 3;
-                    warningText.text = $"<color=red>⚠ Overdue ({overdueCount}/{maxCards})</color>";
+                    string warningStr = L?.Get("ui.overdue_warning", overdueCount, maxCards) ?? $"⚠ Overdue ({overdueCount}/{maxCards})";
+                    warningText.text = $"<color=red>{warningStr}</color>";
                     warningText.gameObject.SetActive(true);
                 }
                 else
@@ -115,7 +125,7 @@ namespace HairRemovalSim.UI
             
             // Update total
             if (totalDueText != null)
-                totalDueText.text = $"Total: ${totalDue:N0}";
+                totalDueText.text = L?.Get("ui.total", totalDue) ?? $"Total: ${totalDue:N0}";
             
             // Update pay all button
             if (payAllButton != null)

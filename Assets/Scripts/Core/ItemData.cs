@@ -33,7 +33,7 @@ namespace HairRemovalSim.Core
         // ==========================================
         // 【施術用ツール】Treatment Tool Settings
         // ==========================================
-        [Header("【施術用ツール】")]
+        [Header("【施術用ツール - 基本】")]
         [Tooltip("Which hand holds this item")]
         public ToolBase.HandType handType = ToolBase.HandType.RightHand;
         
@@ -45,6 +45,38 @@ namespace HairRemovalSim.Core
         
         [Tooltip("Maximum durability (0 = infinite)")]
         public float maxDurability = 0f;
+        
+        // ==========================================
+        // 【施術ツール性能】Treatment Tool Performance
+        // ==========================================
+        [Header("【施術用ツール - 性能】")]
+        [Tooltip("Type of treatment tool")]
+        public TreatmentToolType toolType = TreatmentToolType.None;
+        
+        [Tooltip("Target body area for this tool")]
+        public ToolTargetArea targetArea = ToolTargetArea.Body;
+        
+        [Tooltip("Effect range (small=0.5, normal=1.0, wide=2.0, ultra=5.0)")]
+        [Range(0.1f, 10f)]
+        public float effectRange = 1.0f;
+        
+        [Tooltip("Hair removal effectiveness (0-100%)")]
+        [Range(0f, 100f)]
+        public float hairRemovalRate = 100f;
+        
+        [Tooltip("Pain level caused (0=none, 1=max pain)")]
+        [Range(0f, 1f)]
+        public float painLevel = 0f;
+        
+        [Tooltip("Fire rate multiplier (0.5=slow, 1=normal, 2=fast, -1=continuous)")]
+        public float fireRate = 1f;
+        
+        [Tooltip("Does this tool require hair to be shaved first?")]
+        public bool requiresShaving = false;
+        
+        [Tooltip("Maximum hair length this tool can handle (0=any length)")]
+        [Range(0f, 1f)]
+        public float maxHairLengthForUse = 0f;
         
         // ==========================================
         // 【消耗品】Consumable / Shelf Settings
@@ -87,9 +119,9 @@ namespace HairRemovalSim.Core
         public int upsellPrice = 0;
         
         // ==========================================
-        // 【その他】Store / Other Settings
+        // 【ストア・購入】Store / Purchase Settings
         // ==========================================
-        [Header("【その他】")]
+        [Header("【ストア・購入】")]
         [Tooltip("Description shown in store UI")]
         [TextArea(2, 4)]
         public string storeDescription;
@@ -103,17 +135,66 @@ namespace HairRemovalSim.Core
         [Tooltip("Is this item available in the store?")]
         public bool availableInStore = true;
         
+        [Tooltip("Required shop grade to unlock this item (1-10)")]
+        [Range(1, 10)]
+        public int requiredShopGrade = 1;
+        
         [Tooltip("Category for sorting/filtering")]
         public ItemCategory category = ItemCategory.Tool;
         
-        // Helper properties
+        // ==========================================
+        // Helper Properties
+        // ==========================================
         public bool IsHoldable => handType != ToolBase.HandType.None;
         public bool HasDurability => maxDurability > 0f;
+        public bool IsTreatmentTool => toolType != TreatmentToolType.None;
+        public bool IsShaver => toolType == TreatmentToolType.Shaver;
+        public bool IsLaser => toolType == TreatmentToolType.Laser;
+        
+        /// <summary>
+        /// Check if this tool can be used on hair of given length
+        /// </summary>
+        public bool CanUseOnHairLength(float hairLength)
+        {
+            // If maxHairLengthForUse is 0, can use on any length
+            if (maxHairLengthForUse <= 0f) return true;
+            return hairLength <= maxHairLengthForUse;
+        }
+        
+        /// <summary>
+        /// Check if this item is unlocked for the given shop grade
+        /// </summary>
+        public bool IsUnlockedForGrade(int shopGrade)
+        {
+            return shopGrade >= requiredShopGrade;
+        }
+    }
+    
+    /// <summary>
+    /// Type of treatment tool
+    /// </summary>
+    public enum TreatmentToolType
+    {
+        None,       // Not a treatment tool
+        Shaver,     // シェーバー
+        Laser,      // レーザー
+        Other       // その他
+    }
+    
+    /// <summary>
+    /// Target body area for treatment tools
+    /// </summary>
+    public enum ToolTargetArea
+    {
+        Body,       // 体用
+        Face,       // ひげ用/顔用
+        All         // 全身対応
     }
     
     public enum ItemCategory
     {
-        Tool,           // 施術用ツール
+        Tool,           // 施術用ツール（旧式の分類）
+        TreatmentTool,  // 施術用ツール（レーザー、シェーバー等）
         Consumable,     // 消耗品（ジェル等）
         Furniture,      // 家具
         Upgrade,        // アップグレード

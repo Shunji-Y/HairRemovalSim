@@ -247,6 +247,22 @@ namespace HairRemovalSim.UI
         }
         
         /// <summary>
+        /// Convert mood level to star rating (1-5)
+        /// </summary>
+        private int GetStarsFromMood(MoodLevel mood)
+        {
+            return mood switch
+            {
+                MoodLevel.VeryAngry => 1,
+                MoodLevel.Angry => 2,
+                MoodLevel.Neutral => 3,
+                MoodLevel.Happy => 4,
+                MoodLevel.VeryHappy => 5,
+                _ => 3
+            };
+        }
+        
+        /// <summary>
         /// Update mood icon based on level
         /// </summary>
         private void UpdateMoodIcon(MoodLevel mood)
@@ -315,6 +331,9 @@ namespace HairRemovalSim.UI
                 if (ShopManager.Instance != null)
                 {
                     ShopManager.Instance.AddReview(finalReview, customerToProcess.GetPainMaxCount());
+                    // Add customer review for review panel
+                    int stars = GetStarsFromMood(GetMoodFromReview(finalReview));
+                    ShopManager.Instance.AddCustomerReview(stars);
                 }
                 
                 // Don't clear dropTarget - keep item there
@@ -334,6 +353,9 @@ namespace HairRemovalSim.UI
             if (ShopManager.Instance != null)
             {
                 ShopManager.Instance.AddReview(finalReview, customerToProcess.GetPainMaxCount());
+                // Add customer review for review panel
+                int stars = GetStarsFromMood(GetMoodFromReview(finalReview));
+                ShopManager.Instance.AddCustomerReview(stars);
             }
             
             Debug.Log($"[PaymentPanel] {data.customerName} paid ${totalAmount}, review: {finalReview}");

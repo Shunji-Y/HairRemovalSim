@@ -35,6 +35,9 @@ namespace HairRemovalSim.UI
         
         public bool IsOpen => panel != null && panel.activeSelf;
         
+        // Shorthand for localization
+        private LocalizationManager L => LocalizationManager.Instance;
+        
         private void Awake()
         {
             Instance = this;
@@ -80,7 +83,7 @@ namespace HairRemovalSim.UI
             
             // Update title
             if (titleText != null)
-                titleText.text = $"Day {currentDay} - Loan Payment";
+                titleText.text = $"Day {currentDay} - {L?.Get("ui.loan_payment") ?? "Loan Payment"}";
             
             // Show warning if overdue
             int overdueCount = LoanManager.Instance.GetOverdueCount();
@@ -88,7 +91,7 @@ namespace HairRemovalSim.UI
             {
                 if (overdueCount > 0)
                 {
-                    overdueWarningText.text = $"⚠ {overdueCount} overdue payment(s)!";
+                    overdueWarningText.text = L?.Get("ui.overdue_count", overdueCount) ?? $"⚠ {overdueCount} overdue payment(s)!";
                     overdueWarningText.gameObject.SetActive(true);
                 }
                 else

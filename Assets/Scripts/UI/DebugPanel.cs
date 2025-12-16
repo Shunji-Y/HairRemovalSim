@@ -43,6 +43,12 @@ namespace HairRemovalSim.UI
         [SerializeField] private Button spawnCustomerButton;
         [SerializeField] private Button clearCustomersButton;
         
+        [Header("Review Controls")]
+        [SerializeField] private Button addReview1StarButton;
+        [SerializeField] private Button addReview3StarButton;
+        [SerializeField] private Button addReview5StarButton;
+        [SerializeField] private Button addReviewScoreButton;
+        
         private float timeScale = 1f;
         
         public bool IsOpen => panel != null && panel.activeSelf;
@@ -129,6 +135,16 @@ namespace HairRemovalSim.UI
                 spawnCustomerButton.onClick.AddListener(SpawnCustomer);
             if (clearCustomersButton != null)
                 clearCustomersButton.onClick.AddListener(ClearCustomers);
+            
+            // Reviews
+            if (addReview1StarButton != null)
+                addReview1StarButton.onClick.AddListener(() => AddReview(1));
+            if (addReview3StarButton != null)
+                addReview3StarButton.onClick.AddListener(() => AddReview(3));
+            if (addReview5StarButton != null)
+                addReview5StarButton.onClick.AddListener(() => AddReview(5));
+            if (addReviewScoreButton != null)
+                addReviewScoreButton.onClick.AddListener(AddReviewScore);
         }
         
         private void UpdateStatus()
@@ -220,6 +236,35 @@ namespace HairRemovalSim.UI
             Debug.Log("[DebugPanel] Overdue status reset");
         }
         
+        // === REVIEWS ===
+        private void AddReview(int stars)
+        {
+            if (ShopManager.Instance == null) return;
+            
+            // Add customer review (with template)
+            ShopManager.Instance.AddCustomerReview(stars);
+            
+            // Also add score based on stars
+            int scoreChange = (stars - 3) * 100; // 1★=-200, 3★=0, 5★=+200
+            AddReviewScoreInternal(scoreChange);
+            
+            Debug.Log($"[DebugPanel] Added {stars}-star review");
+        }
+        
+        private void AddReviewScore()
+        {
+            AddReviewScoreInternal(200);
+            Debug.Log("[DebugPanel] Added +200 review score");
+        }
+        
+        private void AddReviewScoreInternal(int amount)
+        {
+            if (ShopManager.Instance == null) return;
+            
+            // Use reflection or direct field access - need to add a method to ShopManager
+            ShopManager.Instance.AddReviewScore(amount);
+        }
+        
         // === UI ===
         private void OpenPC()
         {
@@ -284,7 +329,7 @@ namespace HairRemovalSim.UI
         }
         
 #if UNITY_EDITOR
-        [ContextMenu("Generate UI Structure")]
+      //  [ContextMenu("Generate UI Structure")]
         private void GenerateUIStructure()
         {
             Color bgColor = new Color(0.1f, 0.1f, 0.1f, 0.95f);

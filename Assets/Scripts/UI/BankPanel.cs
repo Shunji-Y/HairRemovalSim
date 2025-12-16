@@ -40,6 +40,9 @@ namespace HairRemovalSim.UI
         
         public bool IsOpen => panel != null && panel.activeSelf;
         
+        // Shorthand for localization
+        private LocalizationManager L => LocalizationManager.Instance;
+        
         private void Awake()
         {
             Instance = this;
@@ -121,7 +124,7 @@ namespace HairRemovalSim.UI
             if (currentLoansText != null)
                 currentLoansText.text = $"${totalDebt:N0}";
             if (totalDebtText != null)
-                totalDebtText.text = $"Active Loans: {activeCount}";
+                totalDebtText.text = L?.Get("ui.active_loans", activeCount) ?? $"Active Loans: {activeCount}";
             
             // Refresh loan cards
             RefreshLoanCards();
@@ -205,7 +208,7 @@ namespace HairRemovalSim.UI
             }
             
             if (termText != null)
-                termText.text = $"Term: {selectedLoan.termDays} days";
+                termText.text = L?.Get("loan.term", selectedLoan.termDays) ?? $"Term: {selectedLoan.termDays} days";
             
             OnAmountChanged(amountSlider != null ? amountSlider.value : selectedLoan.maxAmount);
         }
@@ -223,9 +226,9 @@ namespace HairRemovalSim.UI
             int totalRepayment = selectedLoan.CalculateTotalRepayment(amount);
             
             if (dailyPaymentText != null)
-                dailyPaymentText.text = $"Daily: ${dailyPayment:N0}";
+                dailyPaymentText.text = L?.Get("loan.daily", dailyPayment) ?? $"Daily: ${dailyPayment:N0}";
             if (totalRepaymentText != null)
-                totalRepaymentText.text = $"Total: ${totalRepayment:N0}";
+                totalRepaymentText.text = L?.Get("loan.total", totalRepayment) ?? $"Total: ${totalRepayment:N0}";
         }
         
         private void CloseApplicationDialog()

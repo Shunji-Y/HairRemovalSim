@@ -29,10 +29,25 @@ namespace HairRemovalSim.UI
         private int currentDay;
         private System.Action onPaymentMade;
         
+        // Shorthand for localization
+        private LocalizationManager L => LocalizationManager.Instance;
+        
         private void Awake()
         {
             if (payButton != null)
                 payButton.onClick.AddListener(OnPayClicked);
+        }
+        
+        private void OnEnable()
+        {
+            if (L != null)
+                L.OnLocaleChanged += RefreshDisplay;
+        }
+        
+        private void OnDisable()
+        {
+            if (L != null)
+                L.OnLocaleChanged -= RefreshDisplay;
         }
         
         public void Setup(LoanPaymentCard paymentCard, System.Action callback)
@@ -78,15 +93,15 @@ namespace HairRemovalSim.UI
             {
                 if (card.isOverdue)
                 {
-                    deadlineText.text = "<color=red>Overdue</color>";
+                    deadlineText.text = $"<color=red>{L?.Get("loan.overdue") ?? "Overdue"}</color>";
                 }
                 else if (daysUntilDue == 0)
                 {
-                    deadlineText.text = "<color=orange>Due: Today</color>";
+                    deadlineText.text = $"<color=orange>{L?.Get("loan.due_today") ?? "Due: Today"}</color>";
                 }
                 else
                 {
-                    deadlineText.text = $"Due: {daysUntilDue} days";
+                    deadlineText.text = L?.Get("loan.due_days", daysUntilDue) ?? $"Due: {daysUntilDue} days";
                 }
             }
             
@@ -98,11 +113,11 @@ namespace HairRemovalSim.UI
                 {
                     if (card.lateFee > 0)
                     {
-                        statusText.text = $"<color=red>⚠ Overdue (Late Fee: ${card.lateFee:N0})</color>";
+                        statusText.text = $"<color=red>⚠ {L?.Get("loan.late_fee", card.lateFee) ?? $"Late Fee: ${card.lateFee:N0}"}</color>";
                     }
                     else
                     {
-                        statusText.text = "<color=red>⚠ Overdue</color>";
+                        statusText.text = $"<color=red>⚠ {L?.Get("loan.overdue") ?? "Overdue"}</color>";
                     }
                 }
             }
@@ -121,7 +136,7 @@ namespace HairRemovalSim.UI
             }
             if (payButtonText != null)
             {
-                payButtonText.text = $"Pay Now (${card.TotalAmount:N0})";
+                payButtonText.text = L?.Get("loan.pay_now", card.TotalAmount) ?? $"Pay Now (${card.TotalAmount:N0})";
             }
         }
         

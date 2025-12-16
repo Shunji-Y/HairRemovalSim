@@ -26,28 +26,29 @@ namespace HairRemovalSim.UI
         
         private LoanData loanData;
         private System.Action<LoanData> onApplyCallback;
+        private bool isActive;
         
-        public void Setup(LoanData data, bool isActive, System.Action<LoanData> onApply)
+        // Shorthand for localization
+        private LocalizationManager L => LocalizationManager.Instance;
+        
+        private void OnEnable()
+        {
+            if (L != null)
+                L.OnLocaleChanged += RefreshDisplay;
+        }
+        
+        private void OnDisable()
+        {
+            if (L != null)
+                L.OnLocaleChanged -= RefreshDisplay;
+        }
+        
+        public void Setup(LoanData data, bool active, System.Action<LoanData> onApply)
         {
             loanData = data;
+            isActive = active;
             onApplyCallback = onApply;
             
-            if (iconImage != null && data.icon != null)
-                iconImage.sprite = data.icon;
-            
-            if (nameText != null)
-                nameText.text = data.displayName;
-            
-            if (maxAmountText != null)
-                maxAmountText.text = $"Max: ${data.maxAmount:N0}";
-            
-            if (interestRateText != null)
-                interestRateText.text = $"Rate: {data.dailyInterestRate * 100:F2}%/day";
-            
-            if (termText != null)
-                termText.text = $"Term: {data.termDays} days";
-            
-            // Update button state
             if (applyButton != null)
             {
                 applyButton.interactable = !isActive;
@@ -55,8 +56,37 @@ namespace HairRemovalSim.UI
                 applyButton.onClick.AddListener(OnApplyClicked);
             }
             
+            RefreshDisplay();
+        }
+        
+        private void RefreshDisplay()
+        {
+            if (loanData == null) return;
+            
+            if (iconImage != null && loanData.icon != null)
+                iconImage.sprite = loanData.icon;
+            
+            if (nameText != null)
+                nameText.text = loanData.displayName;
+            
+            if (maxAmountText != null)
+                maxAmountText.text = L?.Get("loan.max", loanData.maxAmount) ?? $"Max: ${loanData.maxAmount:N0}";
+            
+            if (interestRateText != null)
+            {
+                float rate = loanData.dailyInterestRate * 100;
+                interestRateText.text = L?.Get("loan.rate", rate.ToString("F2")) ?? $"Rate: {rate:F2}%/day";
+            }
+            
+            if (termText != null)
+                termText.text = L?.Get("loan.term", loanData.termDays) ?? $"Term: {loanData.termDays} days";
+            
             if (buttonText != null)
-                buttonText.text = isActive ? "Active" : "Apply";
+            {
+                string activeText = L?.Get("loan.active") ?? "Active";
+                string applyText = L?.Get("loan.apply") ?? "Apply";
+                buttonText.text = isActive ? activeText : applyText;
+            }
             
             if (backgroundImage != null)
                 backgroundImage.color = isActive ? activeColor : normalColor;

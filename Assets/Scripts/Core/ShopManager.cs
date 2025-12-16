@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace HairRemovalSim.Core
 {
@@ -12,15 +13,24 @@ namespace HairRemovalSim.Core
     {
         [Header("Review System")]
         [SerializeField] private int reviewScore = 0; // 0=★1, 1000=★2, 2000=★3, 3000=★4, 4000=★5
+        [SerializeField] private ReviewTemplates reviewTemplates;
+        
         public const int REVIEW_PER_STAR = 1000;
         public const int MAX_STARS = 5;
         public const int PAIN_MAX_PENALTY = 25;
+        
+        // Review history
+        private List<CustomerReview> reviewHistory = new List<CustomerReview>();
         
         [Header("Store Info")]
         [SerializeField] private int storeLevel = 1;
         
         [Header("Staff (Placeholder)")]
         [SerializeField] private int staffCount = 0;
+        
+        // Events
+        public System.Action<CustomerReview> OnReviewAdded;
+        public System.Action<int, int> OnStarRatingChanged; // old, new
         
         /// <summary>
         /// Current review score (0-4000+)
@@ -53,24 +63,84 @@ namespace HairRemovalSim.Core
         }
         
         /// <summary>
-        /// Add review points from completed treatment
+        /// Get all reviews (newest first)
+        /// </summary>
+        public IReadOnlyList<CustomerReview> Reviews => reviewHistory;
+        
+        /// <summary>
+        /// Get review templates asset
+        /// </summary>
+        public ReviewTemplates Templates => reviewTemplates;
+        
+        /// <summary>
+        /// Add review from customer satisfaction (1-5 stars)
+        /// Note: This only adds the review to history. Score is updated separately by AddReview().
+        /// </summary>
+        public void AddCustomerReview(int stars)
+        {
+            stars = Mathf.Clamp(stars, 1, 5);
+            
+            // Get localization key prefix for this star rating
+            string keyPrefix = $"review.{stars}star.default";
+            int iconIndex = 0;
+            
+            if (reviewTemplates != null)
+            {
+                keyPrefix = reviewTemplates.GetRandomKeyPrefix(stars);
+                iconIndex = reviewTemplates.GetRandomAvatarIndex();
+            }
+            
+            // Store keys: titleKey = prefix + ".title", contentKey = prefix + ".content"
+            string titleKey = keyPrefix + ".title";
+            string contentKey = keyPrefix + ".content";
+            
+            int currentDay = GameManager.Instance?.DayCount ?? 1;
+            var review = new CustomerReview(stars, titleKey, contentKey, iconIndex, currentDay);
+            
+            // Add to history (newest first)
+            reviewHistory.Insert(0, review);
+            
+            Debug.Log($"[ShopManager] Customer review added: ★{stars} (keys: {titleKey}, {contentKey})");
+            
+            OnReviewAdded?.Invoke(review);
+        }
+        
+        /// <summary>
+        /// Legacy: Add review points from completed treatment
         /// </summary>
         public void AddReview(int baseReview, int painMaxCount)
         {
             int totalReview = baseReview - (painMaxCount * PAIN_MAX_PENALTY);
-            totalReview = Mathf.Max(totalReview, -baseReview); // Can't lose more than base
+            totalReview = Mathf.Max(totalReview, -baseReview);
             
             int previousStars = StarRating;
             reviewScore += totalReview;
-            reviewScore = Mathf.Max(0, reviewScore); // Don't go below 0
+            reviewScore = Mathf.Max(0, reviewScore);
             
             Debug.Log($"[ShopManager] Review added: {totalReview} (base: {baseReview}, painMax: {painMaxCount}x-{PAIN_MAX_PENALTY}). Total: {reviewScore} (★{StarRating})");
             
-            // Check for star change
             if (StarRating != previousStars)
             {
                 Debug.Log($"[ShopManager] Star rating changed: ★{previousStars} → ★{StarRating}");
-                // TODO: Trigger star change event/notification
+                OnStarRatingChanged?.Invoke(previousStars, StarRating);
+            }
+        }
+        
+        /// <summary>
+        /// Add or subtract review score directly (for debug/cheat)
+        /// </summary>
+        public void AddReviewScore(int amount)
+        {
+            int previousStars = StarRating;
+            reviewScore += amount;
+            reviewScore = Mathf.Max(0, reviewScore);
+            
+            Debug.Log($"[ShopManager] Review score changed: {amount:+#;-#;0} → Total: {reviewScore} (★{StarRating})");
+            
+            if (StarRating != previousStars)
+            {
+                Debug.Log($"[ShopManager] Star rating changed: ★{previousStars} → ★{StarRating}");
+                OnStarRatingChanged?.Invoke(previousStars, StarRating);
             }
         }
         
@@ -80,6 +150,7 @@ namespace HairRemovalSim.Core
         public void ResetStore()
         {
             reviewScore = 0;
+            reviewHistory.Clear();
             storeLevel = 1;
             staffCount = 0;
             Debug.Log("[ShopManager] Shop reset to initial state");
