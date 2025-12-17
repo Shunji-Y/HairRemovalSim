@@ -522,52 +522,61 @@ namespace HairRemovalSim.Customer
         {
             currentState = CustomerState.Leaving;
             
-            if (agent != null)
+            if (agent == null)
             {
-                // Ensure agent is on NavMesh
+                ReturnToPool();
+                return;
+            }
+            
+            if (exitPoint == null)
+            {
+                Debug.LogWarning("[CustomerController] LeaveShop: No exit point, returning to pool");
+                ReturnToPool();
+                return;
+            }
+            
+            // Enable agent first (same pattern as GoToBed)
+            agent.enabled = true;
+            
+            // Check if on NavMesh, if not try to warp
+            if (!agent.isOnNavMesh)
+            {
+                // Try warp to current position first
+                agent.Warp(transform.position);
+                
+                // If still not on NavMesh, find nearest point
                 if (!agent.isOnNavMesh)
                 {
-                    agent.enabled = true;
-                    agent.Warp(transform.position);
-                    
-                    if (!agent.isOnNavMesh)
+                    UnityEngine.AI.NavMeshHit hit;
+                    if (UnityEngine.AI.NavMesh.SamplePosition(transform.position, out hit, 10f, UnityEngine.AI.NavMesh.AllAreas))
                     {
-                        UnityEngine.AI.NavMeshHit hit;
-                        if (UnityEngine.AI.NavMesh.SamplePosition(transform.position, out hit, 5f, UnityEngine.AI.NavMesh.AllAreas))
-                        {
-                            agent.Warp(hit.position);
-                        }
-                    }
-                }
-                
-                if (agent.isOnNavMesh)
-                {
-                    agent.isStopped = false;
-                    agent.updateRotation = true;
-                    
-                    if (exitPoint != null)
-                    {
-                        agent.SetDestination(exitPoint.position);
+                        transform.position = hit.position;
+                        agent.Warp(hit.position);
+                        Debug.Log($"[CustomerController] LeaveShop: Warped to nearest NavMesh point at {hit.position}");
                     }
                     else
                     {
-                        // No exit point - return to pool instead of destroying
-                        Debug.LogWarning("[CustomerController] LeaveShop: No exit point, returning to pool");
+                        Debug.LogWarning("[CustomerController] LeaveShop: Could not find NavMesh point, returning to pool");
                         ReturnToPool();
+                        return;
                     }
                 }
-                else
-                {
-                    // NavMesh failed - return to pool instead of destroying
-                    Debug.LogWarning("[CustomerController] LeaveShop: Agent not on NavMesh, returning to pool");
-                    ReturnToPool();
-                }
             }
-            else
+            
+            // Final check - ensure we're on NavMesh before calling NavMesh methods
+            if (!agent.isOnNavMesh)
             {
-                // No agent - return to pool
+                Debug.LogWarning("[CustomerController] LeaveShop: Still not on NavMesh after warp attempts, returning to pool");
                 ReturnToPool();
+                return;
             }
+            
+            // Now agent should be on NavMesh - set destination (same pattern as GoToBed)
+            agent.isStopped = false;
+            agent.updateRotation = true;
+            agent.SetDestination(exitPoint.position);
+            
+            Debug.Log($"[CustomerController] {data?.customerName ?? "Customer"} leaving shop, heading to exit");
         }
         
         /// <summary>

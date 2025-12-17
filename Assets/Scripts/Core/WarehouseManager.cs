@@ -195,6 +195,42 @@ namespace HairRemovalSim.Core
         }
         
         /// <summary>
+        /// Remove items by itemId. Returns quantity actually removed.
+        /// </summary>
+        public int RemoveItem(string itemId, int quantity)
+        {
+            if (string.IsNullOrEmpty(itemId) || quantity <= 0) return 0;
+            
+            int remaining = quantity;
+            
+            // Find slots with this item and remove
+            for (int i = 0; i < MaxSlots && remaining > 0; i++)
+            {
+                if (slots[i].itemId == itemId && slots[i].quantity > 0)
+                {
+                    int toRemove = Mathf.Min(remaining, slots[i].quantity);
+                    slots[i].quantity -= toRemove;
+                    remaining -= toRemove;
+                    
+                    if (slots[i].quantity <= 0)
+                    {
+                        slots[i].Clear();
+                    }
+                    
+                    OnSlotChanged?.Invoke(i);
+                }
+            }
+            
+            int removed = quantity - remaining;
+            if (removed > 0)
+            {
+                OnWarehouseUpdated?.Invoke();
+            }
+            
+            return removed;
+        }
+        
+        /// <summary>
         /// Set slot data directly (for sync from external UI)
         /// </summary>
         public void SetSlot(int slotIndex, string itemId, int quantity)

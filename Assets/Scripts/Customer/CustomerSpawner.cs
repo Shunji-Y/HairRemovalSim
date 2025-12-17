@@ -42,12 +42,147 @@ namespace HairRemovalSim.Customer
         public int testReviewValue = 0;
         [Tooltip("Test confirmed price for checkout test (randomized if 0)")]
         public int testConfirmedPrice = 0;
+        
+        [Header("Attraction Rate Settings")]
+        [Tooltip("Base attraction rate without any bonuses (%)")]
+        [SerializeField] private float _baseAttractionRate = 30f;
+        
+        [Tooltip("Customer spawn interval at 100% attraction (seconds)")]
+        [SerializeField] private float minSpawnInterval = 30f;
+        
+        [Tooltip("Customer spawn interval at 0% attraction (seconds)")]
+        [SerializeField] private float maxSpawnInterval = 120f;
+        
+        /// <summary>
+        /// Base attraction rate (read-only for UI display)
+        /// </summary>
+        public float BaseAttractionRate => _baseAttractionRate;
 
         private List<CustomerController> customerPool = new List<CustomerController>();
         private List<CustomerController> activeCustomers = new List<CustomerController>();
 
         private float timer = 0f;
         private bool poolInitialized = false;
+        
+        // ==========================================
+        // Attraction Rate & VIP Coefficient
+        // ==========================================
+        
+        /// <summary>
+        /// Get current attraction rate (0-100%)
+        /// Base rate + star bonus + ad boost
+        /// </summary>
+        public float GetCurrentAttractionRate()
+        {
+            float total = _baseAttractionRate;
+            
+            // Add star rating bonus from ShopManager
+            total += ShopManager.Instance?.GetStarRatingBonus() ?? 0f;
+            
+            // Add advertising boost
+            total += AdvertisingManager.Instance?.GetAttractionBoost() ?? 0f;
+            
+            return Mathf.Clamp(total, 0f, 100f);
+        }
+        
+        /// <summary>
+        /// Get current VIP coefficient (0-100)
+        /// Review-based VIP + ad boost
+        /// </summary>
+        public float GetCurrentVipCoefficient()
+        {
+            float total = 0f;
+            
+            // Base VIP from past 3 days reviews
+            total += ShopManager.Instance?.GetVipCoefficientFromReviews() ?? 50f;
+            
+            // Add advertising boost
+            total += AdvertisingManager.Instance?.GetVipBoost() ?? 0f;
+            
+            return Mathf.Clamp(total, 0f, 100f);
+        }
+        
+        /// <summary>
+        /// Get current spawn interval based on attraction rate
+        /// Higher attraction = shorter interval
+        /// </summary>
+        public float GetCurrentSpawnInterval()
+        {
+            float attraction = GetCurrentAttractionRate();
+            // Lerp between max (0%) and min (100%)
+            return Mathf.Lerp(maxSpawnInterval, minSpawnInterval, attraction / 100f);
+        }
+        
+        /// <summary>
+        /// Get customer type distribution based on star rating and VIP coefficient
+        /// </summary>
+        public float[] GetCustomerTypeDistribution()
+        {
+            int starRating = ShopManager.Instance?.StarRating ?? 1;
+            float vipCoef = GetCurrentVipCoefficient();
+            
+            float[] distribution = new float[5];
+            
+            switch (starRating)
+            {
+                case 1:
+                    distribution[0] = 100f;
+                    break;
+                case 2:
+                    float poor2 = Mathf.Lerp(50f, 80f, vipCoef / 100f);
+                    distribution[0] = 100f - poor2;
+                    distribution[1] = poor2;
+                    break;
+                case 3:
+                    float norm3 = Mathf.Lerp(0f, 50f, vipCoef / 100f);
+                    float poor3 = Mathf.Lerp(50f, 30f, vipCoef / 100f);
+                    distribution[0] = 100f - poor3 - norm3;
+                    distribution[1] = poor3;
+                    distribution[2] = norm3;
+                    break;
+                case 4:
+                    float rich4 = Mathf.Lerp(0f, 30f, vipCoef / 100f);
+                    float norm4 = Mathf.Lerp(30f, 40f, vipCoef / 100f);
+                    float poor4 = Mathf.Lerp(35f, 20f, vipCoef / 100f);
+                    distribution[0] = 100f - poor4 - norm4 - rich4;
+                    distribution[1] = poor4;
+                    distribution[2] = norm4;
+                    distribution[3] = rich4;
+                    break;
+                case 5:
+                    float richest5 = Mathf.Lerp(0f, 20f, vipCoef / 100f);
+                    float rich5 = Mathf.Lerp(10f, 30f, vipCoef / 100f);
+                    float norm5 = Mathf.Lerp(30f, 30f, vipCoef / 100f);
+                    float poor5 = Mathf.Lerp(30f, 15f, vipCoef / 100f);
+                    distribution[0] = 100f - poor5 - norm5 - rich5 - richest5;
+                    distribution[1] = poor5;
+                    distribution[2] = norm5;
+                    distribution[3] = rich5;
+                    distribution[4] = richest5;
+                    break;
+            }
+            
+            return distribution;
+        }
+        
+        /// <summary>
+        /// Get a random customer wealth level based on current distribution
+        /// </summary>
+        public WealthLevel GetRandomCustomerWealthLevel()
+        {
+            float[] distribution = GetCustomerTypeDistribution();
+            float roll = Random.Range(0f, 100f);
+            float cumulative = 0f;
+            
+            for (int i = 0; i < distribution.Length; i++)
+            {
+                cumulative += distribution[i];
+                if (roll < cumulative)
+                    return (WealthLevel)i;
+            }
+            
+            return WealthLevel.Poorest;
+        }
 
         private void Start()
         {
@@ -123,14 +258,18 @@ namespace HairRemovalSim.Customer
             if (GameManager.Instance.CurrentState == GameManager.GameState.Day)
             {
                 timer += Time.deltaTime;
-                if (timer >= spawnInterval)
+                
+                // Use dynamic spawn interval based on attraction rate
+                float currentInterval = GetCurrentSpawnInterval();
+                
+                if (timer >= currentInterval)
                 {
                     // Clean up nulls
                     activeCustomers.RemoveAll(c => c == null);
 
                     if (activeCustomers.Count < maxCustomers)
                     {
-                        Debug.Log($"[CustomerSpawner] Attempting to spawn customer ({activeCustomers.Count}/{maxCustomers})");
+                        Debug.Log($"[CustomerSpawner] Spawning customer ({activeCustomers.Count}/{maxCustomers}), Attraction: {GetCurrentAttractionRate():F1}%, Interval: {currentInterval:F1}s");
                         SpawnCustomer();
                         timer = 0f;
                     }
@@ -176,7 +315,20 @@ namespace HairRemovalSim.Customer
         {
             if (customer == null) return;
             
-            Debug.Log($"[CustomerSpawner] Returning {customer.data.customerName} to pool");
+            Debug.Log($"[CustomerSpawner] Returning {customer.data?.customerName ?? "NULL"} to pool");
+            
+            // Disable NavMeshAgent first to prevent NavMesh warnings
+            var agent = customer.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            if (agent != null)
+            {
+                // Only call isStopped if agent is on NavMesh
+                if (agent.isOnNavMesh)
+                {
+                    agent.isStopped = true;
+                }
+                agent.enabled = false;
+            }
+            
             customer.gameObject.SetActive(false);
             customer.transform.position = Vector3.zero;
             activeCustomers.Remove(customer);
@@ -205,6 +357,27 @@ namespace HairRemovalSim.Customer
             customer.transform.rotation = spawnPoint.rotation;
             customer.gameObject.SetActive(true);
             
+            // Properly warp NavMeshAgent to spawn point
+            var agent = customer.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            if (agent != null)
+            {
+                agent.enabled = true;
+                agent.Warp(spawnPoint.position);
+                
+                // Verify NavMesh placement
+                if (!agent.isOnNavMesh)
+                {
+                    Debug.LogWarning($"[CustomerSpawner] Agent not on NavMesh after warp, trying SamplePosition");
+                    UnityEngine.AI.NavMeshHit hit;
+                    if (UnityEngine.AI.NavMesh.SamplePosition(spawnPoint.position, out hit, 5f, UnityEngine.AI.NavMesh.AllAreas))
+                    {
+                        agent.Warp(hit.position);
+                    }
+                }
+                
+                agent.isStopped = false;
+            }
+            
             if (customer != null)
             {
                 // Assign BodyPartsDatabase
@@ -214,7 +387,7 @@ namespace HairRemovalSim.Customer
                 CustomerData data = new CustomerData();
                 data.customerName = useTestSettings ? "TestCustomer" : "Guest " + Random.Range(100, 999);
                 data.hairiness = useTestSettings ? testHairinessLevel : (HairinessLevel)Random.Range(0, 4);
-                data.wealth = useTestSettings ? testWealthLevel : (WealthLevel)Random.Range(0, 4);
+                data.wealth = useTestSettings ? testWealthLevel : GetRandomCustomerWealthLevel();
                 
                 // Generate pain tolerance level
                 data.painTolerance = Random.Range(0f, 1f);
@@ -245,17 +418,20 @@ namespace HairRemovalSim.Customer
                 int budgetPerPart;
                 switch (data.wealth)
                 {
+                    case WealthLevel.Poorest:
+                        budgetPerPart = Random.Range(10, 16); // $10-15 per part
+                        break;
                     case WealthLevel.Poor:
                         budgetPerPart = Random.Range(15, 21); // $15-20 per part
                         break;
-                    case WealthLevel.Average:
+                    case WealthLevel.Normal:
                         budgetPerPart = Random.Range(20, 31); // $20-30 per part
                         break;
                     case WealthLevel.Rich:
                         budgetPerPart = Random.Range(30, 46); // $30-45 per part
                         break;
-                    case WealthLevel.Tycoon:
-                        budgetPerPart = Random.Range(30, 61); // $30-60 per part
+                    case WealthLevel.Richest:
+                        budgetPerPart = Random.Range(45, 71); // $45-70 per part
                         break;
                     default:
                         budgetPerPart = 20;

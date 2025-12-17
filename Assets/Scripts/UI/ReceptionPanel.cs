@@ -253,6 +253,12 @@ namespace HairRemovalSim.UI
             {
                 Debug.Log($"[ReceptionPanel] Customer {data.customerName} leaving due to penalty: {data.reviewPenalty}");
                 
+                // Generate negative review for leaving at reception
+                GenerateReceptionLeaveReview(currentCustomer);
+                
+                // Clear current customer in ReceptionManager so next interact works properly
+                ReceptionManager.Instance?.ClearCurrentCustomer(currentCustomer);
+                
                 // Don't clear dropTarget - keep item there
                 
                 currentCustomer.LeaveShop();
@@ -301,6 +307,47 @@ namespace HairRemovalSim.UI
         /// Get extra item slots for syncing
         /// </summary>
         public ExtraItemSlotUI[] GetExtraItemSlots() => extraItemSlots;
+        
+        /// <summary>
+        /// Generate a negative review when customer leaves at reception
+        /// </summary>
+        private void GenerateReceptionLeaveReview(CustomerController customer)
+        {
+            if (customer == null || customer.data == null) return;
+            
+            var shopManager = Core.ShopManager.Instance;
+            if (shopManager == null)
+            {
+                Debug.LogWarning("[ReceptionPanel] ShopManager not found, cannot generate review");
+                return;
+            }
+            
+            var data = customer.data;
+            
+            // Calculate review value: base value + penalty (penalty is already negative)
+            // e.g. baseReview=30, penalty=-50 → reviewValue=-20 → 1 star
+            int baseReview = customer.GetBaseReviewValue();
+            int reviewValue = baseReview + data.reviewPenalty;
+            
+            // Convert review value (-50 to 50) to stars (1-5)
+            // -50~-20 = 1 star, -20~0 = 2 stars, 0~20 = 3 stars, 20~35 = 4 stars, 35~50 = 5 stars
+            int stars;
+            if (reviewValue <= -20)
+                stars = 1;
+            else if (reviewValue <= 0)
+                stars = 2;
+            else if (reviewValue <= 20)
+                stars = 3;
+            else if (reviewValue <= 35)
+                stars = 4;
+            else
+                stars = 5;
+            
+            Debug.Log($"[ReceptionPanel] Generating reception leave review for {data.customerName}: base={baseReview}, penalty={data.reviewPenalty}, value={reviewValue}, stars={stars}");
+            
+            // Add review to ShopManager
+            shopManager.AddCustomerReview(stars);
+        }
     }
 }
 

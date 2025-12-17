@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using HairRemovalSim.Core;
 using System.Collections.Generic;
+using NUnit.Framework.Interfaces;
 
 namespace HairRemovalSim.UI
 {
@@ -41,10 +42,26 @@ namespace HairRemovalSim.UI
         [SerializeField] private Button confirmButton;
         [SerializeField] private Button cancelButton;
         
+        [Header("Sell Panel")]
+        [SerializeField] private Button sellToolsButton;
+        [SerializeField] private GameObject sellPanel;
+        [SerializeField] private Transform sellCardsContainer;
+        [SerializeField] private GameObject sellCardPrefab;
+        
+        [Header("Sell Confirmation Dialog")]
+        [SerializeField] private GameObject sellConfirmDialog;
+        [SerializeField] private Image sellConfirmIcon;
+        [SerializeField] private TMP_Text sellConfirmName;
+        [SerializeField] private TMP_Text sellConfirmPrice;
+        [SerializeField] private Button sellConfirmButton;
+        [SerializeField] private Button sellCancelButton;
+        
         private List<GameObject> toolCards = new List<GameObject>();
-        private List<string> ownedToolIds = new List<string>();
+        private List<GameObject> sellCards = new List<GameObject>();
         private ItemData pendingPurchase;
+        private ItemData pendingSell;
         private TreatmentToolType currentFilter = TreatmentToolType.Laser;
+        private bool isSellMode = false;
         
         public bool IsOpen => panel != null && panel.activeSelf;
         
@@ -65,11 +82,21 @@ namespace HairRemovalSim.UI
             if (miscTab != null)
                 miscTab.onClick.AddListener(() => SetFilter(TreatmentToolType.Other));
             
-            // Setup dialog buttons
+            // Setup purchase dialog buttons
             if (confirmButton != null)
                 confirmButton.onClick.AddListener(OnConfirmPurchase);
             if (cancelButton != null)
                 cancelButton.onClick.AddListener(CloseConfirmDialog);
+            
+            // Setup sell mode button
+            if (sellToolsButton != null)
+                sellToolsButton.onClick.AddListener(ToggleSellMode);
+            
+            // Setup sell confirm dialog buttons
+            if (sellConfirmButton != null)
+                sellConfirmButton.onClick.AddListener(OnConfirmSell);
+            if (sellCancelButton != null)
+                sellCancelButton.onClick.AddListener(CloseSellConfirmDialog);
         }
         
         private void OnEnable()
@@ -87,6 +114,8 @@ namespace HairRemovalSim.UI
         {
             if (L != null)
                 L.OnLocaleChanged -= RefreshDisplay;
+            
+            CloseSellMode();
         }
         
         public void Show()
@@ -99,11 +128,13 @@ namespace HairRemovalSim.UI
         {
             if (panel != null) panel.SetActive(false);
             CloseConfirmDialog();
+            CloseSellMode();
         }
         
         private void SetFilter(TreatmentToolType filter)
         {
             currentFilter = filter;
+            CloseSellMode();
             RefreshCards();
         }
         
@@ -126,7 +157,7 @@ namespace HairRemovalSim.UI
             if (moneyText != null)
             {
                 int money = EconomyManager.Instance?.CurrentMoney ?? 0;
-                moneyText.text = $"¥{money:N0}";
+                moneyText.text = $"${money:N0}";
             }
         }
         
@@ -162,8 +193,7 @@ namespace HairRemovalSim.UI
             
             if (cardUI != null)
             {
-                bool isOwned = ownedToolIds.Contains(tool.itemId);
-                cardUI.Setup(tool, currentGrade, isOwned, OnToolPurchaseRequested);
+                cardUI.Setup(tool, currentGrade, OnToolPurchaseRequested);
             }
             
             toolCards.Add(cardObj);
@@ -184,14 +214,14 @@ namespace HairRemovalSim.UI
             // Icon
             if (confirmItemIcon != null && tool.icon != null)
                 confirmItemIcon.sprite = tool.icon;
-            
+
             // Name
             if (confirmItemName != null)
-                confirmItemName.text = tool.displayName;
+                confirmItemName.text = L?.Get(tool.nameKey); ;
             
             // Price
             if (confirmPriceText != null)
-                confirmPriceText.text = $"¥{tool.price:N0}";
+                confirmPriceText.text = $"${tool.price:N0}";
             
             // Delivery info
             if (deliveryInfoText != null)
@@ -233,15 +263,16 @@ namespace HairRemovalSim.UI
         
         private void ScheduleDelivery(ItemData item)
         {
-            // Add to owned tools (will be available after delivery)
-            ownedToolIds.Add(item.itemId);
-            
-            // TODO: Add to pending deliveries list with delivery day
-            int deliveryDay = (GameManager.Instance?.DayCount ?? 1) + 1;
-            Debug.Log($"[ToolShopPanel] {item.displayName} scheduled for delivery on Day {deliveryDay}");
-            
-            // TODO: Integrate with a DeliveryManager or WarehouseManager
-            // DeliveryManager.Instance?.ScheduleDelivery(item.itemId, deliveryDay);
+            // Use InventoryManager.AddPendingOrder for next-day delivery
+            if (HairRemovalSim.Store.InventoryManager.Instance != null)
+            {
+                HairRemovalSim.Store.InventoryManager.Instance.AddPendingOrder(item, 1);
+                Debug.Log($"[ToolShopPanel] {item.displayName} ordered - will be delivered tomorrow");
+            }
+            else
+            {
+                Debug.LogWarning($"[ToolShopPanel] InventoryManager not found, delivery not scheduled");
+            }
         }
         
         private int GetCurrentShopGrade()
@@ -281,33 +312,166 @@ namespace HairRemovalSim.UI
             return filtered;
         }
         
+        // ==========================================
+        // Sell Mode Functions
+        // ==========================================
+        
         /// <summary>
-        /// Check if player owns a specific tool
+        /// Toggle sell mode on/off
         /// </summary>
-        public bool OwnsTool(string itemId)
+        public void ToggleSellMode()
         {
-            return ownedToolIds.Contains(itemId);
+            isSellMode = !isSellMode;
+            
+            if (sellPanel != null)
+                sellPanel.SetActive(isSellMode);
+            
+            if (isSellMode)
+            {
+                RefreshSellCards();
+            }
+            else
+            {
+                ClearSellCards();
+            }
         }
         
         /// <summary>
-        /// Get list of owned tool IDs (for save/load)
+        /// Close sell mode without toggle
         /// </summary>
-        public List<string> GetOwnedToolIds()
+        private void CloseSellMode()
         {
-            return new List<string>(ownedToolIds);
+            if (!isSellMode) return;
+            
+            isSellMode = false;
+            if (sellPanel != null)
+                sellPanel.SetActive(false);
+            ClearSellCards();
+            CloseSellConfirmDialog();
         }
         
         /// <summary>
-        /// Set owned tool IDs (for load)
+        /// Refresh the sell cards list from warehouse
         /// </summary>
-        public void SetOwnedToolIds(List<string> ids)
+        private void RefreshSellCards()
         {
-            ownedToolIds = ids ?? new List<string>();
-            RefreshCards();
+            ClearSellCards();
+            
+            var warehouseManager = HairRemovalSim.Core.WarehouseManager.Instance;
+            if (warehouseManager == null)
+            {
+                Debug.LogWarning("[ToolShopPanel] WarehouseManager not found!");
+                return;
+            }
+            
+            var warehouseItems = warehouseManager.GetAllItems();
+            Debug.Log($"[ToolShopPanel] Found {warehouseItems.Count} items in warehouse");
+            
+            foreach (var kvp in warehouseItems)
+            {
+                var itemData = ItemDataRegistry.Instance?.GetItem(kvp.Key);
+                Debug.Log($"[ToolShopPanel] Checking item: {kvp.Key}, qty: {kvp.Value}, itemData: {itemData?.displayName ?? "null"}, IsTool: {itemData?.IsTreatmentTool}");
+                
+                if (itemData != null && itemData.IsTreatmentTool && kvp.Value > 0)
+                {
+                    CreateSellCard(itemData, kvp.Value);
+                }
+            }
+        }
+        
+        private void ClearSellCards()
+        {
+            foreach (var card in sellCards)
+            {
+                if (card != null) Destroy(card);
+            }
+            sellCards.Clear();
+        }
+        
+        private void CreateSellCard(ItemData tool, int quantity)
+        {
+            if (sellCardPrefab == null || sellCardsContainer == null) return;
+            
+            var cardObj = Instantiate(sellCardPrefab, sellCardsContainer);
+            var cardUI = cardObj.GetComponent<ToolSellCardUI>();
+            
+            if (cardUI != null)
+            {
+                int sellPrice = tool.price / 2; // Half price
+                cardUI.Setup(tool, quantity, sellPrice, OnSellRequested);
+            }
+            
+            sellCards.Add(cardObj);
+        }
+        
+        private void OnSellRequested(ItemData tool)
+        {
+            pendingSell = tool;
+            ShowSellConfirmDialog(tool);
+        }
+        
+        private void ShowSellConfirmDialog(ItemData tool)
+        {
+            if (sellConfirmDialog == null) return;
+            
+            sellConfirmDialog.SetActive(true);
+            
+            if (sellConfirmIcon != null && tool.icon != null)
+                sellConfirmIcon.sprite = tool.icon;
+            
+            if (sellConfirmName != null)
+            {
+                string localizedName = L?.Get(tool.nameKey);
+                sellConfirmName.text = string.IsNullOrEmpty(localizedName) || localizedName.StartsWith("[")
+                    ? tool.displayName
+                    : localizedName;
+            }
+            
+            if (sellConfirmPrice != null)
+            {
+                int sellPrice = tool.price / 2;
+                sellConfirmPrice.text = $"+${sellPrice:N0}";
+            }
+        }
+        
+        private void CloseSellConfirmDialog()
+        {
+            if (sellConfirmDialog != null)
+                sellConfirmDialog.SetActive(false);
+            pendingSell = null;
+        }
+        
+        private void OnConfirmSell()
+        {
+            if (pendingSell == null) return;
+            
+            // Remove from warehouse
+            if (HairRemovalSim.Core.WarehouseManager.Instance != null)
+            {
+                int removed = HairRemovalSim.Core.WarehouseManager.Instance.RemoveItem(pendingSell.itemId, 1);
+                if (removed > 0)
+                {
+                    // Add money (half price)
+                    int sellPrice = pendingSell.price / 2;
+                    EconomyManager.Instance?.AddMoney(sellPrice);
+                    
+                    Debug.Log($"[ToolShopPanel] Sold {pendingSell.displayName} for ${sellPrice}");
+                    
+                    // Update UI
+                    UpdateMoneyDisplay();
+                    RefreshSellCards();
+                }
+                else
+                {
+                    Debug.LogWarning("[ToolShopPanel] Failed to remove item from warehouse");
+                }
+            }
+            
+            CloseSellConfirmDialog();
         }
         
 #if UNITY_EDITOR
-        [UnityEngine.ContextMenu("Generate UI Structure")]
+       // [UnityEngine.ContextMenu("Generate UI Structure")]
         private void GenerateUIStructure()
         {
             // Colors
@@ -401,8 +565,11 @@ namespace HairRemovalSim.UI
         
         private void CreateSampleToolCard(Transform parent, Color cardBg, Color buttonColor)
         {
+            Color sliderBg = new Color(0.7f, 0.75f, 0.8f);
+            Color sliderFill = new Color(0.5f, 0.6f, 0.7f);
+            
             var card = CreateUIElement("ToolCard_Sample", parent);
-            card.sizeDelta = new Vector2(200, 280);
+            card.sizeDelta = new Vector2(180, 280);
             var cardImg = card.gameObject.AddComponent<Image>();
             cardImg.color = cardBg;
             
@@ -415,37 +582,91 @@ namespace HairRemovalSim.UI
             
             // Icon
             var iconContainer = CreateUIElement("IconContainer", card);
-            iconContainer.gameObject.AddComponent<LayoutElement>().preferredHeight = 100;
+            iconContainer.gameObject.AddComponent<LayoutElement>().preferredHeight = 80;
             var iconImg = CreateUIElement("Icon", iconContainer);
             SetRect(iconImg, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             iconImg.gameObject.AddComponent<Image>().color = Color.white;
             
             // Name
-            var nameText = CreateText("Name", card, "Gentle Pro Max", 16, Color.black);
+            var nameText = CreateText("Name", card, "Gentle Pro Max", 14, Color.black);
             nameText.fontStyle = FontStyles.Bold;
-            nameText.alignment = TextAlignmentOptions.Center;
+            nameText.alignment = TextAlignmentOptions.Left;
             
-            // Stats
-            var statsText = CreateText("Stats", card, "[Scope: Wide] [Pain: Low] [Speed: Fast]", 10, new Color(0.3f, 0.3f, 0.3f));
-            statsText.alignment = TextAlignmentOptions.Center;
+            // Stats Container
+            var statsContainer = CreateUIElement("StatsContainer", card);
+            var statsVlg = statsContainer.gameObject.AddComponent<VerticalLayoutGroup>();
+            statsVlg.spacing = 3;
+            statsVlg.childForceExpandWidth = true;
+            statsVlg.childForceExpandHeight = false;
+            
+            // Stat rows
+            CreateStatRow("Scope", statsContainer, sliderBg, sliderFill);
+            CreateStatRow("Pain", statsContainer, sliderBg, sliderFill);
+            CreateStatRow("Power", statsContainer, sliderBg, sliderFill);
+            CreateStatRow("Speed", statsContainer, sliderBg, sliderFill);
+            
+            // Description
+            var descText = CreateText("Description", card, "汎用的な脱毛レーザー", 10, new Color(0.3f, 0.3f, 0.3f));
+            descText.alignment = TextAlignmentOptions.Left;
             
             // Price
-            var priceText = CreateText("Price", card, "¥12,000,000", 18, new Color(0.1f, 0.1f, 0.5f));
+            var priceText = CreateText("Price", card, "¥12,000,000", 14, new Color(0.8f, 0.2f, 0.5f));
             priceText.fontStyle = FontStyles.Bold;
-            priceText.alignment = TextAlignmentOptions.Center;
+            priceText.alignment = TextAlignmentOptions.Right;
             
             // Button
             var btnObj = CreateUIElement("PurchaseButton", card);
-            btnObj.gameObject.AddComponent<LayoutElement>().preferredHeight = 35;
+            btnObj.gameObject.AddComponent<LayoutElement>().preferredHeight = 28;
             var btnImg = btnObj.gameObject.AddComponent<Image>();
             btnImg.color = buttonColor;
             btnObj.gameObject.AddComponent<Button>();
             
-            var btnText = CreateText("ButtonText", btnObj, "PURCHASE", 14, Color.white);
+            var btnText = CreateText("ButtonText", btnObj, "PURCHASE", 12, Color.white);
             SetRect(btnText.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             btnText.alignment = TextAlignmentOptions.Center;
             
-            Debug.Log("[ToolShopPanel] Sample tool card created. Save as prefab!");
+            // Add ToolShopCardUI component
+            card.gameObject.AddComponent<ToolShopCardUI>();
+            
+            Debug.Log("[ToolShopPanel] Sample tool card created. Save as prefab and assign references!");
+        }
+        
+        private void CreateStatRow(string label, RectTransform parent, Color bgColor, Color fillColor)
+        {
+            var row = CreateUIElement(label + "Row", parent);
+            row.gameObject.AddComponent<LayoutElement>().preferredHeight = 16;
+            var hlg = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 5;
+            hlg.childForceExpandWidth = false;
+            hlg.childForceExpandHeight = true;
+            hlg.childControlWidth = true;
+            
+            // Label
+            var labelText = CreateText("Label", row, label, 10, Color.black);
+            labelText.GetComponent<LayoutElement>().preferredWidth = 40;
+            
+            // Slider background
+            var sliderObj = CreateUIElement("Slider", row);
+            sliderObj.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1;
+            
+            var sliderBg = CreateUIElement("Background", sliderObj);
+            SetRect(sliderBg, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            sliderBg.gameObject.AddComponent<Image>().color = bgColor;
+            
+            var fillArea = CreateUIElement("Fill Area", sliderObj);
+            SetRect(fillArea, Vector2.zero, Vector2.one, new Vector2(2, 2), new Vector2(-2, -2));
+            
+            var fill = CreateUIElement("Fill", fillArea);
+            SetRect(fill, Vector2.zero, new Vector2(0.5f, 1), Vector2.zero, Vector2.zero);
+            fill.gameObject.AddComponent<Image>().color = fillColor;
+            
+            var slider = sliderObj.gameObject.AddComponent<Slider>();
+            slider.fillRect = fill;
+            slider.targetGraphic = sliderBg.gameObject.GetComponent<Image>();
+            slider.minValue = 0;
+            slider.maxValue = 100;
+            slider.value = 50;
+            slider.interactable = false;
         }
         
         private void CreateConfirmDialog(Transform parent)

@@ -7,6 +7,13 @@ namespace HairRemovalSim.UI
 {
     public class ReceptionManager : MonoBehaviour, IInteractable
     {
+        public static ReceptionManager Instance { get; private set; }
+        
+        private void Awake()
+        {
+            Instance = this;
+        }
+        
         [Header("Settings")]
         public Environment.BedController[] beds; // Available beds
         public float detectionRadius = 2.0f; // Distance to detect customers
@@ -175,6 +182,22 @@ namespace HairRemovalSim.UI
                 currentCustomerAtReception.GoToBed(beds[bedIndex]);
                 currentCustomerAtReception = null; // Clear reception
                 Debug.Log("Customer sent to bed.");
+            }
+        }
+        
+        /// <summary>
+        /// Clear current customer (called when customer leaves at reception)
+        /// </summary>
+        public void ClearCurrentCustomer(CustomerController customer)
+        {
+            if (currentCustomer == customer)
+            {
+                processedCustomers.Remove(customer);
+                currentCustomer = null;
+                Debug.Log($"[ReceptionManager] Cleared current customer who left at reception");
+                
+                // Update queue positions after customer leaves
+                UpdateQueuePositions();
             }
         }
     }

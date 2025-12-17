@@ -30,6 +30,12 @@ namespace HairRemovalSim.Core
         [TextArea(2, 4)]
         public string description;
         
+        [Tooltip("Localization key for item name (optional, uses displayName if empty)")]
+        public string nameKey;
+        
+       // [Tooltip("Localization key for item description (optional, uses description if empty)")]
+      //  public string descriptionKey;
+        
         // ==========================================
         // 【施術用ツール】Treatment Tool Settings
         // ==========================================
@@ -56,20 +62,21 @@ namespace HairRemovalSim.Core
         [Tooltip("Target body area for this tool")]
         public ToolTargetArea targetArea = ToolTargetArea.Body;
         
-        [Tooltip("Effect range (small=0.5, normal=1.0, wide=2.0, ultra=5.0)")]
-        [Range(0.1f, 10f)]
-        public float effectRange = 1.0f;
+        [Tooltip("Scope - Effect range (0=narrow, 100=ultra wide)")]
+        [Range(0, 100)]
+        public int statScope = 50;
         
-        [Tooltip("Hair removal effectiveness (0-100%)")]
-        [Range(0f, 100f)]
-        public float hairRemovalRate = 100f;
+        [Tooltip("Pain - Pain level (0=painless, 100=extreme pain)")]
+        [Range(0, 100)]
+        public int statPain = 0;
         
-        [Tooltip("Pain level caused (0=none, 1=max pain)")]
-        [Range(0f, 1f)]
-        public float painLevel = 0f;
+        [Tooltip("Power - Hair removal effectiveness (0=weak, 100=max power)")]
+        [Range(0, 100)]
+        public int statPower = 50;
         
-        [Tooltip("Fire rate multiplier (0.5=slow, 1=normal, 2=fast, -1=continuous)")]
-        public float fireRate = 1f;
+        [Tooltip("Speed - Fire rate (0=slow, 100=continuous)")]
+        [Range(0, 100)]
+        public int statSpeed = 50;
         
         [Tooltip("Does this tool require hair to be shaved first?")]
         public bool requiresShaving = false;

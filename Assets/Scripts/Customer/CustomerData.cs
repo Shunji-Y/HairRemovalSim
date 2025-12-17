@@ -63,7 +63,7 @@ namespace HairRemovalSim.Customer
 
     public enum SkinTone { Pale, Fair, Medium, Dark, Black }
     public enum HairinessLevel { Low, Medium, High, Yeti }
-    public enum WealthLevel { Poor, Average, Rich, Tycoon }
+    public enum WealthLevel { Poorest, Poor, Normal, Rich, Richest }  // 極貧, 貧乏, 普通, 富豪, 大富豪
     public enum BodyPart { Leg, Face, Chest, Arm }
     public enum PainToleranceLevel { Low, Medium, High }
 }

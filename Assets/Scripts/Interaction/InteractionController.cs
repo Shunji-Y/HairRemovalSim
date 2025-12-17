@@ -145,7 +145,7 @@ namespace HairRemovalSim.Player
             {
                 if (currentInteractable != null)
                 {
-                    Debug.Log("Input: Interact (Object Interaction)");
+                   // Debug.Log("Input: Interact (Object Interaction)");
                     currentInteractable.OnInteract(this);
                     return; // Consume input
                 }

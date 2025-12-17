@@ -6,9 +6,8 @@ using HairRemovalSim.Core;
 namespace HairRemovalSim.UI
 {
     /// <summary>
-    /// Individual tool card in the tool shop
-    /// Shows: image, name, stats (range, pain, speed), price, purchase button, description
-    /// No quantity controls - single purchase only
+    /// Tool card for ToolShopPanel
+    /// Shows: Icon, Title, Stats (Scope/Pain/Power/Speed sliders), Description, Price, Purchase button
     /// </summary>
     public class ToolShopCardUI : MonoBehaviour
     {
@@ -18,8 +17,11 @@ namespace HairRemovalSim.UI
         [SerializeField] private TMP_Text descriptionText;
         [SerializeField] private TMP_Text priceText;
         
-        [Header("Stats")]
-        [SerializeField] private TMP_Text statsText; // Combined stats display
+        [Header("Stats Sliders")]
+        [SerializeField] private Slider scopeSlider;
+        [SerializeField] private Slider painSlider;
+        [SerializeField] private Slider powerSlider;
+        [SerializeField] private Slider speedSlider;
         
         [Header("Grade Lock")]
         [SerializeField] private GameObject lockedOverlay;
@@ -37,7 +39,6 @@ namespace HairRemovalSim.UI
         
         private ItemData itemData;
         private System.Action<ItemData> onPurchaseCallback;
-        private bool isOwned;
         private bool isLocked;
         
         // Localization shorthand
@@ -55,10 +56,9 @@ namespace HairRemovalSim.UI
                 L.OnLocaleChanged -= RefreshDisplay;
         }
         
-        public void Setup(ItemData data, int currentShopGrade, bool owned, System.Action<ItemData> onPurchase)
+        public void Setup(ItemData data, int currentShopGrade, System.Action<ItemData> onPurchase)
         {
             itemData = data;
-            isOwned = owned;
             isLocked = !data.IsUnlockedForGrade(currentShopGrade);
             onPurchaseCallback = onPurchase;
             
@@ -79,20 +79,35 @@ namespace HairRemovalSim.UI
             if (iconImage != null && itemData.icon != null)
                 iconImage.sprite = itemData.icon;
             
-            // Name
+            // Name (localized)
             if (nameText != null)
-                nameText.text = itemData.displayName;
+            {
+                string localizedName = L?.Get(itemData.nameKey);
+                nameText.text = string.IsNullOrEmpty(localizedName) || localizedName.StartsWith("[") 
+                    ? itemData.displayName 
+                    : localizedName;
+            }
             
-            // Description
+            // Description (localized)
             if (descriptionText != null)
-                descriptionText.text = itemData.storeDescription ?? itemData.description;
+            {
+                string localizedDesc = L?.Get(itemData.nameKey+".desc");
+                if (string.IsNullOrEmpty(localizedDesc) || localizedDesc.StartsWith("["))
+                {
+                    descriptionText.text = itemData.storeDescription ?? itemData.description;
+                }
+                else
+                {
+                    descriptionText.text = localizedDesc;
+                }
+            }
             
             // Price
             if (priceText != null)
-                priceText.text = $"¥{itemData.price:N0}";
+                priceText.text = $"${itemData.price:N0}";
             
-            // Stats - combined display
-            UpdateStats();
+            // Stats sliders (0-100)
+            UpdateStatSliders();
             
             // Lock state
             UpdateLockState();
@@ -105,56 +120,48 @@ namespace HairRemovalSim.UI
             {
                 if (isLocked)
                     cardBackground.color = lockedColor;
-                else if (isOwned)
-                    cardBackground.color = ownedColor;
                 else
                     cardBackground.color = normalColor;
             }
         }
         
-        private void UpdateStats()
+        private void UpdateStatSliders()
         {
-            if (statsText == null) return;
+            // Scope slider
+            if (scopeSlider != null)
+            {
+                scopeSlider.minValue = 0;
+                scopeSlider.maxValue = 100;
+                scopeSlider.value = itemData.statScope;
+                scopeSlider.interactable = false;
+            }
             
-            // Build stats line like: [Scope: Wide] [Pain: Low] [Speed: Fast]
-            string rangeLabel = GetRangeLabel();
-            string painLabel = GetPainLabel();
-            string speedLabel = GetSpeedLabel();
+            // Pain slider
+            if (painSlider != null)
+            {
+                painSlider.minValue = 0;
+                painSlider.maxValue = 100;
+                painSlider.value = itemData.statPain;
+                painSlider.interactable = false;
+            }
             
-            statsText.text = $"[{L?.Get("tool.range") ?? "Scope"}: {rangeLabel}] [{L?.Get("tool.pain") ?? "Pain"}: {painLabel}] [{L?.Get("tool.fire_rate") ?? "Speed"}: {speedLabel}]";
-        }
-        
-        private string GetRangeLabel()
-        {
-            return itemData.effectRange switch
+            // Power slider
+            if (powerSlider != null)
             {
-                <= 0.5f => L?.Get("tool.range_narrow") ?? "Narrow",
-                <= 1.0f => L?.Get("tool.range_normal") ?? "Normal",
-                <= 2.0f => L?.Get("tool.range_wide") ?? "Wide",
-                _ => L?.Get("tool.range_ultra") ?? "Ultra"
-            };
-        }
-        
-        private string GetPainLabel()
-        {
-            return itemData.painLevel switch
+                powerSlider.minValue = 0;
+                powerSlider.maxValue = 100;
+                powerSlider.value = itemData.statPower;
+                powerSlider.interactable = false;
+            }
+            
+            // Speed slider
+            if (speedSlider != null)
             {
-                0f => L?.Get("tool.pain_none") ?? "None",
-                <= 0.3f => L?.Get("tool.pain_low") ?? "Low",
-                <= 0.6f => L?.Get("tool.pain_medium") ?? "Medium",
-                _ => L?.Get("tool.pain_high") ?? "Extreme"
-            };
-        }
-        
-        private string GetSpeedLabel()
-        {
-            return itemData.fireRate switch
-            {
-                < 0f => L?.Get("tool.rate_continuous") ?? "Rapid",
-                <= 0.5f => L?.Get("tool.rate_slow") ?? "Slow",
-                <= 1.0f => L?.Get("tool.rate_normal") ?? "Normal",
-                _ => L?.Get("tool.rate_fast") ?? "Fast"
-            };
+                speedSlider.minValue = 0;
+                speedSlider.maxValue = 100;
+                speedSlider.value = itemData.statSpeed;
+                speedSlider.interactable = false;
+            }
         }
         
         private void UpdateLockState()
@@ -179,12 +186,6 @@ namespace HairRemovalSim.UI
                 if (purchaseButtonText != null)
                     purchaseButtonText.text = L?.Get("tool.locked") ?? "LOCKED";
             }
-            else if (isOwned)
-            {
-                purchaseButton.interactable = false;
-                if (purchaseButtonText != null)
-                    purchaseButtonText.text = L?.Get("tool.owned") ?? "OWNED";
-            }
             else
             {
                 int currentMoney = EconomyManager.Instance?.CurrentMoney ?? 0;
@@ -203,13 +204,153 @@ namespace HairRemovalSim.UI
         
         private void OnPurchaseClicked()
         {
-            if (itemData == null || isLocked || isOwned) return;
+            if (itemData == null || isLocked) return;
             onPurchaseCallback?.Invoke(itemData);
         }
         
-        /// <summary>
-        /// Get the item data for this card
-        /// </summary>
         public ItemData GetItemData() => itemData;
+        
+#if UNITY_EDITOR
+     //   [UnityEngine.ContextMenu("Generate UI Structure")]
+        private void GenerateUIStructure()
+        {
+            Color cardBg = new Color(0.85f, 0.9f, 0.95f);
+            Color sliderBg = new Color(0.7f, 0.75f, 0.8f);
+            Color sliderFill = new Color(0.5f, 0.6f, 0.7f);
+            Color buttonColor = new Color(0.3f, 0.7f, 0.3f);
+            
+            // Card background
+            var cardRect = GetComponent<RectTransform>();
+            if (cardRect == null) cardRect = gameObject.AddComponent<RectTransform>();
+            cardRect.sizeDelta = new Vector2(180, 280);
+            
+            cardBackground = GetComponent<Image>();
+            if (cardBackground == null) cardBackground = gameObject.AddComponent<Image>();
+            cardBackground.color = cardBg;
+            
+            var vlg = gameObject.AddComponent<VerticalLayoutGroup>();
+            vlg.padding = new RectOffset(10, 10, 10, 10);
+            vlg.spacing = 5;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+            vlg.childControlHeight = true;
+            
+            // Icon container
+            var iconContainer = CreateUIElement("IconContainer", transform);
+            iconContainer.gameObject.AddComponent<LayoutElement>().preferredHeight = 80;
+            var iconObj = CreateUIElement("Icon", iconContainer);
+            SetRect(iconObj, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            iconImage = iconObj.gameObject.AddComponent<Image>();
+            iconImage.color = Color.white;
+            
+            // Name
+            nameText = CreateText("Name", transform, "Gentle Pro Max", 14, Color.black);
+            nameText.fontStyle = FontStyles.Bold;
+            nameText.alignment = TextAlignmentOptions.Left;
+            
+            // Stats container
+            var statsContainer = CreateUIElement("StatsContainer", transform);
+            var statsVlg = statsContainer.gameObject.AddComponent<VerticalLayoutGroup>();
+            statsVlg.spacing = 3;
+            statsVlg.childForceExpandWidth = true;
+            statsVlg.childForceExpandHeight = false;
+            
+            // Scope
+            scopeSlider = CreateStatRow("Scope", statsContainer, "Scope", sliderBg, sliderFill);
+            painSlider = CreateStatRow("Pain", statsContainer, "Pain", sliderBg, sliderFill);
+            powerSlider = CreateStatRow("Power", statsContainer, "Power", sliderBg, sliderFill);
+            speedSlider = CreateStatRow("Speed", statsContainer, "Speed", sliderBg, sliderFill);
+            
+            // Description
+            descriptionText = CreateText("Description", transform, "汎用的な脱毛レーザー", 10, new Color(0.3f, 0.3f, 0.3f));
+            descriptionText.alignment = TextAlignmentOptions.Left;
+            
+            // Price
+            priceText = CreateText("Price", transform, "¥12,000,000", 16, new Color(0.8f, 0.2f, 0.5f));
+            priceText.fontStyle = FontStyles.Bold;
+            priceText.alignment = TextAlignmentOptions.Right;
+            
+            // Purchase button
+            var btnObj = CreateUIElement("PurchaseButton", transform);
+            btnObj.gameObject.AddComponent<LayoutElement>().preferredHeight = 30;
+            var btnImg = btnObj.gameObject.AddComponent<Image>();
+            btnImg.color = buttonColor;
+            purchaseButton = btnObj.gameObject.AddComponent<Button>();
+            
+            purchaseButtonText = CreateText("ButtonText", btnObj, "PURCHASE", 12, Color.white);
+            SetRect(purchaseButtonText.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            purchaseButtonText.alignment = TextAlignmentOptions.Center;
+            
+            Debug.Log("[ToolShopCardUI] UI structure generated!");
+        }
+        
+        private Slider CreateStatRow(string name, RectTransform parent, string label, Color bgColor, Color fillColor)
+        {
+            var row = CreateUIElement(name + "Row", parent);
+            row.gameObject.AddComponent<LayoutElement>().preferredHeight = 18;
+            var hlg = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 5;
+            hlg.childForceExpandWidth = false;
+            hlg.childForceExpandHeight = true;
+            hlg.childControlWidth = true;
+            
+            // Label
+            var labelText = CreateText("Label", row, label, 10, Color.black);
+            labelText.GetComponent<LayoutElement>().preferredWidth = 40;
+            
+            // Slider
+            var sliderObj = CreateUIElement("Slider", row);
+            sliderObj.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1;
+            
+            var sliderBg = CreateUIElement("Background", sliderObj);
+            SetRect(sliderBg, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            sliderBg.gameObject.AddComponent<Image>().color = bgColor;
+            
+            var fillArea = CreateUIElement("Fill Area", sliderObj);
+            SetRect(fillArea, Vector2.zero, Vector2.one, new Vector2(2, 2), new Vector2(-2, -2));
+            
+            var fill = CreateUIElement("Fill", fillArea);
+            SetRect(fill, Vector2.zero, new Vector2(0.5f, 1), Vector2.zero, Vector2.zero);
+            fill.gameObject.AddComponent<Image>().color = fillColor;
+            
+            var slider = sliderObj.gameObject.AddComponent<Slider>();
+            slider.fillRect = fill;
+            slider.targetGraphic = sliderBg.gameObject.GetComponent<Image>();
+            slider.minValue = 0;
+            slider.maxValue = 100;
+            slider.interactable = false;
+            
+            return slider;
+        }
+        
+        private RectTransform CreateUIElement(string name, Transform parent)
+        {
+            var obj = new GameObject(name);
+            obj.transform.SetParent(parent, false);
+            var rect = obj.AddComponent<RectTransform>();
+            return rect;
+        }
+        
+        private TMP_Text CreateText(string name, Transform parent, string text, int fontSize, Color color)
+        {
+            var obj = new GameObject(name);
+            obj.transform.SetParent(parent, false);
+            obj.AddComponent<RectTransform>();
+            obj.AddComponent<LayoutElement>();
+            var tmp = obj.AddComponent<TextMeshProUGUI>();
+            tmp.text = text;
+            tmp.fontSize = fontSize;
+            tmp.color = color;
+            return tmp;
+        }
+        
+        private void SetRect(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)
+        {
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = offsetMin;
+            rect.offsetMax = offsetMax;
+        }
+#endif
     }
 }

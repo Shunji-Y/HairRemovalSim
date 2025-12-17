@@ -73,6 +73,72 @@ namespace HairRemovalSim.Core
         public ReviewTemplates Templates => reviewTemplates;
         
         /// <summary>
+        /// Get attraction rate bonus based on star rating
+        /// ★5=+3, ★4=+1, ★3=0, ★2=-2, ★1=-5
+        /// Returns 0 if no reviews yet (new shop)
+        /// </summary>
+        public float GetStarRatingBonus()
+        {
+            // No reviews = no bonus or penalty (treat as neutral ★3)
+            if (reviewHistory == null || reviewHistory.Count == 0)
+                return 0f;
+            
+            switch (StarRating)
+            {
+                case 5: return 3f;
+                case 4: return 1f;
+                case 3: return 0f;
+                case 2: return -2f;
+                case 1: return -5f;
+                default: return 0f;
+            }
+        }
+        
+        /// <summary>
+        /// Get average review score from last 3 days
+        /// Returns value in range approximately -50 to 50
+        /// </summary>
+        public float GetAverageReviewScoreLast3Days()
+        {
+            if (reviewHistory == null || reviewHistory.Count == 0)
+                return 0f;
+            
+            int currentDay = GameManager.Instance?.DayCount ?? 1;
+            int startDay = Mathf.Max(1, currentDay - 2); // Last 3 days including today
+            
+            float totalScore = 0f;
+            int count = 0;
+            
+            foreach (var review in reviewHistory)
+            {
+                if (review.dayPosted >= startDay && review.dayPosted <= currentDay)
+                {
+                    // Convert star rating to score: 1=-25, 2=-12, 3=0, 4=12, 5=25
+                    float score = (review.stars - 3f) * 12.5f;
+                    totalScore += score;
+                    count++;
+                }
+            }
+            
+            return count > 0 ? totalScore / count : 0f;
+        }
+        
+        /// <summary>
+        /// Get VIP coefficient from past 3 days review average
+        /// Normalized to 0-100 scale
+        /// Score -50 -> VIP 0, Score 0 -> VIP 50, Score 50+ -> VIP 100
+        /// </summary>
+        public float GetVipCoefficientFromReviews()
+        {
+            float avgScore = GetAverageReviewScoreLast3Days();
+            
+            // Normalize: -50~50 to 0~100
+            // -50 -> 0, 0 -> 50, 50 -> 100
+            float vip = (avgScore + 50f) / 100f * 100f;
+            return Mathf.Clamp(vip, 0f, 100f);
+        }
+        
+        /// <summary>
         /// Add review from customer satisfaction (1-5 stars)
         /// Note: This only adds the review to history. Score is updated separately by AddReview().
         /// </summary>
