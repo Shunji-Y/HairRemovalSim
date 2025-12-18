@@ -23,7 +23,12 @@ namespace HairRemovalSim.Core
         private List<CustomerReview> reviewHistory = new List<CustomerReview>();
         
         [Header("Store Info")]
-        [SerializeField] private int storeLevel = 1;
+        [SerializeField] private int shopGrade = 1;
+        
+        /// <summary>
+        /// Current shop grade (1-6)
+        /// </summary>
+        public int ShopGrade => shopGrade;
         
         [Header("Staff (Placeholder)")]
         [SerializeField] private int staffCount = 0;
@@ -217,7 +222,7 @@ namespace HairRemovalSim.Core
         {
             reviewScore = 0;
             reviewHistory.Clear();
-            storeLevel = 1;
+            shopGrade = 1;
             staffCount = 0;
             Debug.Log("[ShopManager] Shop reset to initial state");
         }

@@ -108,17 +108,24 @@ namespace HairRemovalSim.Staff
         [Min(0)]
         public int dailySalary = 100;
         
+        [Tooltip("Required shop grade to hire this rank (2=College, 3=NewGrad, 4=MidCareer, 5=Veteran, 6=Professional)")]
+        [Range(2, 6)]
+        public int requiredGrade = 2;
+        
         /// <summary>
         /// Get localized display name
         /// </summary>
         public string GetDisplayName()
         {
-            if (!string.IsNullOrEmpty(nameKey))
-            {
-                string localized = Core.LocalizationManager.Instance?.Get(nameKey);
-                if (!string.IsNullOrEmpty(localized) && localized != nameKey && !localized.StartsWith("["))
-                    return localized;
-            }
+            // Auto-generate key from rank if nameKey not set
+            string key = !string.IsNullOrEmpty(nameKey) 
+                ? nameKey 
+                : $"staff.rank.{rank.ToString().ToLower()}";
+            
+            string localized = Core.LocalizationManager.Instance?.Get(key);
+            if (!string.IsNullOrEmpty(localized) && localized != key && !localized.StartsWith("["))
+                return localized;
+            
             return displayName;
         }
         
