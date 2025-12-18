@@ -84,14 +84,47 @@ namespace HairRemovalSim.UI
         {
             if (string.IsNullOrEmpty(itemId) || itemId == addItemId)
             {
-                itemId = addItemId;
-                quantity++;
-                RefreshDisplay();
-                SyncToStockSlot(); // Keep CheckoutStockSlotUI in sync
+                // Apply max stack limit
+                var itemData = ItemDataRegistry.Instance?.GetItem(addItemId);
+                int maxStack = itemData?.maxStackOnShelf ?? 99;
+                
+                if (quantity < maxStack)
+                {
+                    itemId = addItemId;
+                    quantity++;
+                    RefreshDisplay();
+                    SyncToStockSlot();
+                }
             }
         }
         
         /// <summary>
+        /// Add item with ID and quantity (for staff restocking)
+        /// </summary>
+        public void AddItem(string id, int amount)
+        {
+            var itemData = ItemDataRegistry.Instance?.GetItem(id);
+            int maxStack = itemData?.maxStackOnShelf ?? 99;
+            
+            if (string.IsNullOrEmpty(itemId) || itemId == id)
+            {
+                int currentQty = string.IsNullOrEmpty(itemId) ? 0 : quantity;
+                int space = maxStack - currentQty;
+                if (space > 0)
+                {
+                    int toAdd = Mathf.Min(amount, space);
+                    itemId = id;
+                    quantity = currentQty + toAdd;
+                    RefreshDisplay();
+                    SyncToStockSlot();
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Get slot index (alias for SyncSlotIndex)
+        /// </summary>
+        public int SlotIndex => syncSlotIndex;
         /// Sync this slot's data to CheckoutStockSlotUI (Warehouse side)
         /// </summary>
         private void SyncToStockSlot()

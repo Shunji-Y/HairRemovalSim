@@ -28,6 +28,10 @@ namespace HairRemovalSim.Customer
         [Header("Review")]
         [SerializeField] private int baseReviewValue = 30; // Random 10-50 on spawn
         private int painMaxCount = 0; // How many times pain hit 100%
+        
+        [Header("Staff Processing")]
+        [SerializeField] private float staffReviewCoefficient = 1f; // Applied when staff handles
+        [SerializeField] private bool upsellSuccess = false; // True if staff upsell succeeded
 
         private CustomerState currentState;
         public CustomerState CurrentState => currentState; // Public read-only access
@@ -475,6 +479,22 @@ namespace HairRemovalSim.Customer
             }
         }
         
+        /// <summary>
+        /// Navigate to waiting area while waiting for a bed to become available
+        /// </summary>
+        public void GoToWaitingArea(Transform waitPos)
+        {
+            if (agent != null && waitPos != null)
+            {
+                agent.enabled = true;
+                agent.isStopped = false;
+                agent.updateRotation = true;
+                currentState = CustomerState.Waiting;
+                agent.SetDestination(waitPos.position);
+                Debug.Log($"[CustomerController] {data.customerName} moving to bed waiting area");
+            }
+        }
+        
         private System.Collections.IEnumerator MoveViaWaypoint(Transform waypoint, Transform finalDestination)
         {
             if (agent == null) yield break;
@@ -580,16 +600,68 @@ namespace HairRemovalSim.Customer
         }
         
         /// <summary>
+        /// Called when staff treatment fails - customer gets dressed, stands up, then leaves without paying
+        /// </summary>
+        public void FailAndLeave()
+        {
+            Debug.Log($"[CustomerController] {data?.customerName ?? "Customer"} treatment failed, starting departure without payment");
+            
+            // Set clothing back on
+            SetClothingVisible(true);
+            
+            // Set animator state
+            if (animator != null && animator.enabled)
+            {
+                animator.SetBool("TreatmentFinished", false);
+                animator.SetBool("IsLyingDown", false);
+                animator.SetBool("IsLieDownFaceDown", false);
+            }
+            
+            // Start coroutine to wait for stand up animation then leave
+            StartCoroutine(FailAndLeaveSequence());
+        }
+        
+        private System.Collections.IEnumerator FailAndLeaveSequence()
+        {
+            // Wait for stand up animation
+            yield return new WaitForSeconds(1.5f);
+            
+            // Open doors if needed
+            if (assignedBed != null)
+            {
+                assignedBed.OpenDoors();
+                yield return new WaitForSeconds(1.0f);
+                
+                // Clear bed reference
+                assignedBed = null;
+            }
+            
+            // Now leave shop
+            LeaveShop();
+        }
+        
+        /// <summary>
         /// Safely return this customer to the pool
         /// </summary>
         private void ReturnToPool()
         {
-            // Unregister from CashRegister first
+            // Unregister from ReceptionManager first
+            var receptionManager = UI.ReceptionManager.Instance;
+            if (receptionManager != null)
+            {
+                receptionManager.UnregisterCustomer(this);
+                receptionManager.RemoveFromWaitingList(this);
+            }
+            
+            // Unregister from CashRegister
             var cashRegister = FindObjectOfType<UI.CashRegister>();
             if (cashRegister != null)
             {
                 cashRegister.UnregisterCustomer(this);
             }
+            
+            // Reset staff processing state
+            ResetStaffProcessing();
             
             if (spawner != null)
             {
@@ -1631,6 +1703,49 @@ namespace HairRemovalSim.Customer
                 SetClothingForStanding();
             else
                 SetClothingForTreatment();
+        }
+        
+        // ========== STAFF PROCESSING METHODS ==========
+        
+        /// <summary>
+        /// Set review coefficient from staff (called by StaffReceptionHandler)
+        /// </summary>
+        public void SetStaffReviewCoefficient(float coefficient)
+        {
+            staffReviewCoefficient = coefficient;
+        }
+        
+        /// <summary>
+        /// Get review coefficient for final calculation
+        /// </summary>
+        public float GetStaffReviewCoefficient()
+        {
+            return staffReviewCoefficient;
+        }
+        
+        /// <summary>
+        /// Set upsell success flag (called by StaffReceptionHandler)
+        /// </summary>
+        public void SetUpsellSuccess(bool success)
+        {
+            upsellSuccess = success;
+        }
+        
+        /// <summary>
+        /// Check if upsell was successful
+        /// </summary>
+        public bool GetUpsellSuccess()
+        {
+            return upsellSuccess;
+        }
+        
+        /// <summary>
+        /// Reset staff processing state (called when returning to pool)
+        /// </summary>
+        public void ResetStaffProcessing()
+        {
+            staffReviewCoefficient = 1f;
+            upsellSuccess = false;
         }
     }
 }

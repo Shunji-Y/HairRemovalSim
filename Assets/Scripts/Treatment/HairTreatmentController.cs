@@ -658,6 +658,35 @@ namespace HairRemovalSim.Treatment
         }
         
         /// <summary>
+        /// Force mark all target parts as completed (for staff treatment automation)
+        /// </summary>
+        public void ForceCompleteAllParts()
+        {
+            foreach (var part in targetBodyParts)
+            {
+                if (!completedParts.Contains(part.partName))
+                {
+                    completedParts.Add(part.partName);
+                    perPartCompletion[part.partName] = 100f;
+                    OnPartCompleted?.Invoke(part.partName);
+                }
+            }
+            
+            // Also mark any parts tracked only by name
+            foreach (var partName in new List<string>(perPartCompletion.Keys))
+            {
+                if (!completedParts.Contains(partName))
+                {
+                    completedParts.Add(partName);
+                    perPartCompletion[partName] = 100f;
+                    OnPartCompleted?.Invoke(partName);
+                }
+            }
+            
+            Debug.Log($"[HairTreatmentController] Force completed ALL {completedParts.Count} parts");
+        }
+        
+        /// <summary>
         /// Get the completion percentage for each body part
         /// </summary>
         public Dictionary<string, float> GetPerPartCompletion()

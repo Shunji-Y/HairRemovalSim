@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using TMPro;
 using HairRemovalSim.Core;
+using HairRemovalSim.Staff;
 
 namespace HairRemovalSim.UI
 {
@@ -49,7 +50,18 @@ namespace HairRemovalSim.UI
         [SerializeField] private Button addReview5StarButton;
         [SerializeField] private Button addReviewScoreButton;
         
+        [Header("Staff Controls")]
+        [SerializeField] private Button spawnStaffButton;
+        [SerializeField] private Button assignReceptionButton;
+        [SerializeField] private Button assignCashierButton;
+        [SerializeField] private Button assignBedButton;
+        [SerializeField] private Button assignRestockButton;
+        [SerializeField] private Button selectPrevStaffButton;
+        [SerializeField] private Button selectNextStaffButton;
+        [SerializeField] private TMP_Text staffStatusText;
+        
         private float timeScale = 1f;
+        private int selectedStaffIndex = 0; // Current staff index for assignment
         
         public bool IsOpen => panel != null && panel.activeSelf;
         
@@ -145,6 +157,22 @@ namespace HairRemovalSim.UI
                 addReview5StarButton.onClick.AddListener(() => AddReview(5));
             if (addReviewScoreButton != null)
                 addReviewScoreButton.onClick.AddListener(AddReviewScore);
+            
+            // Staff
+            if (spawnStaffButton != null)
+                spawnStaffButton.onClick.AddListener(SpawnDebugStaff);
+            if (assignReceptionButton != null)
+                assignReceptionButton.onClick.AddListener(() => AssignDebugStaff(StaffAssignment.Reception));
+            if (assignCashierButton != null)
+                assignCashierButton.onClick.AddListener(() => AssignDebugStaff(StaffAssignment.Cashier));
+            if (assignBedButton != null)
+                assignBedButton.onClick.AddListener(() => AssignDebugStaffToBed(-1)); // Auto-find first available bed
+            if (assignRestockButton != null)
+                assignRestockButton.onClick.AddListener(() => AssignDebugStaff(StaffAssignment.Restock));
+            if (selectPrevStaffButton != null)
+                selectPrevStaffButton.onClick.AddListener(SelectPrevStaff);
+            if (selectNextStaffButton != null)
+                selectNextStaffButton.onClick.AddListener(SelectNextStaff);
         }
         
         private void UpdateStatus()
@@ -326,6 +354,131 @@ namespace HairRemovalSim.UI
                 c.LeaveShop();
             }
             Debug.Log($"[DebugPanel] Cleared {customers.Length} customers");
+        }
+        
+        // === STAFF ===
+        private void SpawnDebugStaff()
+        {
+            var staffManager = StaffManager.Instance;
+            if (staffManager == null)
+            {
+                Debug.LogWarning("[DebugPanel] StaffManager not found!");
+                return;
+            }
+            
+            // Get first available profile
+            if (staffManager.availableProfiles.Count > 0)
+            {
+                var profile = staffManager.availableProfiles[0];
+                var hiredData = staffManager.DebugHireAndActivate(profile);
+                if (hiredData != null)
+                {
+                    Debug.Log($"[DebugPanel] Spawned staff: {hiredData.Name}");
+                    UpdateStaffStatus();
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[DebugPanel] No staff profiles available!");
+            }
+        }
+        
+        private void AssignDebugStaff(StaffAssignment assignment)
+        {
+            var staffManager = StaffManager.Instance;
+            if (staffManager == null) return;
+            
+            var hiredStaff = staffManager.GetHiredStaff();
+            if (selectedStaffIndex >= 0 && selectedStaffIndex < hiredStaff.Count)
+            {
+                staffManager.SetStaffAssignment(hiredStaff[selectedStaffIndex], assignment);
+                Debug.Log($"[DebugPanel] Assigned staff {selectedStaffIndex} ({hiredStaff[selectedStaffIndex].Name}) to {assignment}");
+                UpdateStaffStatus();
+            }
+            else
+            {
+                Debug.LogWarning($"[DebugPanel] No staff at index {selectedStaffIndex}");
+            }
+        }
+        
+        private void AssignDebugStaffToBed(int bedIndex)
+        {
+            var staffManager = StaffManager.Instance;
+            if (staffManager == null) return;
+            
+            var hiredStaff = staffManager.GetHiredStaff();
+            if (selectedStaffIndex >= 0 && selectedStaffIndex < hiredStaff.Count)
+            {
+                // Find first available bed if -1 passed, or use specified index
+                int targetBed = bedIndex >= 0 ? bedIndex : staffManager.GetFirstAvailableBedIndex();
+                
+                if (targetBed < 0)
+                {
+                    Debug.LogWarning("[DebugPanel] No available beds for assignment");
+                    return;
+                }
+                
+                bool success = staffManager.SetStaffAssignment(hiredStaff[selectedStaffIndex], StaffAssignment.Treatment, targetBed);
+                if (success)
+                {
+                    Debug.Log($"[DebugPanel] Assigned staff {selectedStaffIndex} ({hiredStaff[selectedStaffIndex].Name}) to bed {targetBed}");
+                }
+                UpdateStaffStatus();
+            }
+        }
+        
+        private void SelectPrevStaff()
+        {
+            var staffManager = StaffManager.Instance;
+            if (staffManager == null) return;
+            
+            var hiredStaff = staffManager.GetHiredStaff();
+            if (hiredStaff.Count == 0) return;
+            
+            selectedStaffIndex--;
+            if (selectedStaffIndex < 0)
+                selectedStaffIndex = hiredStaff.Count - 1;
+            
+            UpdateStaffStatus();
+            Debug.Log($"[DebugPanel] Selected staff index: {selectedStaffIndex}");
+        }
+        
+        private void SelectNextStaff()
+        {
+            var staffManager = StaffManager.Instance;
+            if (staffManager == null) return;
+            
+            var hiredStaff = staffManager.GetHiredStaff();
+            if (hiredStaff.Count == 0) return;
+            
+            selectedStaffIndex++;
+            if (selectedStaffIndex >= hiredStaff.Count)
+                selectedStaffIndex = 0;
+            
+            UpdateStaffStatus();
+            Debug.Log($"[DebugPanel] Selected staff index: {selectedStaffIndex}");
+        }
+        
+        private void UpdateStaffStatus()
+        {
+            if (staffStatusText == null) return;
+            
+            var staffManager = StaffManager.Instance;
+            if (staffManager == null)
+            {
+                staffStatusText.text = "StaffManager: N/A";
+                return;
+            }
+            
+            var hiredStaff = staffManager.GetHiredStaff();
+            string text = $"Staff: {hiredStaff.Count} (Select: {selectedStaffIndex})\n";
+            for (int i = 0; i < hiredStaff.Count; i++)
+            {
+                var staff = hiredStaff[i];
+                string marker = (i == selectedStaffIndex) ? "→ " : "  ";
+                text += $"{marker}{staff.Name}: {staff.GetAssignmentDisplayText()}\n";
+            }
+            staffStatusText.text = text;
         }
         
 #if UNITY_EDITOR

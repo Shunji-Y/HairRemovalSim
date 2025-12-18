@@ -348,6 +348,48 @@ namespace HairRemovalSim.UI
             // Add review to ShopManager
             shopManager.AddCustomerReview(stars);
         }
+        
+        /// <summary>
+        /// Consume a random item from extra item slots (for staff upsell)
+        /// Returns the item ID and price, or null if no items available
+        /// </summary>
+        public (string itemId, int price)? ConsumeRandomExtraItem()
+        {
+            if (extraItemSlots == null || extraItemSlots.Length == 0) return null;
+            
+            // Collect non-empty slots
+            var availableSlots = new System.Collections.Generic.List<ExtraItemSlotUI>();
+            foreach (var slot in extraItemSlots)
+            {
+                if (slot != null && !slot.IsEmpty)
+                {
+                    availableSlots.Add(slot);
+                }
+            }
+            
+            if (availableSlots.Count == 0) return null;
+            
+            // Pick random slot
+            int randomIndex = UnityEngine.Random.Range(0, availableSlots.Count);
+            var selectedSlot = availableSlots[randomIndex];
+            
+            string itemId = selectedSlot.ItemId;
+            
+            // Get item price
+            int price = 0;
+            var itemData = Core.ItemDataRegistry.Instance?.GetItem(itemId);
+            if (itemData != null)
+            {
+                price = itemData.price;
+            }
+            
+            // Consume one item
+            selectedSlot.UseOne();
+            
+            Debug.Log($"[ReceptionPanel] Staff consumed extra item: {itemId}, price: ${price}");
+            
+            return (itemId, price);
+        }
     }
 }
 

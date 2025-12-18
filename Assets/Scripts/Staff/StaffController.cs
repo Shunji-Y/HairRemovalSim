@@ -1,0 +1,342 @@
+using UnityEngine;
+using UnityEngine.AI;
+using HairRemovalSim.Environment;
+
+namespace HairRemovalSim.Staff
+{
+    /// <summary>
+    /// Staff controller for 3D movement and behavior
+    /// Uses capsule placeholder until proper model is available
+    /// </summary>
+    public class StaffController : MonoBehaviour
+    {
+        [Header("State")]
+        [SerializeField] private StaffState currentState = StaffState.Idle;
+        
+        [Header("References")]
+        private HiredStaffData staffData;
+        private NavMeshAgent agent;
+        
+        [Header("Station Points")]
+        [Tooltip("Where to stand when assigned to reception")]
+        public Transform receptionStationPoint;
+        [Tooltip("Where to stand when assigned to cashier")]
+        public Transform cashierStationPoint;
+        [Tooltip("Exit point to leave at end of day")]
+        public Transform exitPoint;
+        
+        [Header("Wander Settings")]
+        public float wanderRadius = 5f;
+        public float wanderInterval = 3f;
+        private float wanderTimer;
+        
+        // Events
+        public System.Action<StaffState> OnStateChanged;
+        
+        public enum StaffState
+        {
+            Idle,
+            WalkingToStation,
+            AtStation,
+            Working,
+            WanderingBeforeOpen,
+            Leaving
+        }
+        
+        public StaffState CurrentState => currentState;
+        public HiredStaffData StaffData => staffData;
+        
+        private void Awake()
+        {
+            agent = GetComponent<NavMeshAgent>();
+            if (agent == null)
+            {
+                agent = gameObject.AddComponent<NavMeshAgent>();
+            }
+            
+            // Add work handlers if not present
+            if (GetComponent<StaffReceptionHandler>() == null)
+                gameObject.AddComponent<StaffReceptionHandler>();
+            if (GetComponent<StaffCashierHandler>() == null)
+                gameObject.AddComponent<StaffCashierHandler>();
+            if (GetComponent<StaffTreatmentHandler>() == null)
+                gameObject.AddComponent<StaffTreatmentHandler>();
+            if (GetComponent<StaffRestockHandler>() == null)
+                gameObject.AddComponent<StaffRestockHandler>();
+        }
+        
+        private void Start()
+        {
+            // Find station points if not assigned
+            FindStationPoints();
+        }
+        
+        private void Update()
+        {
+            switch (currentState)
+            {
+                case StaffState.WanderingBeforeOpen:
+                    UpdateWandering();
+                    break;
+                    
+                case StaffState.WalkingToStation:
+                    CheckArrivalAtStation();
+                    break;
+                    
+                case StaffState.AtStation:
+                    // Wait for work (handled by assignment handlers)
+                    break;
+            }
+        }
+        
+        /// <summary>
+        /// Initialize with hired staff data
+        /// </summary>
+        public void Initialize(HiredStaffData data)
+        {
+            staffData = data;
+            
+            // Set display name
+            gameObject.name = $"Staff_{data.Name}";
+            
+            // Place on NavMesh
+            if (agent != null)
+            {
+                agent.enabled = true;
+                agent.Warp(transform.position);
+            }
+            
+            // Check current game state
+            var gameState = Core.GameManager.Instance?.CurrentState;
+            
+            if (gameState == Core.GameManager.GameState.Preparation)
+            {
+                // Before shop opens - wander around
+                SetState(StaffState.WanderingBeforeOpen);
+            }
+            else
+            {
+                // Shop is open - go to station
+                GoToAssignedStation();
+            }
+            
+            Debug.Log($"[StaffController] {data.Name} initialized. Assignment: {data.GetAssignmentDisplayText()}");
+        }
+        
+        /// <summary>
+        /// Called when assignment changes
+        /// </summary>
+        public void UpdateAssignment()
+        {
+            if (staffData == null) return;
+            
+            Debug.Log($"[StaffController] {staffData.Name} assignment updated to {staffData.GetAssignmentDisplayText()}");
+            
+            GoToAssignedStation();
+        }
+        
+        /// <summary>
+        /// Navigate to assigned station
+        /// </summary>
+        public void GoToAssignedStation()
+        {
+            if (staffData == null) return;
+            
+            Transform destination = GetStationPoint(staffData.assignment);
+            
+            if (destination != null)
+            {
+                SetDestination(destination.position);
+                SetState(StaffState.WalkingToStation);
+            }
+            else
+            {
+                SetState(StaffState.Idle);
+            }
+        }
+        
+        /// <summary>
+        /// Get station point for assignment type
+        /// </summary>
+        private Transform GetStationPoint(StaffAssignment assignment)
+        {
+            switch (assignment)
+            {
+                case StaffAssignment.Reception:
+                    return receptionStationPoint;
+                case StaffAssignment.Cashier:
+                    return cashierStationPoint;
+                case StaffAssignment.Treatment:
+                    // Get bed's staff point
+                    if (staffData.assignedBedIndex >= 0)
+                    {
+                        var beds = StaffManager.Instance?.beds;
+                        if (beds != null && staffData.assignedBedIndex < beds.Length)
+                        {
+                            var bed = beds[staffData.assignedBedIndex];
+                            // Use staffPoint if available, otherwise arrivalPoint or transform
+                            return bed?.staffPoint ?? bed?.arrivalPoint ?? bed?.transform;
+                        }
+                    }
+                    return null;
+                case StaffAssignment.Restock:
+                    // Get warehouse staff point
+                    var warehouse = Core.WarehouseManager.Instance;
+                    if (warehouse != null)
+                    {
+                        return warehouse.staffPoint ?? warehouse.transform;
+                    }
+                    return null;
+                default:
+                    return null;
+            }
+        }
+        
+        /// <summary>
+        /// Find station points in scene
+        /// </summary>
+        private void FindStationPoints()
+        {
+            // Try to find reception point
+            if (receptionStationPoint == null)
+            {
+                var receptionManager = UI.ReceptionManager.Instance;
+                if (receptionManager != null)
+                {
+                    // Use staffPoint if available, otherwise fall back to transform
+                    receptionStationPoint = receptionManager.staffPoint != null 
+                        ? receptionManager.staffPoint 
+                        : receptionManager.transform;
+                }
+            }
+            
+            // Try to find cashier point
+            if (cashierStationPoint == null)
+            {
+                var cashRegister = FindObjectOfType<UI.CashRegister>();
+                if (cashRegister != null)
+                {
+                    // Use staffPoint if available, otherwise fall back to transform
+                    cashierStationPoint = cashRegister.staffPoint != null 
+                        ? cashRegister.staffPoint 
+                        : cashRegister.transform;
+                }
+            }
+            
+            // Try to find exit point
+            if (exitPoint == null)
+            {
+                var spawner = FindObjectOfType<Customer.CustomerSpawner>();
+                if (spawner != null)
+                {
+                    exitPoint = spawner.exitPoint;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Check if arrived at station
+        /// </summary>
+        private void CheckArrivalAtStation()
+        {
+            if (agent == null || !agent.enabled) return;
+            
+            if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
+            {
+                SetState(StaffState.AtStation);
+                Debug.Log($"[StaffController] {staffData?.Name} arrived at station");
+            }
+        }
+        
+        /// <summary>
+        /// Wander around before shop opens
+        /// </summary>
+        private void UpdateWandering()
+        {
+            wanderTimer -= Time.deltaTime;
+            
+            if (wanderTimer <= 0)
+            {
+                WanderToRandomPoint();
+                wanderTimer = wanderInterval + Random.Range(-1f, 1f);
+            }
+        }
+        
+        private void WanderToRandomPoint()
+        {
+            if (agent == null || !agent.enabled) return;
+            
+            Vector3 randomDir = Random.insideUnitSphere * wanderRadius;
+            randomDir += transform.position;
+            
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(randomDir, out hit, wanderRadius, NavMesh.AllAreas))
+            {
+                agent.SetDestination(hit.position);
+            }
+        }
+        
+        /// <summary>
+        /// Set NavMesh destination
+        /// </summary>
+        private void SetDestination(Vector3 position)
+        {
+            if (agent != null && agent.isOnNavMesh)
+            {
+                agent.isStopped = false;
+                agent.SetDestination(position);
+            }
+        }
+        
+        /// <summary>
+        /// Leave the shop (end of day)
+        /// </summary>
+        public void LeaveShop()
+        {
+            if (exitPoint != null)
+            {
+                SetDestination(exitPoint.position);
+                SetState(StaffState.Leaving);
+            }
+        }
+        
+        /// <summary>
+        /// Set state and fire event
+        /// </summary>
+        private void SetState(StaffState newState)
+        {
+            if (currentState != newState)
+            {
+                currentState = newState;
+                OnStateChanged?.Invoke(newState);
+            }
+        }
+        
+        /// <summary>
+        /// Get staff display info
+        /// </summary>
+        public string GetDebugInfo()
+        {
+            return $"{staffData?.Name ?? "Unknown"} | {currentState} | {staffData?.GetAssignmentDisplayText() ?? "N/A"}";
+        }
+        
+        /// <summary>
+        /// Get assigned bed for treatment
+        /// </summary>
+        public BedController GetAssignedBed()
+        {
+            if (staffData == null || staffData.assignment != StaffAssignment.Treatment)
+                return null;
+            
+            if (staffData.assignedBedIndex < 0)
+                return null;
+            
+            var beds = StaffManager.Instance?.beds;
+            if (beds != null && staffData.assignedBedIndex < beds.Length)
+            {
+                return beds[staffData.assignedBedIndex];
+            }
+            return null;
+        }
+    }
+}

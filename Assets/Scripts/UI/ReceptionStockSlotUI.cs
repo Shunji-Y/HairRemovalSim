@@ -82,15 +82,28 @@ namespace HairRemovalSim.UI
                 return;
             }
             
-            // Transfer all from warehouse
-            int qty = warehouseSource.Quantity;
+            // Apply max stack limit
+            int maxStack = itemData.maxStackOnShelf;
+            int currentQty = IsEmpty ? 0 : quantity;
+            int space = maxStack - currentQty;
+            
+            if (space <= 0)
+            {
+                Debug.Log($"[ReceptionStockSlotUI] Slot is full (max {maxStack})");
+                return;
+            }
+            
+            // Transfer from warehouse (respecting max stack)
+            int warehouseQty = warehouseSource.Quantity;
+            int toMove = Mathf.Min(warehouseQty, space);
+            
             itemId = dropItemId;
-            quantity += qty;
+            quantity = currentQty + toMove;
             
             // Remove from warehouse
             if (WarehouseManager.Instance != null)
             {
-                WarehouseManager.Instance.RemoveFromSlot(warehouseSource.SlotIndex, qty);
+                WarehouseManager.Instance.RemoveFromSlot(warehouseSource.SlotIndex, toMove);
             }
             
             warehouseSource.RefreshFromWarehouse();
@@ -99,7 +112,7 @@ namespace HairRemovalSim.UI
             // Sync with ReceptionPanel ExtraItemSlots
             SyncWithReceptionPanel();
             
-            Debug.Log($"[ReceptionStockSlotUI] Added {qty}x {itemId}. Total: {quantity}");
+            Debug.Log($"[ReceptionStockSlotUI] Added {toMove}x {itemId}. Total: {quantity} (max: {maxStack})");
         }
         
         /// <summary>

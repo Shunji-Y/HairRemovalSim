@@ -16,6 +16,10 @@ namespace HairRemovalSim.Environment
         [Tooltip("Point where customer walks to (should be bed center). If null, uses bed transform.")]
         public Transform arrivalPoint;
         
+        [Header("Staff")]
+        [Tooltip("Position where staff stands when assigned to this bed")]
+        public Transform staffPoint;
+        
         [Header("Curtain Doors")]
         [Tooltip("Left curtain door")]
         public CurtainDoor leftDoor;
@@ -27,6 +31,16 @@ namespace HairRemovalSim.Environment
         public Transform[] shelfSlots = new Transform[2];
         [Tooltip("Currently installed shelves")]
         public TreatmentShelf[] installedShelves = new TreatmentShelf[2];
+        
+        [Header("Staff Points")]
+        [Tooltip("Position where restock staff stands to refill shelf items")]
+        public Transform restockPoint;
+        
+        [Header("Player Detection")]
+        [Tooltip("Collider used for player detection (Box Collider)")]
+        [SerializeField] private Collider playerDetectionCollider;
+        
+        [SerializeField] private bool staffTreatmentInProgress = false;
         
         // Events
         public event System.Action OnDoorsOpened;
@@ -356,6 +370,73 @@ namespace HairRemovalSim.Environment
                 
                 OnPlayerExited?.Invoke(this);
             }
+        }
+        
+        // ========== STAFF TREATMENT CONTROL ==========
+        
+        /// <summary>
+        /// Start staff treatment - disable player detection
+        /// </summary>
+        public void StartStaffTreatment()
+        {
+            staffTreatmentInProgress = true;
+            if (playerDetectionCollider != null)
+            {
+                playerDetectionCollider.enabled = false;
+                Debug.Log($"[BedController] Staff treatment started, player detection disabled");
+            }
+        }
+        
+        /// <summary>
+        /// End staff treatment - re-enable player detection
+        /// </summary>
+        public void EndStaffTreatment()
+        {
+            staffTreatmentInProgress = false;
+            if (playerDetectionCollider != null)
+            {
+                playerDetectionCollider.enabled = true;
+                Debug.Log($"[BedController] Staff treatment ended, player detection re-enabled");
+            }
+        }
+        
+        /// <summary>
+        /// Check if staff treatment is in progress
+        /// </summary>
+        public bool IsStaffTreatmentInProgress => staffTreatmentInProgress;
+        
+        /// <summary>
+        /// Get an item from installed shelves (consumes one)
+        /// Returns item ID and data, or null if no items
+        /// </summary>
+        public (string itemId, Core.ItemData itemData)? ConsumeShelfItem()
+        {
+            foreach (var shelf in installedShelves)
+            {
+                if (shelf == null) continue;
+                
+                var result = shelf.ConsumeRandomItem();
+                if (result.HasValue)
+                {
+                    return result;
+                }
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// Check if any shelf has items
+        /// </summary>
+        public bool HasShelfItems()
+        {
+            foreach (var shelf in installedShelves)
+            {
+                if (shelf != null && shelf.HasItems())
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

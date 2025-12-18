@@ -18,10 +18,22 @@ namespace HairRemovalSim.UI
         public Environment.BedController[] beds; // Available beds
         public float detectionRadius = 2.0f; // Distance to detect customers
         
+        [Header("Staff")]
+        [Tooltip("Position where staff stands when assigned to reception")]
+        public Transform staffPoint;
+        
+        [Tooltip("Position where restock staff stands to refill items")]
+        public Transform restockPoint;
+        
         [Header("Queue Management")]
         public Transform[] queuePositions; // 待機位置の配列
-
+        
+        [Header("Bed Waiting Area")]
+        [Tooltip("Positions where customers wait for an available bed")]
+        public Transform[] waitingAreaPositions;
+        
         private System.Collections.Generic.Queue<CustomerController> customerQueue = new System.Collections.Generic.Queue<CustomerController>();
+        private System.Collections.Generic.List<CustomerController> waitingForBedList = new System.Collections.Generic.List<CustomerController>();
         private CustomerController currentCustomer = null;
         private CustomerController currentCustomerAtReception;
         private System.Collections.Generic.HashSet<CustomerController> processedCustomers = new System.Collections.Generic.HashSet<CustomerController>();
@@ -61,6 +73,13 @@ namespace HairRemovalSim.UI
         // IInteractable Implementation
         public void OnInteract(InteractionController interactor)
         {
+            // Block interaction if staff is assigned
+            if (HasStaffAssigned)
+            {
+                Debug.Log("[ReceptionManager] Staff is handling reception, player cannot interact");
+                return;
+            }
+            
             // Process first customer in queue
             if (currentCustomer == null && customerQueue.Count > 0)
             {
@@ -200,5 +219,178 @@ namespace HairRemovalSim.UI
                 UpdateQueuePositions();
             }
         }
+        
+        /// <summary>
+        /// Unregister customer completely from queue and processed list
+        /// Called when customer returns to pool
+        /// </summary>
+        public void UnregisterCustomer(CustomerController customer)
+        {
+            if (customer == null) return;
+            
+            // Remove from processed set
+            processedCustomers.Remove(customer);
+            
+            // Clear if current customer
+            if (currentCustomer == customer)
+            {
+                currentCustomer = null;
+            }
+            
+            // Note: We can't easily remove from Queue, but the Queue will be cleaned during iteration
+            // The processedCustomers HashSet is the main check for "already registered"
+            
+            Debug.Log($"[ReceptionManager] Unregistered {customer.data?.customerName ?? "unknown"} from reception");
+        }
+        
+        /// <summary>
+        /// Check if staff is assigned to reception
+        /// </summary>
+        public bool HasStaffAssigned
+        {
+            get
+            {
+                var staffManager = Staff.StaffManager.Instance;
+                if (staffManager == null) return false;
+                
+                foreach (var staff in staffManager.GetHiredStaff())
+                {
+                    if (staff.isActive && staff.assignment == Staff.StaffAssignment.Reception)
+                        return true;
+                }
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Dequeue customer for staff processing (called by StaffReceptionHandler)
+        /// </summary>
+        public CustomerController DequeueCustomerForStaff()
+        {
+            if (customerQueue.Count == 0) return null;
+            
+            var customer = customerQueue.Dequeue();
+            
+            // Remove from processed set - customer is now leaving reception
+            processedCustomers.Remove(customer);
+            
+            // Update remaining customers' positions
+            UpdateQueuePositions();
+            
+            Debug.Log($"[ReceptionManager] Staff dequeued {customer?.data?.customerName}, remaining: {customerQueue.Count}");
+            
+            return customer;
+        }
+        
+        /// <summary>
+        /// Get current queue count
+        /// </summary>
+        public int QueueCount => customerQueue.Count;
+        
+        // ========== BED WAITING AREA ==========
+        
+        private void Update()
+        {
+            // Check if any waiting customers can go to a bed
+            if (waitingForBedList.Count > 0)
+            {
+                TrySendWaitingCustomerToBed();
+            }
+        }
+        
+        /// <summary>
+        /// Add customer to waiting list for a bed
+        /// </summary>
+        public void AddToWaitingList(CustomerController customer)
+        {
+            if (customer == null || waitingForBedList.Contains(customer)) return;
+            
+            waitingForBedList.Add(customer);
+            
+            // Send customer to waiting area position
+            int waitIndex = waitingForBedList.Count - 1;
+            if (waitingAreaPositions != null && waitIndex < waitingAreaPositions.Length)
+            {
+                customer.GoToWaitingArea(waitingAreaPositions[waitIndex]);
+                Debug.Log($"[ReceptionManager] {customer.data?.customerName} sent to waiting area position {waitIndex}");
+            }
+            else
+            {
+                // Fallback: wait at first queue position or reception
+                customer.GoToWaitingArea(queuePositions.Length > 0 ? queuePositions[0] : transform);
+                Debug.Log($"[ReceptionManager] {customer.data?.customerName} sent to fallback waiting area");
+            }
+        }
+        
+        /// <summary>
+        /// Try to send a waiting customer to an available bed
+        /// </summary>
+        private void TrySendWaitingCustomerToBed()
+        {
+            // Find available bed
+            Environment.BedController availableBed = null;
+            if (beds != null)
+            {
+                foreach (var bed in beds)
+                {
+                    if (bed != null && !bed.IsOccupied)
+                    {
+                        availableBed = bed;
+                        break;
+                    }
+                }
+            }
+            
+            if (availableBed == null) return;
+            
+            // Get first waiting customer
+            var customer = waitingForBedList[0];
+            if (customer == null || !customer.gameObject.activeInHierarchy)
+            {
+                waitingForBedList.RemoveAt(0);
+                return;
+            }
+            
+            // Send to bed
+            waitingForBedList.RemoveAt(0);
+            customer.GoToBed(availableBed);
+            
+            Debug.Log($"[ReceptionManager] {customer.data?.customerName} sent to bed from waiting area");
+            
+            // Update waiting positions
+            UpdateWaitingPositions();
+        }
+        
+        /// <summary>
+        /// Update waiting customer positions after one leaves
+        /// </summary>
+        private void UpdateWaitingPositions()
+        {
+            for (int i = 0; i < waitingForBedList.Count; i++)
+            {
+                var customer = waitingForBedList[i];
+                if (customer != null && waitingAreaPositions != null && i < waitingAreaPositions.Length)
+                {
+                    customer.GoToWaitingArea(waitingAreaPositions[i]);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Remove customer from waiting list (e.g., when they leave)
+        /// </summary>
+        public void RemoveFromWaitingList(CustomerController customer)
+        {
+            if (waitingForBedList.Remove(customer))
+            {
+                UpdateWaitingPositions();
+                Debug.Log($"[ReceptionManager] {customer?.data?.customerName} removed from waiting list");
+            }
+        }
+        
+        /// <summary>
+        /// Get waiting list count
+        /// </summary>
+        public int WaitingForBedCount => waitingForBedList.Count;
     }
 }

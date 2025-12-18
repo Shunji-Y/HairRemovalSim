@@ -11,6 +11,13 @@ namespace HairRemovalSim.UI
         [Header("Settings")]
         public float detectionRadius = 2.0f;
         
+        [Header("Staff")]
+        [Tooltip("Position where staff stands when assigned to cashier")]
+        public Transform staffPoint;
+        
+        [Tooltip("Position where restock staff stands to refill items")]
+        public Transform restockPoint;
+        
         [Header("Queue Management")]
         public Transform[] queuePositions; // 待機位置の配列
         
@@ -82,6 +89,13 @@ namespace HairRemovalSim.UI
             if (PaymentPanel.Instance != null && PaymentPanel.Instance.IsOpen)
             {
                 Debug.Log("[CashRegister] PaymentPanel is already open, ignoring interaction");
+                return;
+            }
+            
+            // Block interaction if staff is assigned
+            if (HasStaffAssigned)
+            {
+                Debug.Log("[CashRegister] Staff is handling cashier, player cannot interact");
                 return;
             }
             
@@ -224,7 +238,7 @@ namespace HairRemovalSim.UI
             }
             
             customerQueue = validCustomers;
-            Debug.Log($"[CashRegister] CleanupQueue: kept {validCustomers.Count} of {originalCount} customers");
+           // Debug.Log($"[CashRegister] CleanupQueue: kept {validCustomers.Count} of {originalCount} customers");
         }
         
         private void UpdateQueuePositions()
@@ -250,5 +264,50 @@ namespace HairRemovalSim.UI
                 Debug.Log($"[CashRegister] {customerQueue.Count} customer(s) waiting in queue");
             }
         }
+        
+        /// <summary>
+        /// Check if staff is assigned to cashier
+        /// </summary>
+        public bool HasStaffAssigned
+        {
+            get
+            {
+                var staffManager = Staff.StaffManager.Instance;
+                if (staffManager == null) return false;
+                
+                foreach (var staff in staffManager.GetHiredStaff())
+                {
+                    if (staff.isActive && staff.assignment == Staff.StaffAssignment.Cashier)
+                        return true;
+                }
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Dequeue customer for staff processing
+        /// </summary>
+        public CustomerController DequeueCustomerForStaff()
+        {
+            // Clean up invalid customers first
+            CleanupQueue();
+            
+            if (customerQueue.Count == 0) return null;
+            
+            var customer = customerQueue.Dequeue();
+            processedCustomers.Remove(customer);
+            
+            // Update remaining customers' positions
+            UpdateQueuePositions();
+            
+            Debug.Log($"[CashRegister] Staff dequeued {customer?.data?.customerName}, remaining: {customerQueue.Count}");
+            
+            return customer;
+        }
+        
+        /// <summary>
+        /// Get current queue count
+        /// </summary>
+        public int QueueCount => customerQueue.Count;
     }
 }

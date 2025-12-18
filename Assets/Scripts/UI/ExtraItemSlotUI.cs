@@ -87,10 +87,45 @@ namespace HairRemovalSim.UI
         /// </summary>
         public void AddQuantity(int amount)
         {
-            quantity += amount;
+            // Apply max stack limit
+            var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
+            int maxStack = itemData?.maxStackOnShelf ?? 99;
+            int newQuantity = Mathf.Min(quantity + amount, maxStack);
+            quantity = newQuantity;
             RefreshDisplay();
             SyncToStockSlot();
         }
+        
+        /// <summary>
+        /// Add item with ID and quantity (for staff restocking)
+        /// </summary>
+        public void AddItem(string id, int amount)
+        {
+            var itemData = ItemDataRegistry.Instance?.GetItem(id);
+            int maxStack = itemData?.maxStackOnShelf ?? 99;
+            
+            if (IsEmpty)
+            {
+                int toAdd = Mathf.Min(amount, maxStack);
+                SetItem(id, toAdd);
+            }
+            else if (itemId == id)
+            {
+                int space = maxStack - quantity;
+                if (space > 0)
+                {
+                    int toAdd = Mathf.Min(amount, space);
+                    quantity += toAdd;
+                    RefreshDisplay();
+                    SyncToStockSlot();
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Get slot index (alias for SyncSlotIndex)
+        /// </summary>
+        public int SlotIndex => syncSlotIndex;
         
         /// <summary>
         /// Sync to ReceptionStockSlotUI

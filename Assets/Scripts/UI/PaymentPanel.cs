@@ -414,5 +414,54 @@ namespace HairRemovalSim.UI
                 slot.SetItemFromStock(itemId, quantity);
             }
         }
+        
+        /// <summary>
+        /// Get checkout item slots for staff restocking
+        /// </summary>
+        public CheckoutItemSlotUI[] GetCheckoutItemSlots() => checkoutItemSlots;
+        
+        /// <summary>
+        /// Consume a random item from checkout slots (for staff upsell at cashier)
+        /// Returns item ID, price, and review bonus, or null if no items available
+        /// </summary>
+        public (string itemId, int price, int reviewBonus)? ConsumeRandomCheckoutItem()
+        {
+            if (checkoutItemSlots == null || checkoutItemSlots.Length == 0) return null;
+            
+            // Collect non-empty slots
+            var availableSlots = new System.Collections.Generic.List<CheckoutItemSlotUI>();
+            foreach (var slot in checkoutItemSlots)
+            {
+                if (slot != null && !slot.IsEmpty)
+                {
+                    availableSlots.Add(slot);
+                }
+            }
+            
+            if (availableSlots.Count == 0) return null;
+            
+            // Pick random slot
+            int randomIndex = UnityEngine.Random.Range(0, availableSlots.Count);
+            var selectedSlot = availableSlots[randomIndex];
+            
+            string itemId = selectedSlot.ItemId;
+            
+            // Get item price and review bonus
+            int price = 0;
+            int reviewBonus = 0;
+            var itemData = Core.ItemDataRegistry.Instance?.GetItem(itemId);
+            if (itemData != null)
+            {
+                price = itemData.price;
+                reviewBonus = itemData.reviewBonus;
+            }
+            
+            // Consume one item
+            selectedSlot.RemoveOne();
+            
+            Debug.Log($"[PaymentPanel] Staff consumed checkout item: {itemId}, price: ${price}, review: +{reviewBonus}");
+            
+            return (itemId, price, reviewBonus);
+        }
     }
 }

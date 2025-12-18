@@ -596,5 +596,144 @@ namespace HairRemovalSim.Environment
             Gizmos.matrix = oldMatrix;
         }
         #endif
+        
+        // ========== STAFF TREATMENT METHODS ==========
+        
+        /// <summary>
+        /// Check if shelf has any items
+        /// </summary>
+        public bool HasItems()
+        {
+            for (int row = 0; row < rowCount; row++)
+            {
+                for (int col = 0; col < columnCount; col++)
+                {
+                    var slot = slots[row, col];
+                    if (!string.IsNullOrEmpty(slot.itemId) && slot.quantity > 0)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        
+        /// <summary>
+        /// Consume a random item from the shelf (for staff treatment)
+        /// Returns item ID and data, or null if no items
+        /// </summary>
+        public (string itemId, Core.ItemData itemData)? ConsumeRandomItem()
+        {
+            // Collect all slots with items
+            var slotsWithItems = new List<(int row, int col, string itemId)>();
+            
+            for (int row = 0; row < rowCount; row++)
+            {
+                for (int col = 0; col < columnCount; col++)
+                {
+                    var slot = slots[row, col];
+                    if (!string.IsNullOrEmpty(slot.itemId) && slot.quantity > 0)
+                    {
+                        slotsWithItems.Add((row, col, slot.itemId));
+                    }
+                }
+            }
+            
+            if (slotsWithItems.Count == 0) return null;
+            
+            // Pick random slot
+            var selected = slotsWithItems[Random.Range(0, slotsWithItems.Count)];
+            
+            // Get item data before removing
+            var itemData = Core.ItemDataRegistry.Instance?.GetItem(selected.itemId);
+            if (itemData == null) return null;
+            
+            // Consume one
+            RemoveItem(selected.row, selected.col, 1);
+            
+            Debug.Log($"[TreatmentShelf] Staff consumed {selected.itemId} from [{selected.row},{selected.col}]");
+            
+            return (selected.itemId, itemData);
+        }
+        
+        /// <summary>
+        /// Check if all slots are full
+        /// </summary>
+        public bool IsFull()
+        {
+            for (int row = 0; row < rowCount; row++)
+            {
+                for (int col = 0; col < columnCount; col++)
+                {
+                    var slot = slots[row, col];
+                    if (string.IsNullOrEmpty(slot.itemId) || slot.quantity <= 0)
+                    {
+                        return false;
+                    }
+                    
+                    // Check if slot has room for more (if same item could stack)
+                    var itemData = Core.ItemDataRegistry.Instance?.GetItem(slot.itemId);
+                    if (itemData != null && slot.quantity < itemData.maxStackOnShelf)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        
+        /// <summary>
+        /// Add items to shelf (for staff restocking)
+        /// Returns number of items actually added
+        /// </summary>
+        public int AddItem(string itemId, int quantity)
+        {
+            if (string.IsNullOrEmpty(itemId) || quantity <= 0) return 0;
+            
+            var itemData = Core.ItemDataRegistry.Instance?.GetItem(itemId);
+            if (itemData == null || !itemData.canPlaceOnShelf) return 0;
+            
+            int remaining = quantity;
+            int maxStack = itemData.maxStackOnShelf;
+            
+            // First pass: try to add to existing stacks
+            for (int row = 0; row < rowCount && remaining > 0; row++)
+            {
+                for (int col = 0; col < columnCount && remaining > 0; col++)
+                {
+                    var slot = slots[row, col];
+                    if (slot.itemId == itemId && slot.quantity < maxStack)
+                    {
+                        int space = maxStack - slot.quantity;
+                        int toAdd = Mathf.Min(space, remaining);
+                        slot.quantity += toAdd;
+                        remaining -= toAdd;
+                    }
+                }
+            }
+            
+            // Second pass: use empty slots
+            for (int row = 0; row < rowCount && remaining > 0; row++)
+            {
+                for (int col = 0; col < columnCount && remaining > 0; col++)
+                {
+                    var slot = slots[row, col];
+                    if (string.IsNullOrEmpty(slot.itemId) || slot.quantity <= 0)
+                    {
+                        int toAdd = Mathf.Min(maxStack, remaining);
+                        slot.itemId = itemId;
+                        slot.quantity = toAdd;
+                        remaining -= toAdd;
+                    }
+                }
+            }
+            
+            int added = quantity - remaining;
+            if (added > 0)
+            {
+                Debug.Log($"[TreatmentShelf] Staff added {added}x {itemId}");
+            }
+            return added;
+        }
     }
 }
