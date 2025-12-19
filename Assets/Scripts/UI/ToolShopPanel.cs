@@ -105,6 +105,10 @@ namespace HairRemovalSim.UI
             
             if (L != null)
                 L.OnLocaleChanged += RefreshDisplay;
+            
+            // Subscribe to shop upgrade to refresh when grade changes
+            if (ShopManager.Instance != null)
+                ShopManager.Instance.OnShopUpgraded += OnShopUpgraded;
                 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -115,7 +119,15 @@ namespace HairRemovalSim.UI
             if (L != null)
                 L.OnLocaleChanged -= RefreshDisplay;
             
+            if (ShopManager.Instance != null)
+                ShopManager.Instance.OnShopUpgraded -= OnShopUpgraded;
+            
             CloseSellMode();
+        }
+        
+        private void OnShopUpgraded(int newGrade)
+        {
+            RefreshCards();
         }
         
         public void Show()
@@ -277,13 +289,15 @@ namespace HairRemovalSim.UI
         
         private int GetCurrentShopGrade()
         {
-            return ShopManager.Instance?.StarRating ?? 1;
+            return ShopManager.Instance?.ShopGrade ?? 1;
         }
         
         private List<ItemData> GetFilteredTools()
         {
             if (ItemDataRegistry.Instance == null)
                 return new List<ItemData>();
+            
+            int currentGrade = GetCurrentShopGrade();
             
             // Get treatment tools
             var toolItems = ItemDataRegistry.Instance.GetItemsByCategory(ItemCategory.TreatmentTool);
@@ -295,12 +309,21 @@ namespace HairRemovalSim.UI
                     toolItems.Add(tool);
             }
             
-            // Filter by current type
+            // Filter by current type and grade visibility
             var filtered = new List<ItemData>();
             foreach (var tool in toolItems)
             {
-                if (tool.toolType == currentFilter)
-                    filtered.Add(tool);
+                if (tool.toolType != currentFilter)
+                    continue;
+                
+                // Grade filter: hide if requiredGrade > currentGrade + 1
+                // Show locked if requiredGrade == currentGrade + 1
+                // Show unlocked if requiredGrade <= currentGrade
+                int gradeDiff = tool.requiredShopGrade - currentGrade;
+                if (gradeDiff >= 2)
+                    continue; // Hide completely
+                
+                filtered.Add(tool);
             }
             
             // Sort by grade then price

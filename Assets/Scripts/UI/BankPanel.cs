@@ -159,18 +159,27 @@ namespace HairRemovalSim.UI
                 return;
             }
             
-            Debug.Log($"[BankPanel] Available loans count: {LoanManager.Instance.AvailableLoans.Count}");
+            // Get current shop grade
+            int currentGrade = ShopManager.Instance?.ShopGrade ?? 1;
             
-            // Create cards for available loans
+            Debug.Log($"[BankPanel] Available loans count: {LoanManager.Instance.AvailableLoans.Count}, ShopGrade: {currentGrade}");
+            
+            // Create cards for available loans (filtered by grade)
             foreach (var loanData in LoanManager.Instance.AvailableLoans)
             {
-                Debug.Log($"[BankPanel] Creating card for: {loanData.displayName}");
+                // Grade filter: hide if requiredGrade > currentGrade + 1
+                int gradeDiff = loanData.requiredShopGrade - currentGrade;
+                if (gradeDiff >= 2)
+                    continue; // Hide completely
+                
+                Debug.Log($"[BankPanel] Creating card for: {loanData.displayName}, locked: {gradeDiff == 1}");
                 var cardObj = Instantiate(loanCardPrefab, loanCardsContainer);
                 var card = cardObj.GetComponent<LoanCardUI>();
                 if (card != null)
                 {
                     bool isActive = LoanManager.Instance.HasActiveLoan(loanData.loanId);
-                    card.Setup(loanData, isActive, OnApplyClicked);
+                    bool isLocked = gradeDiff == 1; // Locked if 1 grade above
+                    card.Setup(loanData, isActive, OnApplyClicked, isLocked);
                     loanCards.Add(card);
                 }
                 else

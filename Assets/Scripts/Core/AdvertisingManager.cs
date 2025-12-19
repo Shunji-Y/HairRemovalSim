@@ -74,7 +74,7 @@ namespace HairRemovalSim.Core
             }
             
             int currentDay = GameManager.Instance?.DayCount ?? 1;
-            int currentGrade = ShopManager.Instance?.StarRating ?? 1;
+            int currentGrade = ShopManager.Instance?.ShopGrade ?? 1;
             
             // Check if unlocked
             if (!adData.IsUnlockedForGrade(currentGrade))
@@ -187,7 +187,7 @@ namespace HairRemovalSim.Core
             if (adData == null) return false;
             
             int currentDay = GameManager.Instance?.DayCount ?? 1;
-            int currentGrade = ShopManager.Instance?.StarRating ?? 1;
+            int currentGrade = ShopManager.Instance?.ShopGrade ?? 1;
             
             // Check if unlocked
             if (!adData.IsUnlockedForGrade(currentGrade))

@@ -95,6 +95,8 @@ namespace HairRemovalSim.Core
         {
             CurrentState = GameState.Day;
             Debug.Log($"Shop Opened! Day {DayCount} Started (9:00 AM).");
+            
+            GameEvents.TriggerShopOpened();
         }
 
         private void UpdateDayTimer()
@@ -112,6 +114,8 @@ namespace HairRemovalSim.Core
         {
             CurrentState = GameState.Night;
             Debug.Log("Day Ended (19:00 PM). Entering Management Phase.");
+            
+            GameEvents.TriggerShopClosed();
             // TODO: Open Management UI
         }
 

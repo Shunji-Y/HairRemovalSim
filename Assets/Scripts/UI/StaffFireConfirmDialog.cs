@@ -22,14 +22,15 @@ namespace HairRemovalSim.UI
         // Shorthand for localization
         private LocalizationManager L => LocalizationManager.Instance;
         
-        private void Start()
+        private void Awake()
         {
             if (confirmButton != null)
                 confirmButton.onClick.AddListener(OnConfirmClicked);
             if (cancelButton != null)
                 cancelButton.onClick.AddListener(OnCancelClicked);
             
-            gameObject.SetActive(false);
+            // NOTE: Dialog should be set inactive in the Unity Inspector, not here
+            // because Awake() runs when SetActive(true) is first called
         }
         
         /// <summary>

@@ -89,7 +89,9 @@ namespace HairRemovalSim.Staff
             currentCandidates.Clear();
             
             int shopGrade = ShopManager.Instance?.ShopGrade ?? 1;
-            int count = hiringConfig?.candidateCount ?? 6;
+            
+            // Get candidate count based on grade
+            int count = GetCandidateCountForGrade(shopGrade);
             
             // Get available ranks for current grade
             var availableRanks = GetAvailableRanks(shopGrade);
@@ -109,15 +111,54 @@ namespace HairRemovalSim.Staff
         }
         
         /// <summary>
+        /// Get number of candidate cards for shop grade
+        /// Grade 2: 1, Grade 3: 2, Grade 4: 3, Grade 5: 4, Grade 6+: 5
+        /// </summary>
+        private int GetCandidateCountForGrade(int shopGrade)
+        {
+            switch (shopGrade)
+            {
+                case 1: return 0; // No hiring at grade 1
+                case 2: return 1;
+                case 3: return 2;
+                case 4: return 3;
+                case 5: return 4;
+                default: return 5; // Grade 6+
+            }
+        }
+        
+        /// <summary>
+        /// Get max rank allowed for shop grade
+        /// Grade 2: College only
+        /// Grade 3: up to NewGrad
+        /// Grade 4: up to MidCareer
+        /// Grade 5: up to Veteran
+        /// Grade 6+: All (including Professional)
+        /// </summary>
+        private StaffRank GetMaxRankForGrade(int shopGrade)
+        {
+            switch (shopGrade)
+            {
+                case 1: 
+                case 2: return StaffRank.College;
+                case 3: return StaffRank.NewGrad;
+                case 4: return StaffRank.MidCareer;
+                case 5: return StaffRank.Veteran;
+                default: return StaffRank.Professional; // Grade 6+
+            }
+        }
+        
+        /// <summary>
         /// Get ranks available for given shop grade
         /// </summary>
         private List<StaffRankData> GetAvailableRanks(int shopGrade)
         {
             var available = new List<StaffRankData>();
+            StaffRank maxRank = GetMaxRankForGrade(shopGrade);
             
             foreach (var rank in allRanks)
             {
-                if (rank != null && rank.requiredGrade <= shopGrade)
+                if (rank != null && rank.rank <= maxRank)
                 {
                     available.Add(rank);
                 }

@@ -21,7 +21,6 @@ namespace HairRemovalSim.Core
         // Events
         public System.Action<SalaryRecord> OnSalaryCreated;
         public System.Action<SalaryRecord> OnSalaryPaid;
-        public System.Action<StaffProfile> OnStaffQuitUnpaid;
         
         public List<SalaryRecord> PendingSalaries => pendingSalaries;
         
@@ -35,15 +34,41 @@ namespace HairRemovalSim.Core
             Instance = this;
         }
         
-        /// <summary>
-        /// Generate salary for all hired staff (called at day end)
-        /// </summary>
-        public void GenerateDailySalaries(List<StaffProfile> hiredStaff, int currentDay)
+        private void Start()
         {
-            foreach (var staff in hiredStaff)
+            // Subscribe to day events
+            GameEvents.OnDayChanged += OnDayChanged;
+        }
+        
+        private void OnDestroy()
+        {
+            GameEvents.OnDayChanged -= OnDayChanged;
+        }
+        
+        private void OnDayChanged(int newDay)
+        {
+            // Process existing salaries (check overdue, etc.)
+            ProcessSalaries(newDay);
+            
+            // Generate new salary cards for today
+            GenerateDailySalaries(newDay);
+            
+            // Refresh payment panel
+            UI.PaymentListPanel.Instance?.RefreshDisplay();
+        }
+        
+        /// <summary>
+        /// Generate salary for all active hired staff
+        /// </summary>
+        public void GenerateDailySalaries(int currentDay)
+        {
+            var staffList = Staff.StaffManager.Instance?.GetHiredStaff();
+            if (staffList == null) return;
+            
+            foreach (var staff in staffList)
             {
-                if (staff == null || !staff.isHired) continue;
-                if (staff.hireDay == currentDay) continue; // Don't charge on hire day
+                if (staff == null || !staff.isActive) continue;
+                if (staff.hireDayNumber >= currentDay) continue; // Don't charge on hire day
                 
                 CreateSalaryRecord(staff, currentDay);
             }
@@ -52,14 +77,14 @@ namespace HairRemovalSim.Core
         /// <summary>
         /// Create a salary record for staff
         /// </summary>
-        private void CreateSalaryRecord(StaffProfile staff, int currentDay)
+        private void CreateSalaryRecord(Staff.HiredStaffData staff, int currentDay)
         {
             int dueDays = hiringConfig?.salaryDueDays ?? 3;
             
             var record = new SalaryRecord
             {
-                staffId = staff.staffId,
-                staffName = staff.displayName,
+                staffId = staff.profile?.staffName ?? "unknown",
+                staffName = staff.Name,
                 amount = staff.DailySalary,
                 createdDay = currentDay,
                 dueDay = currentDay + dueDays,
@@ -70,19 +95,21 @@ namespace HairRemovalSim.Core
             pendingSalaries.Add(record);
             OnSalaryCreated?.Invoke(record);
             
-            Debug.Log($"[SalaryManager] Created salary record: {staff.displayName} ¥{staff.DailySalary} due day {record.dueDay}");
+            Debug.Log($"[SalaryManager] Created salary card: {staff.Name} ${staff.DailySalary} due day {record.dueDay}");
         }
         
         /// <summary>
         /// Process pending salaries (called at day start)
         /// </summary>
-        public void ProcessSalaries(int currentDay, List<StaffProfile> hiredStaff)
+        public void ProcessSalaries(int currentDay)
         {
             int graceDays = hiringConfig?.salaryGraceDays ?? 3;
             
-            for (int i = pendingSalaries.Count - 1; i >= 0; i--)
+            // Track which staff have expired cards
+            var staffToProcess = new System.Collections.Generic.HashSet<string>();
+            
+            foreach (var record in pendingSalaries)
             {
-                var record = pendingSalaries[i];
                 if (record.isPaid) continue;
                 
                 // Check if overdue
@@ -92,24 +119,41 @@ namespace HairRemovalSim.Core
                     Debug.LogWarning($"[SalaryManager] Salary overdue for {record.staffName}");
                 }
                 
-                // Check if past grace period - force payment or staff quits
+                // Check if past grace period
                 if (currentDay > record.dueDay + graceDays)
                 {
-                    HandleUnpaidSalary(record, hiredStaff);
-                    pendingSalaries.RemoveAt(i);
+                    staffToProcess.Add(record.staffName);
                 }
+            }
+            
+            // Process each staff with expired cards
+            foreach (var staffName in staffToProcess)
+            {
+                HandleUnpaidSalaryForStaff(staffName);
             }
         }
         
         /// <summary>
-        /// Handle unpaid salary - force payment, review penalty, staff quits
+        /// Handle unpaid salary for a staff - sum ALL unpaid cards, force payment ×1.1, review penalty, staff quits
         /// </summary>
-        private void HandleUnpaidSalary(SalaryRecord record, List<StaffProfile> hiredStaff)
+        private void HandleUnpaidSalaryForStaff(string staffName)
         {
             float penaltyMultiplier = hiringConfig?.overduePenaltyMultiplier ?? 1.1f;
             int penalty = hiringConfig?.quitReviewPenalty ?? -1000;
             
-            int penalizedAmount = Mathf.RoundToInt(record.amount * penaltyMultiplier);
+            // Sum all unpaid salaries for this staff
+            int totalUnpaid = 0;
+            for (int i = pendingSalaries.Count - 1; i >= 0; i--)
+            {
+                var record = pendingSalaries[i];
+                if (record.staffName == staffName && !record.isPaid)
+                {
+                    totalUnpaid += record.amount;
+                    pendingSalaries.RemoveAt(i);
+                }
+            }
+            
+            int penalizedAmount = Mathf.RoundToInt(totalUnpaid * penaltyMultiplier);
             
             // Force payment
             if (EconomyManager.Instance != null)
@@ -119,7 +163,7 @@ namespace HairRemovalSim.Core
                 if (!canPay)
                 {
                     // Game over - not enough money
-                    Debug.LogError($"[SalaryManager] Cannot pay forced salary ¥{penalizedAmount} - GAME OVER");
+                    Debug.LogError($"[SalaryManager] Cannot pay forced salary ${penalizedAmount} - GAME OVER");
                     // TODO: Trigger game over
                     return;
                 }
@@ -131,13 +175,22 @@ namespace HairRemovalSim.Core
                 ShopManager.Instance.AddReviewScore(penalty);
             }
             
-            // Staff quits
-            var staff = FindStaffById(record.staffId, hiredStaff);
-            if (staff != null)
+            // Fire the staff
+            var staffManager = Staff.StaffManager.Instance;
+            if (staffManager != null)
             {
-                OnStaffQuitUnpaid?.Invoke(staff);
-                Debug.LogWarning($"[SalaryManager] {record.staffName} quit due to unpaid salary! Review: {penalty}, Paid: ¥{penalizedAmount}");
+                var hiredList = staffManager.GetHiredStaff();
+                var staffToFire = hiredList.Find(s => s.Name == staffName);
+                if (staffToFire != null)
+                {
+                    staffManager.FireStaff(staffToFire);
+                }
             }
+            
+            Debug.LogWarning($"[SalaryManager] {staffName} quit due to unpaid salary! Total: ${totalUnpaid} × 1.1 = ${penalizedAmount}, Review: {penalty}");
+            
+            // Refresh payment panel to remove cards
+            UI.PaymentListPanel.Instance?.RefreshDisplay();
         }
         
         /// <summary>
@@ -160,15 +213,6 @@ namespace HairRemovalSim.Core
             }
             
             return false;
-        }
-        
-        private StaffProfile FindStaffById(string staffId, List<StaffProfile> hiredStaff)
-        {
-            foreach (var staff in hiredStaff)
-            {
-                if (staff.staffId == staffId) return staff;
-            }
-            return null;
         }
         
         /// <summary>

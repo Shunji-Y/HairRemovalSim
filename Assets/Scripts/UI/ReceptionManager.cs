@@ -167,7 +167,15 @@ namespace HairRemovalSim.UI
                 }
             }
             
-            Debug.LogWarning("[ReceptionManager] No available beds! Customer waiting...");
+            // No available beds - send customer to waiting area
+            Debug.Log($"[ReceptionManager] No available beds! {currentCustomer.data.customerName} sent to waiting area.");
+            AddToWaitingList(currentCustomer);
+            
+            // Clear current customer and advance queue
+            processedCustomers.Remove(currentCustomer);
+            currentCustomer = null;
+            UpdateQueuePositions();
+            ProcessNextCustomer();
         }
         
         private void UpdateQueuePositions()
@@ -392,5 +400,23 @@ namespace HairRemovalSim.UI
         /// Get waiting list count
         /// </summary>
         public int WaitingForBedCount => waitingForBedList.Count;
+        
+        /// <summary>
+        /// Refresh bed references from ShopManager
+        /// Called when beds are added during shop upgrades
+        /// </summary>
+        public void RefreshBedReferences()
+        {
+            var shopManager = Core.ShopManager.Instance;
+            if (shopManager == null || shopManager.Beds == null) return;
+            
+            beds = new Environment.BedController[shopManager.Beds.Count];
+            for (int i = 0; i < shopManager.Beds.Count; i++)
+            {
+                beds[i] = shopManager.Beds[i];
+            }
+            
+            Debug.Log($"[ReceptionManager] Refreshed bed references. Total beds: {beds.Length}");
+        }
     }
 }

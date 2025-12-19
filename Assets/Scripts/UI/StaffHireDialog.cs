@@ -41,7 +41,7 @@ namespace HairRemovalSim.UI
         // Shorthand for localization
         private LocalizationManager L => LocalizationManager.Instance;
         
-        private void Start()
+        private void Awake()
         {
             // Setup button listeners
             if (receptionButton != null)
@@ -58,7 +58,8 @@ namespace HairRemovalSim.UI
             if (cancelButton != null)
                 cancelButton.onClick.AddListener(OnCancelClicked);
             
-            gameObject.SetActive(false);
+            // NOTE: Dialog should be set inactive in the Unity Inspector, not here
+            // because Awake() runs when SetActive(true) is first called
         }
         
         /// <summary>
@@ -68,6 +69,7 @@ namespace HairRemovalSim.UI
                         System.Action<StaffProfile, StaffAssignment, int> confirmCallback,
                         System.Action cancelCallback)
         {
+            Debug.Log($"[StaffHireDialog] Show called for {candidate?.displayName}, gameObject.activeSelf={gameObject.activeSelf}");
             currentCandidate = candidate;
             onConfirm = confirmCallback;
             onCancel = cancelCallback;
@@ -86,6 +88,7 @@ namespace HairRemovalSim.UI
             UpdateConfirmButton();
             
             gameObject.SetActive(true);
+            Debug.Log($"[StaffHireDialog] After SetActive(true), gameObject.activeSelf={gameObject.activeSelf}");
         }
         
         /// <summary>

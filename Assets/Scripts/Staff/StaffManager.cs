@@ -59,17 +59,14 @@ namespace HairRemovalSim.Staff
         }
         
         /// <summary>
-        /// Called when day changes - activate new staff, pay salaries
+        /// Called when day changes - activate new staff
         /// </summary>
         private void OnDayChanged(int newDay)
         {
             // Activate staff hired yesterday
             ActivateNewStaff(newDay);
             
-            // Pay daily salaries
-            int totalPaid = PayDailySalaries();
-            
-            Debug.Log($"[StaffManager] Day {newDay}: Paid ${totalPaid} in salaries to {hiredStaff.Count} staff");
+            Debug.Log($"[StaffManager] Day {newDay}: {HiredStaffCount} hired staff");
         }
         
         /// <summary>
@@ -338,6 +335,24 @@ namespace HairRemovalSim.Staff
             Debug.Log($"[StaffManager] DEBUG: Hired and activated {profile.staffName}");
             
             return hiredData;
+        }
+        
+        /// <summary>
+        /// Refresh bed references from ShopManager
+        /// Called when beds are added during shop upgrades
+        /// </summary>
+        public void RefreshBedAssignments()
+        {
+            var shopManager = Core.ShopManager.Instance;
+            if (shopManager == null || shopManager.Beds == null) return;
+            
+            beds = new BedController[shopManager.Beds.Count];
+            for (int i = 0; i < shopManager.Beds.Count; i++)
+            {
+                beds[i] = shopManager.Beds[i];
+            }
+            
+            Debug.Log($"[StaffManager] Refreshed bed assignments. Total beds: {beds.Length}");
         }
     }
 }

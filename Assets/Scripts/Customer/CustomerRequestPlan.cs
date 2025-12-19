@@ -199,5 +199,46 @@ namespace HairRemovalSim.Customer
             
             return parts.ToArray();
         }
+        
+        /// <summary>
+        /// Get available treatment plans for a specific wealth level
+        /// 極貧: Chest, Stomach
+        /// 貧乏: Underarms, Back, Beard
+        /// 普通: Arms, Legs
+        /// 富豪: ArmsAndLegs, UpperBodyNoArms, UpperBody
+        /// 大富豪: FullBodyNoBeard, FullBodyWithBeard
+        /// </summary>
+        public static CustomerRequestPlan[] GetPlansForWealthLevel(WealthLevel wealth)
+        {
+            switch (wealth)
+            {
+                case WealthLevel.Poorest:
+                    return new[] { CustomerRequestPlan.Chest, CustomerRequestPlan.Stomach };
+                    
+                case WealthLevel.Poor:
+                    return new[] { CustomerRequestPlan.Underarms, CustomerRequestPlan.Back, CustomerRequestPlan.Beard };
+                    
+                case WealthLevel.Normal:
+                    return new[] { CustomerRequestPlan.Arms, CustomerRequestPlan.Legs };
+                    
+                case WealthLevel.Rich:
+                    return new[] { CustomerRequestPlan.ArmsAndLegs, CustomerRequestPlan.UpperBodyNoArms, CustomerRequestPlan.UpperBody };
+                    
+                case WealthLevel.Richest:
+                    return new[] { CustomerRequestPlan.FullBodyNoBeard, CustomerRequestPlan.FullBodyWithBeard };
+                    
+                default:
+                    return new[] { CustomerRequestPlan.Chest };
+            }
+        }
+        
+        /// <summary>
+        /// Get a random plan for a specific wealth level
+        /// </summary>
+        public static CustomerRequestPlan GetRandomPlanForWealthLevel(WealthLevel wealth)
+        {
+            var plans = GetPlansForWealthLevel(wealth);
+            return plans[UnityEngine.Random.Range(0, plans.Length)];
+        }
     }
 }

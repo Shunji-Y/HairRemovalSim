@@ -405,8 +405,8 @@ namespace HairRemovalSim.Customer
                 }
                 else
                 {
-                    int requestPlanIndex = Random.Range(0, 12); // 0-11 for 12 plans
-                    data.requestPlan = (CustomerRequestPlan)requestPlanIndex;
+                    // Select plan based on wealth level
+                    data.requestPlan = CustomerPlanHelper.GetRandomPlanForWealthLevel(data.wealth);
                 }
                 
                 // Adjust budget based on plan complexity (number of parts)

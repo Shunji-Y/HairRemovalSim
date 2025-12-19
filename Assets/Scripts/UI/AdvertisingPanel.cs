@@ -63,6 +63,10 @@ namespace HairRemovalSim.UI
             if (AdvertisingManager.Instance != null)
                 AdvertisingManager.Instance.OnAdsUpdated += RefreshDisplay;
             
+            // Subscribe to shop upgrade to refresh when grade changes
+            if (ShopManager.Instance != null)
+                ShopManager.Instance.OnShopUpgraded += OnShopUpgraded;
+            
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
@@ -74,6 +78,14 @@ namespace HairRemovalSim.UI
             
             if (AdvertisingManager.Instance != null)
                 AdvertisingManager.Instance.OnAdsUpdated -= RefreshDisplay;
+            
+            if (ShopManager.Instance != null)
+                ShopManager.Instance.OnShopUpgraded -= OnShopUpgraded;
+        }
+        
+        private void OnShopUpgraded(int newGrade)
+        {
+            RefreshAvailableAds();
         }
         
         public void Show()
@@ -196,15 +208,22 @@ namespace HairRemovalSim.UI
             if (AdvertisingManager.Instance == null || adCardPrefab == null || availableAdsContainer == null)
                 return;
             
-            int currentGrade = ShopManager.Instance?.StarRating ?? 1;
+            // Use ShopGrade
+            int currentGrade = ShopManager.Instance?.ShopGrade ?? 1;
             
             foreach (var adData in AdvertisingManager.Instance.AvailableAds)
             {
+                // Grade filter: hide if requiredGrade > currentGrade + 1
+                int gradeDiff = adData.requiredShopGrade - currentGrade;
+                if (gradeDiff >= 2)
+                    continue; // Hide completely
+                
                 var cardObj = Instantiate(adCardPrefab, availableAdsContainer);
                 var cardUI = cardObj.GetComponent<AdCardUI>();
                 
                 if (cardUI != null)
                 {
+                    // isLocked will be determined by gradeDiff == 1
                     cardUI.Setup(adData, currentGrade, OnAdStartRequested);
                 }
                 

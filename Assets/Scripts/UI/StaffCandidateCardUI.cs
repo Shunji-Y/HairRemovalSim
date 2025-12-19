@@ -115,6 +115,7 @@ namespace HairRemovalSim.UI
         
         private void OnHireButtonClicked()
         {
+            Debug.Log($"[StaffCandidateCardUI] Hire button clicked for {candidate?.displayName}");
             onHireClicked?.Invoke(candidate);
         }
     }

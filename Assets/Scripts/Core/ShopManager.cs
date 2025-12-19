@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Unity.AI.Navigation;
 
 namespace HairRemovalSim.Core
 {
@@ -25,10 +26,17 @@ namespace HairRemovalSim.Core
         [Header("Store Info")]
         [SerializeField] private int shopGrade = 1;
         
-        /// <summary>
-        /// Current shop grade (1-6)
-        /// </summary>
-        public int ShopGrade => shopGrade;
+        [Header("Beds")]
+        [Tooltip("All treatment beds in the shop")]
+        [SerializeField] private List<Environment.BedController> beds = new List<Environment.BedController>();
+        
+        [Header("Shop Upgrade")]
+        [Tooltip("Upgrade configs in scene for each grade level (2-6)")]
+        [SerializeField] private List<ShopUpgradeConfig> upgradeConfigs = new List<ShopUpgradeConfig>();
+        
+        [Header("NavMesh")]
+        [Tooltip("NavMeshSurface for runtime rebaking after expansion")]
+        [SerializeField] private NavMeshSurface navMeshSurface;
         
         [Header("Staff (Placeholder)")]
         [SerializeField] private int staffCount = 0;
@@ -36,6 +44,31 @@ namespace HairRemovalSim.Core
         // Events
         public System.Action<CustomerReview> OnReviewAdded;
         public System.Action<int, int> OnStarRatingChanged; // old, new
+        public System.Action<int> OnShopUpgraded; // new grade
+        
+        /// <summary>
+        /// Current shop grade (1-6)
+        /// </summary>
+        public int ShopGrade => shopGrade;
+        
+        /// <summary>
+        /// All beds in the shop
+        /// </summary>
+        public IReadOnlyList<Environment.BedController> Beds => beds;
+        
+        /// <summary>
+        /// Get total bed count
+        /// </summary>
+        public int BedCount => beds?.Count ?? 0;
+        
+        /// <summary>
+        /// Get bed by index
+        /// </summary>
+        public Environment.BedController GetBed(int index)
+        {
+            if (beds == null || index < 0 || index >= beds.Count) return null;
+            return beds[index];
+        }
         
         /// <summary>
         /// Current review score (0-4000+)
@@ -312,6 +345,225 @@ namespace HairRemovalSim.Core
         /// Get pending shelf purchase count
         /// </summary>
         public int PendingShelfPurchases => pendingShelfPurchases;
+        
+        #endregion
+        
+        #region Shop Upgrade System
+        
+        /// <summary>
+        /// Auto-find upgrade configs in scene if not assigned
+        /// </summary>
+        private void FindUpgradeConfigs()
+        {
+            if (upgradeConfigs == null || upgradeConfigs.Count == 0)
+            {
+                upgradeConfigs = new List<ShopUpgradeConfig>(FindObjectsOfType<ShopUpgradeConfig>());
+                upgradeConfigs.Sort((a, b) => a.TargetGrade.CompareTo(b.TargetGrade));
+                Debug.Log($"[ShopManager] Auto-found {upgradeConfigs.Count} upgrade configs in scene");
+            }
+        }
+        
+        /// <summary>
+        /// Get upgrade config for target grade
+        /// </summary>
+        public ShopUpgradeConfig GetUpgradeConfig(int targetGrade)
+        {
+            FindUpgradeConfigs();
+            if (upgradeConfigs == null) return null;
+            return upgradeConfigs.Find(c => c != null && c.TargetGrade == targetGrade);
+        }
+        
+        /// <summary>
+        /// Get upgrade data for target grade (from config)
+        /// </summary>
+        public ShopUpgradeData GetUpgradeData(int targetGrade)
+        {
+            var config = GetUpgradeConfig(targetGrade);
+            return config?.upgradeData;
+        }
+        
+        /// <summary>
+        /// Get next available upgrade config (null if at max grade)
+        /// </summary>
+        public ShopUpgradeConfig GetNextUpgradeConfig()
+        {
+            return GetUpgradeConfig(shopGrade + 1);
+        }
+        
+        /// <summary>
+        /// Get next available upgrade data (null if at max grade)
+        /// </summary>
+        public ShopUpgradeData GetNextUpgradeData()
+        {
+            return GetUpgradeData(shopGrade + 1);
+        }
+        
+        /// <summary>
+        /// Check if can afford next upgrade
+        /// </summary>
+        public bool CanAffordNextUpgrade()
+        {
+            var config = GetNextUpgradeConfig();
+            if (config == null) return false;
+            return EconomyManager.Instance != null && EconomyManager.Instance.CurrentMoney >= config.UpgradeCost;
+        }
+        
+        /// <summary>
+        /// Check if at max grade
+        /// </summary>
+        public bool IsMaxGrade => shopGrade >= 6;
+        
+        /// <summary>
+        /// Perform shop upgrade (call after payment confirmation and during whiteout)
+        /// </summary>
+        public bool UpgradeShop()
+        {
+            if (IsMaxGrade)
+            {
+                Debug.LogWarning("[ShopManager] Already at max grade!");
+                return false;
+            }
+            
+            var config = GetNextUpgradeConfig();
+            if (config == null)
+            {
+                Debug.LogError("[ShopManager] No upgrade config for next grade!");
+                return false;
+            }
+            
+            // Pay cost
+            if (EconomyManager.Instance != null)
+            {
+                if (!EconomyManager.Instance.SpendMoney(config.UpgradeCost))
+                {
+                    Debug.LogWarning("[ShopManager] Not enough money for upgrade!");
+                    return false;
+                }
+            }
+            
+            int oldGrade = shopGrade;
+            shopGrade++;
+            
+            // 1. Activate expansion room
+            if (config.expansionRoom != null)
+            {
+                config.expansionRoom.SetActive(true);
+                Debug.Log($"[ShopManager] Activated expansion room: {config.expansionRoom.name}");
+            }
+            
+            // 2. Hide walls
+            if (config.wallsToHide != null)
+            {
+                foreach (var wall in config.wallsToHide)
+                {
+                    if (wall != null)
+                    {
+                        wall.SetActive(false);
+                        Debug.Log($"[ShopManager] Hidden wall: {wall.name}");
+                    }
+                }
+            }
+            
+            // 3. Activate and add new beds
+            if (config.newBeds != null)
+            {
+                foreach (var bed in config.newBeds)
+                {
+                    if (bed != null)
+                    {
+                        bed.gameObject.SetActive(true);
+                        AddBed(bed);
+                        Debug.Log($"[ShopManager] Activated bed: {bed.name}");
+                    }
+                }
+            }
+            
+            // 4. Legacy: Activate shop model if set
+            if (config.shopModel != null)
+            {
+                ActivateShopModel(shopGrade);
+            }
+            
+            // Note: NavMesh is handled via NavMeshObstacle on walls (Carve enabled)
+            // No runtime NavMesh rebuild needed
+            
+            Debug.Log($"[ShopManager] Shop upgraded: Grade {oldGrade} → Grade {shopGrade}");
+            OnShopUpgraded?.Invoke(shopGrade);
+            
+            return true;
+        }
+        
+        /// <summary>
+        /// Add a bed to the shop's bed list and sync with other managers
+        /// </summary>
+        public void AddBed(Environment.BedController bed)
+        {
+            if (bed == null || beds.Contains(bed)) return;
+            
+            beds.Add(bed);
+            
+            // Sync with ReceptionManager
+            if (UI.ReceptionManager.Instance != null)
+            {
+                UI.ReceptionManager.Instance.RefreshBedReferences();
+            }
+            
+            // Sync with StaffManager
+            if (Staff.StaffManager.Instance != null)
+            {
+                Staff.StaffManager.Instance.RefreshBedAssignments();
+            }
+            
+            // Sync with WarehousePanel (refresh shelf carts)
+            if (UI.WarehousePanel.Instance != null)
+            {
+                UI.WarehousePanel.Instance.RefreshShelfCarts();
+            }
+            
+            Debug.Log($"[ShopManager] Bed added: {bed.name}. Total beds: {beds.Count}");
+        }
+        
+        /// <summary>
+        /// Rebuild NavMesh after expansion (delayed by 1 frame for mesh initialization)
+        /// </summary>
+        public void RebuildNavMesh()
+        {
+            if (navMeshSurface != null)
+            {
+                StartCoroutine(RebuildNavMeshDelayed());
+            }
+            else
+            {
+                Debug.LogWarning("[ShopManager] NavMeshSurface not assigned, cannot rebuild NavMesh");
+            }
+        }
+        
+        private System.Collections.IEnumerator RebuildNavMeshDelayed()
+        {
+            // Wait for end of frame to ensure all objects are properly initialized
+            yield return new WaitForEndOfFrame();
+            
+            // Additional frame for physics/colliders to update
+            yield return null;
+            
+            if (navMeshSurface != null)
+            {
+                navMeshSurface.BuildNavMesh();
+                Debug.Log("[ShopManager] NavMesh rebuilt");
+            }
+        }
+        
+        /// <summary>
+        /// Activate shop model for specified grade
+        /// </summary>
+        private void ActivateShopModel(int grade)
+        {
+            foreach (var config in upgradeConfigs)
+            {
+                if (config == null || config.shopModel == null) continue;
+                config.shopModel.SetActive(config.TargetGrade == grade);
+            }
+        }
         
         #endregion
     }

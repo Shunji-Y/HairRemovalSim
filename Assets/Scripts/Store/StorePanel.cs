@@ -81,16 +81,24 @@ namespace HairRemovalSim.Store
                 return;
             }
             
+            int currentGrade = ShopManager.Instance?.ShopGrade ?? 1;
             var storeItems = ItemDataRegistry.Instance.GetStoreItems();
             
-            // Create item UIs
+            // Create item UIs (filtered by grade)
             foreach (var itemData in storeItems)
             {
+                // Grade filter: hide if requiredGrade > currentGrade + 1
+                int gradeDiff = itemData.requiredShopGrade - currentGrade;
+                if (gradeDiff >= 2)
+                    continue; // Hide completely
+                
+                bool isLocked = gradeDiff == 1;
+                
                 GameObject itemObj = Instantiate(itemPrefab, itemContainer);
                 StoreItemUI itemUI = itemObj.GetComponent<StoreItemUI>();
                 if (itemUI != null)
                 {
-                    itemUI.SetItemData(itemData);
+                    itemUI.SetItemData(itemData, isLocked);
                     itemUI.SetStorePanel(this);
                     itemUIs.Add(itemUI);
                 }

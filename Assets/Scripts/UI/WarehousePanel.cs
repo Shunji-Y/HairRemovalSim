@@ -140,7 +140,7 @@ namespace HairRemovalSim.UI
             }
             
             // Adjust grid height for ScrollView (use actual slot count, not childCount)
-            AdjustGridHeight(warehouseGridParent, WarehouseManager.Instance.Columns, maxSlots);
+          //  AdjustGridHeight(warehouseGridParent, WarehouseManager.Instance.Columns, maxSlots);
             
             RefreshWarehouseGrid();
         }
@@ -170,7 +170,10 @@ namespace HairRemovalSim.UI
             rectTransform.sizeDelta = new Vector2(rectTransform.sizeDelta.x, totalHeight);
         }
         
-        private void InitializeShelfCarts()
+        /// <summary>
+        /// Initialize/refresh shelf carts from all beds
+        /// </summary>
+        public void InitializeShelfCarts()
         {
             if (shelfCartPrefab == null || shelfListParent == null) return;
             
@@ -180,9 +183,9 @@ namespace HairRemovalSim.UI
                 Destroy(child.gameObject);
             }
             shelfCarts.Clear();
-            
+
             // Find all beds and their installed shelves
-            var beds = FindObjectsOfType<BedController>();
+            var beds = ShopManager.Instance.Beds;
             
             foreach (var bed in beds)
             {
@@ -204,16 +207,24 @@ namespace HairRemovalSim.UI
             }
             
             // Adjust cart list height for ScrollView
-            var cartGridLayout = shelfListParent.GetComponent<GridLayoutGroup>();
-            if (cartGridLayout != null)
-            {
-                int cartColumns = Mathf.Max(1, Mathf.FloorToInt(
-                    (shelfListParent.GetComponent<RectTransform>().rect.width - cartGridLayout.padding.left - cartGridLayout.padding.right + cartGridLayout.spacing.x) 
-                    / (cartGridLayout.cellSize.x + cartGridLayout.spacing.x)));
-                AdjustGridHeight(shelfListParent, cartColumns, shelfCarts.Count);
-            }
+            //var cartGridLayout = shelfListParent.GetComponent<GridLayoutGroup>();
+            //if (cartGridLayout != null)
+            //{
+            //    int cartColumns = Mathf.Max(1, Mathf.FloorToInt(
+            //        (shelfListParent.GetComponent<RectTransform>().rect.width - cartGridLayout.padding.left - cartGridLayout.padding.right + cartGridLayout.spacing.x) 
+            //        / (cartGridLayout.cellSize.x + cartGridLayout.spacing.x)));
+            //    AdjustGridHeight(shelfListParent, cartColumns, shelfCarts.Count);
+            //}
             
             Debug.Log($"[WarehousePanel] Initialized {shelfCarts.Count} shelf carts");
+        }
+        
+        /// <summary>
+        /// Refresh shelf carts (public alias for external calls)
+        /// </summary>
+        public void RefreshShelfCarts()
+        {
+            InitializeShelfCarts();
         }
         
         private void OnWarehouseSlotChanged(int slotIndex)

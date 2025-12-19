@@ -14,5 +14,12 @@ namespace HairRemovalSim.Core
 
         public static event Action<float> OnTimeUpdated;
         public static void TriggerTimeUpdated(float normalizedTime) => OnTimeUpdated?.Invoke(normalizedTime);
+        
+        // Shop Events
+        public static event Action OnShopOpened;
+        public static void TriggerShopOpened() => OnShopOpened?.Invoke();
+        
+        public static event Action OnShopClosed;
+        public static void TriggerShopClosed() => OnShopClosed?.Invoke();
     }
 }

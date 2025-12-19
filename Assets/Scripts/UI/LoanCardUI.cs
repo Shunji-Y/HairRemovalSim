@@ -23,10 +23,16 @@ namespace HairRemovalSim.UI
         [SerializeField] private Image backgroundImage;
         [SerializeField] private Color normalColor = Color.white;
         [SerializeField] private Color activeColor = new Color(0.7f, 0.7f, 0.7f);
+        [SerializeField] private Color lockedColor = new Color(0.5f, 0.5f, 0.5f);
+        
+        [Header("Grade Lock")]
+        [SerializeField] private GameObject lockedOverlay;
+        [SerializeField] private TMP_Text lockedText;
         
         private LoanData loanData;
         private System.Action<LoanData> onApplyCallback;
         private bool isActive;
+        private bool isLocked;
         
         // Shorthand for localization
         private LocalizationManager L => LocalizationManager.Instance;
@@ -43,15 +49,16 @@ namespace HairRemovalSim.UI
                 L.OnLocaleChanged -= RefreshDisplay;
         }
         
-        public void Setup(LoanData data, bool active, System.Action<LoanData> onApply)
+        public void Setup(LoanData data, bool active, System.Action<LoanData> onApply, bool locked = false)
         {
             loanData = data;
             isActive = active;
+            isLocked = locked;
             onApplyCallback = onApply;
             
             if (applyButton != null)
             {
-                applyButton.interactable = !isActive;
+                applyButton.interactable = !isActive && !isLocked;
                 applyButton.onClick.RemoveAllListeners();
                 applyButton.onClick.AddListener(OnApplyClicked);
             }
@@ -67,7 +74,12 @@ namespace HairRemovalSim.UI
                 iconImage.sprite = loanData.icon;
             
             if (nameText != null)
-                nameText.text = loanData.displayName;
+            {
+                string localizedName = !string.IsNullOrEmpty(loanData.nameKey) ? L?.Get(loanData.nameKey) : null;
+                nameText.text = (!string.IsNullOrEmpty(localizedName) && !localizedName.StartsWith("["))
+                    ? localizedName
+                    : loanData.displayName;
+            }
             
             if (maxAmountText != null)
                 maxAmountText.text = L?.Get("loan.max", loanData.maxAmount) ?? $"Max: ${loanData.maxAmount:N0}";
@@ -83,13 +95,33 @@ namespace HairRemovalSim.UI
             
             if (buttonText != null)
             {
-                string activeText = L?.Get("loan.active") ?? "Active";
-                string applyText = L?.Get("loan.apply") ?? "Apply";
-                buttonText.text = isActive ? activeText : applyText;
+                if (isLocked)
+                {
+                    buttonText.text = L?.Get("loan.locked", loanData.requiredShopGrade) ?? $"Grade {loanData.requiredShopGrade}";
+                }
+                else
+                {
+                    string activeText = L?.Get("loan.active") ?? "Active";
+                    string applyText = L?.Get("loan.apply") ?? "Apply";
+                    buttonText.text = isActive ? activeText : applyText;
+                }
             }
             
+            // Locked overlay
+            if (lockedOverlay != null)
+                lockedOverlay.SetActive(isLocked);
+            if (lockedText != null && isLocked)
+                lockedText.text = L?.Get("loan.locked_grade", loanData.requiredShopGrade) ?? $"Requires Grade {loanData.requiredShopGrade}";
+            
             if (backgroundImage != null)
-                backgroundImage.color = isActive ? activeColor : normalColor;
+            {
+                if (isLocked)
+                    backgroundImage.color = lockedColor;
+                else if (isActive)
+                    backgroundImage.color = activeColor;
+                else
+                    backgroundImage.color = normalColor;
+            }
         }
         
         private void OnApplyClicked()

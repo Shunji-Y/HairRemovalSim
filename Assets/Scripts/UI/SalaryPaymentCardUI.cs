@@ -43,7 +43,7 @@ namespace HairRemovalSim.UI
             
             // Amount
             if (amountText != null)
-                amountText.text = $"¥{record.amount:N0}";
+                amountText.text = $"${record.amount:N0}";
             
             // Due date
             if (dueDateText != null)
@@ -51,21 +51,29 @@ namespace HairRemovalSim.UI
                 int currentDay = GameManager.Instance?.DayCount ?? 1;
                 int daysRemaining = record.dueDay - currentDay;
                 
-                if (daysRemaining > 0)
-                    dueDateText.text = L?.Get("ui.due_in_days", daysRemaining) ?? $"Due in {daysRemaining} day(s)";
-                else if (daysRemaining == 0)
-                    dueDateText.text = L?.Get("ui.due_today") ?? "Due Today";
+                if (record.isOverdue)
+                {
+                    int daysOverdue = -daysRemaining;
+                    string overdueText = L?.Get("loan.overdue") ?? "Overdue";
+                    dueDateText.text = $"<color=red>{overdueText} ({daysOverdue}d)</color>";
+                }
+                else if (daysRemaining <= 0)
+                {
+                    dueDateText.text = $"<color=orange>{L?.Get("loan.due_today") ?? "Due: Today"}</color>";
+                }
                 else
-                    dueDateText.text = L?.Get("ui.overdue_days", -daysRemaining) ?? $"Overdue by {-daysRemaining} day(s)";
+                {
+                    dueDateText.text = L?.Get("loan.due_days", daysRemaining) ?? $"Due: {daysRemaining} days";
+                }
             }
             
             // Status
             if (statusText != null)
             {
                 if (record.isOverdue)
-                    statusText.text = $"<color=red>{L?.Get("ui.overdue") ?? "OVERDUE"}</color>";
+                    statusText.text = $"<color=red>{L?.Get("ui.pending") ?? "OVERDUE"}</color>";
                 else
-                    statusText.text = L?.Get("ui.pending") ?? "Pending";
+                    statusText.text = "";//L?.Get("ui.pending") ?? "Pending";
             }
             
             // Background color
@@ -102,8 +110,8 @@ namespace HairRemovalSim.UI
                 bool success = SalaryManager.Instance.PaySalary(salaryRecord);
                 if (success)
                 {
-                    // Card will be destroyed by PaymentListPanel refresh
                     Debug.Log($"[SalaryPaymentCardUI] Paid salary for {salaryRecord.staffName}");
+                    PaymentListPanel.Instance?.RefreshDisplay();
                 }
             }
         }

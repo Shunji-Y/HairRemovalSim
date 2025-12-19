@@ -24,8 +24,16 @@ namespace HairRemovalSim.Store
         [SerializeField] private Button increaseButton;
         [SerializeField] private Button addToCartButton;
         
+        [Header("Lock State")]
+        [SerializeField] private GameObject lockedOverlay;
+        [SerializeField] private TextMeshProUGUI lockedText;
+        [SerializeField] private Image cardBackground;
+        [SerializeField] private Color normalColor = Color.white;
+        [SerializeField] private Color lockedColor = new Color(0.6f, 0.6f, 0.6f);
+        
         private int selectedQuantity = 1;
         private StorePanel storePanel;
+        private bool isLocked;
         
         private void Awake()
         {
@@ -57,9 +65,10 @@ namespace HairRemovalSim.Store
         /// <summary>
         /// Set item data and refresh UI
         /// </summary>
-        public void SetItemData(ItemData data)
+        public void SetItemData(ItemData data, bool locked = false)
         {
             itemData = data;
+            isLocked = locked;
             selectedQuantity = 1;
             RefreshUI();
         }
@@ -84,6 +93,22 @@ namespace HairRemovalSim.Store
                 priceText.text = $"${itemData.price * selectedQuantity:N0}";
             if (quantityText != null)
                 quantityText.text = selectedQuantity.ToString();
+            
+            // Lock state
+            if (lockedOverlay != null)
+                lockedOverlay.SetActive(isLocked);
+            if (lockedText != null && isLocked)
+                lockedText.text = $"Grade {itemData.requiredShopGrade}";
+            if (cardBackground != null)
+                cardBackground.color = isLocked ? lockedColor : normalColor;
+            
+            // Disable buttons when locked
+            if (addToCartButton != null)
+                addToCartButton.interactable = !isLocked;
+            if (increaseButton != null)
+                increaseButton.interactable = !isLocked;
+            if (decreaseButton != null)
+                decreaseButton.interactable = !isLocked;
         }
         
         public void IncreaseQuantity()

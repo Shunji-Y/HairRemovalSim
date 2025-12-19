@@ -204,6 +204,7 @@ namespace HairRemovalSim.UI
         /// </summary>
         private void OnHireClicked(StaffProfile candidate)
         {
+            Debug.Log($"[StaffPanel] OnHireClicked called for {candidate?.displayName}, hireDialog={hireDialog}");
             if (hireDialog != null)
             {
                 hireDialog.Show(candidate, OnHireConfirmed, OnHireCancelled);

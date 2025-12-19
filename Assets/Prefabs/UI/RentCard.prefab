@@ -92,12 +92,12 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 33.26
+  m_fontSize: 38.4
   m_fontSizeBase: 33.26
   m_fontWeight: 400
-  m_enableAutoSizing: 0
+  m_enableAutoSizing: 1
   m_fontSizeMin: 18
-  m_fontSizeMax: 72
+  m_fontSizeMax: 38.4
   m_fontStyle: 0
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
@@ -172,7 +172,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 152}
-  m_SizeDelta: {x: 200, y: 50}
+  m_SizeDelta: {x: 325.93, y: 68}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2229714979751669998
 CanvasRenderer:
@@ -229,10 +229,10 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 47.2
+  m_fontSize: 46.95
   m_fontSizeBase: 47.2
   m_fontWeight: 400
-  m_enableAutoSizing: 0
+  m_enableAutoSizing: 1
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 4
@@ -446,7 +446,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 6.2}
-  m_SizeDelta: {x: 283.2, y: 50}
+  m_SizeDelta: {x: 339.3, y: 61.3}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4497245508482621247
 CanvasRenderer:
@@ -503,10 +503,10 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 42.4
+  m_fontSize: 42.3
   m_fontSizeBase: 42.4
   m_fontWeight: 400
-  m_enableAutoSizing: 0
+  m_enableAutoSizing: 1
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 4
@@ -583,7 +583,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 79}
-  m_SizeDelta: {x: 283.2, y: 50}
+  m_SizeDelta: {x: 336.1, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &7052383650473312985
 CanvasRenderer:
@@ -820,7 +820,7 @@ GameObject:
   - component: {fileID: 2294634073375501352}
   - component: {fileID: 6628664669474386786}
   m_Layer: 0
-  m_Name: RentCard (2)
+  m_Name: RentCard
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

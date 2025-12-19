@@ -24,6 +24,7 @@ namespace HairRemovalSim.UI
         [SerializeField] private Transform cardsContainer;
         [SerializeField] private GameObject loanPaymentCardPrefab;
         [SerializeField] private GameObject rentPaymentCardPrefab;
+        [SerializeField] private GameObject salaryPaymentCardPrefab;
         
         [Header("Footer")]
         [SerializeField] private TMP_Text totalDueText;
@@ -107,6 +108,21 @@ namespace HairRemovalSim.UI
                 }
             }
             
+            // Create salary payment cards
+            if (SalaryManager.Instance != null)
+            {
+                foreach (var record in SalaryManager.Instance.PendingSalaries)
+                {
+                    if (record.isPaid) continue;
+                    CreateSalaryCard(record, currentDay);
+                    totalDue += record.amount;
+                    if (record.isOverdue)
+                    {
+                        overdueCount++;
+                    }
+                }
+            }
+            
             // Update header warning
             if (warningText != null)
             {
@@ -170,6 +186,19 @@ namespace HairRemovalSim.UI
             paymentCards.Add(cardObj);
         }
         
+        private void CreateSalaryCard(SalaryRecord record, int currentDay)
+        {
+            if (salaryPaymentCardPrefab == null || cardsContainer == null) return;
+            
+            var cardObj = Instantiate(salaryPaymentCardPrefab, cardsContainer);
+            var cardUI = cardObj.GetComponent<SalaryPaymentCardUI>();
+            if (cardUI != null)
+            {
+                cardUI.Setup(record);
+            }
+            paymentCards.Add(cardObj);
+        }
+        
         private void OnPaymentMade()
         {
             RefreshDisplay();
@@ -196,6 +225,16 @@ namespace HairRemovalSim.UI
                 foreach (var card in loanCards.ToArray())
                 {
                     LoanManager.Instance.PayCard(card);
+                }
+            }
+            
+            // Pay all salary cards
+            if (SalaryManager.Instance != null)
+            {
+                var salaries = SalaryManager.Instance.PendingSalaries.ToArray();
+                foreach (var record in salaries)
+                {
+                    SalaryManager.Instance.PaySalary(record);
                 }
             }
             

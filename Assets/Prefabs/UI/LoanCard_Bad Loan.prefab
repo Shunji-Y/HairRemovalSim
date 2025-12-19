@@ -773,7 +773,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -9.000229, y: 210.5}
-  m_SizeDelta: {x: 277.1, y: 50}
+  m_SizeDelta: {x: 331.6, y: 55.5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4942737033244460121
 CanvasRenderer:
@@ -830,11 +830,11 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 47.2
+  m_fontSize: 38.3
   m_fontSizeBase: 47.2
   m_fontWeight: 400
-  m_enableAutoSizing: 0
-  m_fontSizeMin: 18
+  m_enableAutoSizing: 1
+  m_fontSizeMin: 19
   m_fontSizeMax: 72
   m_fontStyle: 1
   m_HorizontalAlignment: 2
@@ -1112,7 +1112,7 @@ MonoBehaviour:
   prepaymentToggle: {fileID: 5269688245459130757}
   prepaymentInfoText: {fileID: 6736471867339778905}
   prepaymentPanel: {fileID: 0}
-  normalColor: {r: 0.95, g: 0.95, b: 0.92, a: 1}
+  normalColor: {r: 0.9520998, g: 0.8746885, b: 0.9811321, a: 1}
   warningColor: {r: 1, g: 0.90379936, b: 0.4292453, a: 1}
   overdueColor: {r: 1, g: 0.5518868, b: 0.5518868, a: 1}
 --- !u!1 &8433333380143197299

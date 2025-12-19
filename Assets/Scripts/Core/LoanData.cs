@@ -13,6 +13,18 @@ namespace HairRemovalSim.Core
         public string displayName;
         public Sprite icon;
         
+        [Header("Localization")]
+        [Tooltip("Localization key for loan name")]
+        public string nameKey;
+        
+        [Tooltip("Localization key for description")]
+        public string descriptionKey;
+        
+        [Header("Requirements")]
+        [Tooltip("Required shop grade to unlock")]
+        [Range(1, 6)]
+        public int requiredShopGrade = 1;
+        
         [Header("Loan Terms")]
         [Tooltip("Maximum amount that can be borrowed")]
         public int maxAmount = 100000;

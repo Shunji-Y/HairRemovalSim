@@ -69,6 +69,34 @@ namespace HairRemovalSim.Staff
         {
             // Find station points if not assigned
             FindStationPoints();
+            
+            // Subscribe to shop events
+            Core.GameEvents.OnShopOpened += OnShopOpened;
+            Core.GameEvents.OnShopClosed += OnShopClosed;
+        }
+        
+        private void OnDestroy()
+        {
+            Core.GameEvents.OnShopOpened -= OnShopOpened;
+            Core.GameEvents.OnShopClosed -= OnShopClosed;
+        }
+        
+        private void OnShopOpened()
+        {
+            if (staffData == null || !staffData.isActive) return;
+            
+            // Go to assigned station when shop opens
+            GoToAssignedStation();
+            Debug.Log($"[StaffController] {staffData.Name} heading to station on shop open");
+        }
+        
+        private void OnShopClosed()
+        {
+            if (staffData == null) return;
+            
+            // Leave for the day
+            LeaveShop();
+            Debug.Log($"[StaffController] {staffData.Name} leaving shop");
         }
         
         private void Update()
