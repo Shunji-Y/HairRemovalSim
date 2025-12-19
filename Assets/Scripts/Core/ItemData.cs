@@ -58,6 +58,10 @@ namespace HairRemovalSim.Core
         [Header("【施術用ツール - 性能】")]
         [Tooltip("Type of treatment tool")]
         public TreatmentToolType toolType = TreatmentToolType.None;
+
+        [Tooltip("Intensity of the burn effect (redness) on skin after treatment. 0.0=none, 1.0=full")]
+        [Range(0f, 1f)]
+        public float burnIntensity = 1.0f;
         
         [Tooltip("Target body area for this tool")]
         public ToolTargetArea targetArea = ToolTargetArea.Body;

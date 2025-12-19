@@ -104,6 +104,9 @@ Shader "Custom/HairShader"
         _DecalEnabled("Decal Enabled", Float) = 0
         _DecalShape("Decal Shape (0=Rectangle, 1=Circle)", Float) = 0
         
+        // Debug / Visualization
+        _TreatedSkinColor("Treated Skin Color (Alpha=Intensity)", Color) = (1.0, 0.2, 0.2, 0.3)
+        
         // === Per-Part Flash Properties ===
         _Flash_Beard("Flash Beard", Float) = 0
         _Flash_Chest("Flash Chest", Float) = 0
@@ -223,6 +226,9 @@ Shader "Custom/HairShader"
                 float4 _DecalColor;
                 float _DecalEnabled;
                 float _DecalShape; // 0 = Rectangle, 1 = Circle
+                
+                float4 _TreatedSkinColor;
+                float _TreatmentBurnIntensity;
                 
                 // Per-Part Flash Properties
                 float _Flash_Beard;
@@ -576,6 +582,29 @@ Shader "Custom/HairShader"
                     if (shouldHighlight && hairGrowth > 0.1 && hairStillExists)
                     {
                         finalColor.rgb += _HighlightColor.rgb * _HighlightIntensity;
+                    }
+                    
+                    // DEBUG: Visualize removed hair with soft edges
+                    // DEBUG: Visualize removed hair with soft edges
+                    // Sample mask with higher LOD level to get blurred values
+                    float4 blurredMaskSample = SAMPLE_TEXTURE2D_LOD(_MaskMap, sampler_MaskMap, input.uv, 5);
+                    float blurredMaskR = blurredMaskSample.r;
+                    float blurredBurnG = blurredMaskSample.g; // Burn intensity stored in Green channel
+                    
+                    // Creates a soft gradient: 0.0(removed) -> 1.0(red), 0.3(shaved) -> 0.0(no red)
+                    // We want redness to appear where mask is low (removed)
+                    // smoothstep(0.2, 0.0, blurredMask) : 
+                    //   blurredMask > 0.2 -> 0.0 redness
+                    //   blurredMask < 0.0 -> 1.0 redness
+                    //   In between -> gradient
+                    float redness = smoothstep(0.3, 0.0, blurredMaskR);
+                    
+                    if (redness > 0.01)
+                    {
+                        // Blend with treated skin color based on calculated redness and alpha
+                        // Scale by blurredBurnG (stored in mask texture) instead of global variable
+                        float finalIntensity = redness * _TreatedSkinColor.a * blurredBurnG;
+                        finalColor.rgb = lerp(finalColor.rgb, _TreatedSkinColor.rgb, finalIntensity);
                     }
                     
                     // Per-part flash effect (only flashes the specific completed part)

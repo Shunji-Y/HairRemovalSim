@@ -254,6 +254,7 @@ Material:
     - _Completed_RightUpperArm: 0
     - _DebugMode: 0
     - _DecalEnabled: 0
+    - _DecalShape: 0
     - _DecalUVAngle: 0
     - _DisplacementLevel: 0.5
     - _DisplacementStrength: 0
@@ -362,6 +363,7 @@ Material:
     - _RequestedPartMasks4: {r: -1, g: -1, b: -1, a: -1}
     - _SkinSpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _SubsurfaceFalloff: {r: 1, g: 0.37, b: 0.3, a: 1}
+    - _TreatedSkinColor: {r: 1, g: 0.19999993, b: 0.19999993, a: 0.050980393}
     - _WrinkleValueSet12CL: {r: 0, g: 0, b: 0, a: 0}
     - _WrinkleValueSet12CR: {r: 0, g: 0, b: 0, a: 0}
     - _WrinkleValueSet1AL: {r: 0, g: 0, b: 0, a: 0}

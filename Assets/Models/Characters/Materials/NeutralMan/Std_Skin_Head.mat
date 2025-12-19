@@ -366,6 +366,7 @@ Material:
     - _RequestedPartMasks4: {r: -1, g: -1, b: -1, a: -1}
     - _SkinSpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _SubsurfaceFalloff: {r: 0.7411765, g: 0.2627451, b: 0.21960784, a: 1}
+    - _TreatedSkinColor: {r: 1, g: 0.19999993, b: 0.19999993, a: 0.050980393}
     - _WrinkleValueSet12CL: {r: 0.055966377, g: 0.055966377, b: 0.0036005173, a: 0.053228468}
     - _WrinkleValueSet12CR: {r: 0.055966377, g: 0.055966377, b: 0.0028252588, a: 0.03321047}
     - _WrinkleValueSet1AL: {r: 0.051666223, g: 0, b: 0.05118976, a: 0.05118976}

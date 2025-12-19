@@ -15,12 +15,14 @@ namespace HairRemovalSim.Treatment
         public bool useUVMasking = true; // Toggle to enable/disable UV-based masking
         public int maskResolution = 1024;
         public Shader paintShader;
+        public Shader maxBlendShader; // Added for burn intensity pass
         public float brushSize = 0.05f;
         [Range(0f, 10f)]
         public float completionBuffer = 2f;
 
         private RenderTexture[] maskTextures; // Array of masks, one per material
         private Material paintMaterial;
+        private Material maxBlendMaterial; // Added for burn intensity pass
         private Material glMaterial; // For direct GL drawing
         private Material[] targetMaterials;
         private Renderer meshRenderer;
@@ -62,8 +64,10 @@ namespace HairRemovalSim.Treatment
 
             for (int i = 0; i < targetMaterials.Length; i++)
             {
-                // Use ARGB32 instead of R8 for broader platform support
+                // Use ARGB32 and enable mipmaps for blurred edge effects
                 maskTextures[i] = new RenderTexture(maskResolution, maskResolution, 0, RenderTextureFormat.ARGB32);
+                maskTextures[i].useMipMap = true;
+                maskTextures[i].autoGenerateMips = false; // Generate manually after painting
                 maskTextures[i].wrapMode = TextureWrapMode.Repeat; // Repeat for tiled UVs (0-1, 1-2, 2-3, etc.)
                 maskTextures[i].Create();
                 
@@ -88,6 +92,34 @@ namespace HairRemovalSim.Treatment
                 Debug.LogError("PaintShader not found!");
             }
             
+            // Initialize MaxBlend Material
+            if (maxBlendShader == null)
+            {
+                maxBlendShader = Shader.Find("Hidden/MaxBlendPaint");
+            }
+            if (maxBlendShader != null)
+            {
+                maxBlendMaterial = new Material(maxBlendShader);
+            }
+            else
+            {
+                Debug.LogError("MaxBlendShader not found!");
+            }
+            
+            // Step 4: Setup GL material for direct drawing (Min Blend)
+            if (glMaterial == null)
+            {
+                Shader minBlendShader = Shader.Find("Hidden/MinBlendPaint");
+                if (minBlendShader != null)
+                {
+                    glMaterial = new Material(minBlendShader);
+                }
+                else 
+                {
+                    Debug.LogError("Hidden/MinBlendPaint shader not found!");
+                }
+            }
+
             // Delay initial pixel count until after first render
             StartCoroutine(InitializePixelCount());
             
@@ -222,8 +254,12 @@ namespace HairRemovalSim.Treatment
             for (int i = 0; i < maskTextures.Length; i++)
             {
                 RenderTexture.active = maskTextures[i];
-                GL.Clear(false, true, Color.white);
+                // R=1 (Hair present), G=0 (No burn), B=0, A=0
+                GL.Clear(false, true, new Color(1f, 0f, 0f, 0f));
                 RenderTexture.active = null;
+                
+                // Initialize mipmaps to white to preventing shader from seeing "removed hair" everywhere
+                maskTextures[i].GenerateMips();
             }
             
             // Step 2: Paint white only where mesh exists (using GPU rendering)
@@ -321,149 +357,217 @@ namespace HairRemovalSim.Treatment
         }
 
         // Apply treatment (remove hair) at UV position
+        // Apply treatment (remove hair) at UV position
         // toolType: Shaver = shortens to 0.2, Laser = removes to 0.0
-        public void ApplyTreatment(Vector2 uvPosition, Vector2 size, float angle, int subMeshIndex, int decalShape = 0, TreatmentToolType toolType = TreatmentToolType.Shaver)
+        public void ApplyTreatment(Vector2 uvPosition, Vector2 size, float angle, int subMeshIndex, int decalShape = 0, TreatmentToolType toolType = TreatmentToolType.Shaver, float burnIntensity = 0.0f)
         {
-            if (paintMaterial == null)
-            {
-                Debug.LogError("[HairTreatmentController] PaintMaterial is null!");
-                return;
-            }
-            if (subMeshIndex < 0 || subMeshIndex >= maskTextures.Length)
-            {
-                Debug.LogError($"[HairTreatmentController] SubMeshIndex {subMeshIndex} out of range (Length: {maskTextures.Length})");
-                return;
-            }
-
-            //Debug.Log($"[HairTreatmentController] Applying treatment at {uvPosition}, Size: {size}, Angle: {angle}, SubMesh: {subMeshIndex}, Tool: {toolType}");
+            if (paintMaterial == null) return;
+            if (subMeshIndex < 0 || subMeshIndex >= maskTextures.Length) return;
 
             // Track which submesh we're treating (set on first paint)
             if (!hasActiveSubmesh)
             {
                 activeSubmeshIndex = subMeshIndex;
                 hasActiveSubmesh = true;
-                // Recalculate initial pixels for this specific submesh only
                 initialWhitePixels = CountWhitePixels();
-                Debug.Log($"[HairTreatmentController] Active submesh set to {activeSubmeshIndex}, initial pixels: {initialWhitePixels}");
             }
 
-            // Setup paint material based on shape - use GLOBAL shader properties
+            // Setup paint material based on shape - use GLOBAL shader properties (used by both shaders)
             if (decalShape == 0)
             {
-                // Rectangle mode
                 Shader.SetGlobalFloat("_BrushMode", 1.0f);
                 Shader.SetGlobalVector("_BrushRect", new Vector4(uvPosition.x, uvPosition.y, size.x, size.y));
                 Shader.SetGlobalFloat("_BrushAngle", angle);
             }
             else
             {
-                // Circle mode - use width as diameter
                 Shader.SetGlobalFloat("_BrushMode", 0.0f);
                 Shader.SetGlobalVector("_BrushPos", new Vector4(uvPosition.x, uvPosition.y, 0, 0));
-                Shader.SetGlobalFloat("_BrushSize", size.x * 0.5f); // Radius = diameter / 2
+                Shader.SetGlobalFloat("_BrushSize", size.x * 0.5f);
             }
             
-            // Set brush color based on tool type
-            // Shaver: paint gray (0.2) to create stubble
-            // Laser: paint black (0.0) to completely remove
-            // None/Other: default to Shaver behavior
-            Color brushColor;
-            if (toolType == TreatmentToolType.Laser)
-            {
-                brushColor = Color.black; // 0.0 - complete removal
-            }
-            else
-            {
-                brushColor = new Color(0.3f, 0.3f, 0.3f, 1f); // 0.2 - stubble
-            }
-            
-            Debug.Log($"[HairTreatmentController] ApplyTreatment - Tool: {toolType}, BrushIntensity: {brushColor.r}");
-            // Use GLOBAL shader property
-            Shader.SetGlobalFloat("_BrushIntensity", brushColor.r);
-            
-            // For Shaver: Check if the area is already laser-removed (mask < threshold)
-            // If so, skip drawing to prevent "regrowing" hair
+            // For Shaver: Check if area is already laser-removed
             if (toolType == TreatmentToolType.Shaver)
             {
-                // Read current mask value at the center of the brush
-                RenderTexture.active = maskTextures[subMeshIndex];
-                Texture2D readTex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-                int px = Mathf.Clamp((int)(uvPosition.x * maskTextures[subMeshIndex].width), 0, maskTextures[subMeshIndex].width - 1);
-                int py = Mathf.Clamp((int)(uvPosition.y * maskTextures[subMeshIndex].height), 0, maskTextures[subMeshIndex].height - 1);
-                readTex.ReadPixels(new Rect(px, py, 1, 1), 0, 0);
-                readTex.Apply();
-                float currentMaskValue = readTex.GetPixel(0, 0).r;
-                DestroyImmediate(readTex);
-                RenderTexture.active = null;
-                
-                // If already laser-removed (mask < 0.1), don't apply shaver
-                if (currentMaskValue < 0.1f)
-                {
-                    Debug.Log($"[HairTreatmentController] Skipping shaver - area already laser-removed (mask={currentMaskValue})");
-                    return;
-                }
+                float avgMask = GetAverageMaskValue(uvPosition, size, subMeshIndex);
+                if (avgMask < 0.1f) return;
             }
             
-            // Draw shape on the specific mask texture
             RenderTexture.active = maskTextures[subMeshIndex];
             GL.PushMatrix();
             GL.LoadOrtho();
             
-            // Create a simple unlit material for GL drawing if needed
+            // --- Pass 1: Hair Removal (Min Blend) ---
+            // R: Min(current.r, brush.r) -> Remove hair or create stubble
+            // G: Min(current.g, brush.g) -> Must be 1.0 to preserve existing burns (Min(x, 1) = x)
+            
+            Color brushColor;
+            if (toolType == TreatmentToolType.Laser)
+            {
+                brushColor = new Color(0.0f, 1.0f, 1.0f, 1.0f); // R=0 (Remove hair), G=1 (Preserve burn)
+            }
+            else
+            {
+                brushColor = new Color(0.3f, 1.0f, 1.0f, 1.0f); // R=0.3 (Stubble), G=1 (Preserve burn)
+            }
+            
             if (glMaterial == null)
             {
-                glMaterial = new Material(Shader.Find("Hidden/Internal-Colored"));
+                glMaterial = new Material(Shader.Find("Hidden/MinBlendPaint"));
                 glMaterial.hideFlags = HideFlags.HideAndDontSave;
-                glMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
-                glMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
-                glMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
-                glMaterial.SetInt("_ZWrite", 0);
             }
             
             glMaterial.SetPass(0);
             
-            // Draw rectangle directly with GL
+            // Draw Quad
             GL.Begin(GL.QUADS);
             GL.Color(brushColor);
-            
-            if (decalShape == 0)
-            {
-                // Rectangle mode
-                float halfW = size.x * 0.5f;
-                float halfH = size.y * 0.5f;
-                
-                // Calculate rotated corners
-                float cos = Mathf.Cos(-angle);
-                float sin = Mathf.Sin(-angle);
-                
-                Vector2[] corners = new Vector2[4];
-                corners[0] = new Vector2(-halfW, -halfH); // Bottom-left
-                corners[1] = new Vector2(halfW, -halfH);  // Bottom-right
-                corners[2] = new Vector2(halfW, halfH);   // Top-right
-                corners[3] = new Vector2(-halfW, halfH);  // Top-left
-                
-                for (int i = 0; i < 4; i++)
-                {
-                    float rotX = corners[i].x * cos - corners[i].y * sin;
-                    float rotY = corners[i].x * sin + corners[i].y * cos;
-                    GL.Vertex3(uvPosition.x + rotX, uvPosition.y + rotY, 0);
-                }
-            }
-            else
-            {
-                // Circle mode - approximate with quad for now
-                float radius = size.x * 0.5f;
-                GL.Vertex3(uvPosition.x - radius, uvPosition.y - radius, 0);
-                GL.Vertex3(uvPosition.x + radius, uvPosition.y - radius, 0);
-                GL.Vertex3(uvPosition.x + radius, uvPosition.y + radius, 0);
-                GL.Vertex3(uvPosition.x - radius, uvPosition.y + radius, 0);
-            }
+            DrawBrushQuad(uvPosition, size, angle, decalShape);
             GL.End();
+            
+            // --- Pass 2: Burn Intensity (Max Blend) ---
+            // Only if laser and intensity > 0
+            if (toolType == TreatmentToolType.Laser && burnIntensity > 0 && maxBlendMaterial != null)
+            {
+                maxBlendMaterial.SetPass(0);
+                
+                // R: Max(current.r, 0) -> Preserve removed hair status (Max(0, 0) = 0)
+                // G: Max(current.g, intensity) -> Register stronger burn if applicable
+                // Note: If hair is present (R=1), Max(1, 0) = 1. So this pass is safe for hair too.
+                
+                GL.Begin(GL.QUADS);
+                GL.Color(new Color(0f, burnIntensity, 0f, 0f));
+                DrawBrushQuad(uvPosition, size, angle, decalShape);
+                GL.End();
+            }
             
             GL.PopMatrix();
             RenderTexture.active = null;
             
+            maskTextures[subMeshIndex].GenerateMips();
+            
             UpdateCompletion();
+        }
+
+        private void DrawBrushQuad(Vector2 uvPosition, Vector2 size, float angle, int decalShape)
+        {
+            if (decalShape == 0)
+            {
+                float halfW = size.x * 0.5f;
+                float halfH = size.y * 0.5f;
+                
+                float cos = Mathf.Cos(-angle);
+                float sin = Mathf.Sin(-angle);
+                
+                Vector2[] corners = new Vector2[4];
+                corners[0] = new Vector2(-halfW * cos - -halfH * sin, -halfW * sin + -halfH * cos);
+                corners[1] = new Vector2(halfW * cos - -halfH * sin, halfW * sin + -halfH * cos);
+                corners[2] = new Vector2(halfW * cos - halfH * sin, halfW * sin + halfH * cos);
+                corners[3] = new Vector2(-halfW * cos - halfH * sin, -halfW * sin + halfH * cos);
+                
+                for (int i = 0; i < 4; i++)
+                {
+                    GL.Vertex3(uvPosition.x + corners[i].x, uvPosition.y + corners[i].y, 0);
+                }
+            }
+            else
+            {
+                float r = size.x * 0.5f;
+                // Draw as a simple quad, shader handles circle clipping if needed, 
+                // but for simple GL drawing without UV check shader, we assume shader isn't clipping in vertex mode.
+                // Actually MinBlendPaint uses vertex/fragment shader. The fragment shader uses vertex color.
+                // But it assumes _BrushRect etc if we were using PaintShader logic.
+                // Wait, MinBlendPaint as written (viewed earlier) just outputs vertex color.
+                // It does NOT do circular clipping based on _BrushSize.
+                // So drawing a Quad here will result in a Square paint.
+                // If we need circle paint, we need to pass UVs to the shader and use the global props.
+                // For now, let's just stick to the Quad logic used before.
+                
+                GL.Vertex3(uvPosition.x - r, uvPosition.y - r, 0);
+                GL.Vertex3(uvPosition.x + r, uvPosition.y - r, 0);
+                GL.Vertex3(uvPosition.x + r, uvPosition.y + r, 0);
+                GL.Vertex3(uvPosition.x - r, uvPosition.y + r, 0);
+            }
+        }
+        
+        /// <summary>
+        /// Calculate the average mask value in a given UV rectangle.
+        /// Used to determine pain multiplier based on hair length.
+        /// Returns: 1.0 = all long hair, 0.3 = all stubble, 0.0 = no hair
+        /// </summary>
+        public float GetAverageMaskValue(Vector2 uvCenter, Vector2 uvSize, int subMeshIndex = 0)
+        {
+            if (maskTextures == null || subMeshIndex >= maskTextures.Length || maskTextures[subMeshIndex] == null)
+                return 1.0f; // Default to full hair if no mask
+            
+            RenderTexture mask = maskTextures[subMeshIndex];
+            
+            // Sample a grid of points in the UV rectangle
+            int sampleCount = 9; // 3x3 grid
+            float totalValue = 0f;
+            int validSamples = 0;
+            
+            RenderTexture.active = mask;
+            Texture2D readTex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            
+            for (int y = 0; y < 3; y++)
+            {
+                for (int x = 0; x < 3; x++)
+                {
+                    // Sample closer to center to avoid edges (especially when rotated)
+                    // 0.25f offset means we sample a grid covering 50% of the size
+                    float offsetX = (x - 1) * uvSize.x * 0.25f;
+                    float offsetY = (y - 1) * uvSize.y * 0.25f;
+                    float sampleU = uvCenter.x + offsetX;
+                    float sampleV = uvCenter.y + offsetY;
+                    
+                    // Clamp to texture bounds
+                    int px = Mathf.Clamp((int)(sampleU * mask.width), 0, mask.width - 1);
+                    int py = Mathf.Clamp((int)(sampleV * mask.height), 0, mask.height - 1);
+                    
+                    readTex.ReadPixels(new Rect(px, py, 1, 1), 0, 0);
+                    readTex.Apply();
+                    float value = readTex.GetPixel(0, 0).r;
+                    
+                    totalValue += value;
+                    validSamples++;
+                }
+            }
+            
+            DestroyImmediate(readTex);
+            RenderTexture.active = null;
+            
+            return validSamples > 0 ? totalValue / validSamples : 1.0f;
+        }
+        
+        /// <summary>
+        /// Calculate pain multiplier based on average hair length.
+        /// longHairMultiplier: multiplier when all hair is long (mask ~1.0)
+        /// shortHairMultiplier: multiplier when all hair is short/stubble (mask ~0.3)
+        /// Returns 0 if no hair (mask ~0.0)
+        /// </summary>
+        public float CalculatePainMultiplier(float averageMaskValue, float longHairMultiplier = 7.0f, float shortHairMultiplier = 0.5f)
+        {
+            // No hair = no pain
+            if (averageMaskValue < 0.05f)
+                return 0f;
+            
+            // Stubble threshold (adjusted to 0.65 to account for sampling averages)
+            float stubbleThreshold = 0.65f;
+            
+            if (averageMaskValue >= stubbleThreshold)
+            {
+                // Interpolate between short hair and long hair multipliers
+                // mask 0.65 -> shortHairMultiplier, mask 1.0 -> longHairMultiplier
+                float t = (averageMaskValue - stubbleThreshold) / (1.0f - stubbleThreshold);
+                return Mathf.Lerp(shortHairMultiplier, longHairMultiplier, t);
+            }
+            else
+            {
+                // Very short hair (0.05 to 0.65) - interpolate from 0 to shortHairMultiplier
+                float t = (averageMaskValue - 0.05f) / (stubbleThreshold - 0.05f);
+                return Mathf.Lerp(0f, shortHairMultiplier, t);
+            }
         }
 
         private void UpdateCompletion()

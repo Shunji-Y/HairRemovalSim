@@ -237,6 +237,8 @@ namespace HairRemovalSim.Player
                 tool.transform.localRotation = Quaternion.Euler(tool.handRotationOffset);
             }
             
+
+            
             // Call Equip if supported
             var newRectangleLaser = tool as RectangleLaser;
             if (newRectangleLaser != null) newRectangleLaser.Equip();

@@ -47,6 +47,8 @@ namespace HairRemovalSim.Tools
             interactionController = FindObjectOfType<InteractionController>();
         }
         
+
+        
         private bool wasInTreatmentMode = false;
 
         private void Update()
@@ -395,12 +397,26 @@ namespace HairRemovalSim.Tools
                 
                 // Get tool type from ItemData (Shaver, Laser, etc.)
                 Core.TreatmentToolType treatmentType = itemData != null ? itemData.toolType : Core.TreatmentToolType.Shaver;
-                controller.ApplyTreatment(normalizedUV, GetDecalSize(), uvRect.angle, subMeshIndex, shapeIndex, treatmentType);
                 
-                // Add pain (Pain SE is handled by CustomerController)
+                // For Laser: Calculate pain multiplier based on hair length BEFORE applying treatment
+                float hairPainMultiplier = 1.0f;
+                if (treatmentType == Core.TreatmentToolType.Laser)
+                {
+                    // Use uvRect.size (UV space size) instead of GetDecalSize() (world space size)
+                    float avgMaskValue = controller.GetAverageMaskValue(normalizedUV, uvRect.size, subMeshIndex);
+                    hairPainMultiplier = controller.CalculatePainMultiplier(avgMaskValue);
+                    Debug.Log($"[RectangleLaser] Hair mask avg: {avgMaskValue:F2}, Pain multiplier: {hairPainMultiplier:F2}");
+                }
+                
+                float burnIntensity = (itemData != null) ? itemData.burnIntensity : 1.0f;
+                // Use uvRect.size for ApplyTreatment as well
+                controller.ApplyTreatment(normalizedUV, uvRect.size, uvRect.angle, subMeshIndex, shapeIndex, treatmentType, burnIntensity);
+                
+                // Add pain with hair length multiplier (Pain SE is handled by CustomerController)
                 if (customer != null)
                 {
-                    customer.AddPain(painMultiplier);
+                    float finalPain = painMultiplier * hairPainMultiplier;
+                    customer.AddPain(finalPain);
                 }
                 
                 // Single mode: play sound/effect each use
@@ -536,9 +552,10 @@ namespace HairRemovalSim.Tools
             }
         }
         
+
+        
         public void Equip()
         {
-            // base.Equip(); // ToolBase doesn't have Equip
             isEquipped = true;
         }
 
@@ -549,10 +566,6 @@ namespace HairRemovalSim.Tools
             // Hide all decals and reset state
             HideAllDecals();
         }
-        
-        /// <summary>
-        /// Check if a UV coordinate is inside a completed body part's region
-        /// </summary>
         private bool IsUVInCompletedPart(HairRemovalSim.Customer.CustomerController customer, string partName, Vector2 uv)
         {
             if (customer == null || customer.bodyPartsDatabase == null) return false;
