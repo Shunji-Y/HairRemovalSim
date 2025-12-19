@@ -392,7 +392,10 @@ namespace HairRemovalSim.Tools
                 
                 // Apply treatment to the specific submesh mask with size and angle (pass shape: 0=Rectangle, 1=Circle)
                 int shapeIndex = (decalShape == DecalShape.Circle) ? 1 : 0;
-                controller.ApplyTreatment(normalizedUV, GetDecalSize(), uvRect.angle, subMeshIndex, shapeIndex);
+                
+                // Get tool type from ItemData (Shaver, Laser, etc.)
+                Core.TreatmentToolType treatmentType = itemData != null ? itemData.toolType : Core.TreatmentToolType.Shaver;
+                controller.ApplyTreatment(normalizedUV, GetDecalSize(), uvRect.angle, subMeshIndex, shapeIndex, treatmentType);
                 
                 // Add pain (Pain SE is handled by CustomerController)
                 if (customer != null)

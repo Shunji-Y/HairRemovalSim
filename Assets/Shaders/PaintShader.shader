@@ -9,6 +9,7 @@ Shader "Custom/PaintShader"
         _BrushAngle ("Brush Angle (Radians)", Float) = 0
         _BrushMode ("Brush Mode (0=Circle, 1=Rect)", Float) = 0
         _BrushColor ("Brush Color", Color) = (0,0,0,0)
+        _BrushIntensity ("Brush Intensity", Float) = 0
     }
     SubShader
     {
@@ -18,6 +19,7 @@ Shader "Custom/PaintShader"
         Cull Off
         ZWrite Off
         ZTest Always
+        Blend One Zero // Overwrite mode - we handle blending inside fragment shader
 
         Pass
         {
@@ -41,12 +43,14 @@ Shader "Custom/PaintShader"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
+            
+            // Global properties set by C#
             float4 _BrushPos;
-            float _BrushAngle; // Rotation in radians
+            float _BrushAngle;
             float _BrushSize;
-            float4 _BrushRect;
-            float _BrushMode;
-            float4 _BrushColor;
+            float4 _BrushRect; // x,y,w,h
+            float _BrushMode; // 0=Circle, 1=Rect
+            float _BrushIntensity; // The target value (0.2 for shaver, 0.0 for laser)
 
             v2f vert (appdata v)
             {
@@ -56,9 +60,9 @@ Shader "Custom/PaintShader"
                 return o;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            half4 frag (v2f i) : SV_Target
             {
-                fixed4 col = tex2D(_MainTex, i.uv);
+                half4 col = tex2D(_MainTex, i.uv);
                 
                 bool shouldPaint = false;
                 
@@ -76,7 +80,7 @@ Shader "Custom/PaintShader"
                     
                     // Rotate UVs around center
                     float2 uv = i.uv - center;
-                    float s = sin(-_BrushAngle); // Negative for clockwise rotation
+                    float s = sin(-_BrushAngle);
                     float c = cos(-_BrushAngle);
                     float2 rotatedUV = float2(
                         uv.x * c - uv.y * s,
@@ -89,7 +93,15 @@ Shader "Custom/PaintShader"
                 
                 if (shouldPaint)
                 {
-                    return _BrushColor;
+                    // Apply the brush intensity
+                    // Use MIN blending: preserve darker values (0.0 laser) over lighter ones (0.2 shaver)
+                    // If current pixel is 1.0 (hair), it becomes 0.2 (stubble)
+                    // If current pixel is 0.0 (laser), it stays 0.0 (shaver doesn't regrow hair)
+                    float currentVal = col.r;
+                    float targetVal = _BrushIntensity;
+                    float finalVal = min(currentVal, targetVal);
+                    
+                    return half4(finalVal, finalVal, finalVal, 1.0);
                 }
                 
                 return col;

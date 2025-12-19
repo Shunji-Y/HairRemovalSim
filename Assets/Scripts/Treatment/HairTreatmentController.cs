@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using System.Collections.Generic;
 using System;
+using HairRemovalSim.Core; // For TreatmentToolType
 
 namespace HairRemovalSim.Treatment
 {
@@ -20,6 +21,7 @@ namespace HairRemovalSim.Treatment
 
         private RenderTexture[] maskTextures; // Array of masks, one per material
         private Material paintMaterial;
+        private Material glMaterial; // For direct GL drawing
         private Material[] targetMaterials;
         private Renderer meshRenderer;
         private HairRemovalSim.Core.BodyPart bodyPart;
@@ -319,7 +321,8 @@ namespace HairRemovalSim.Treatment
         }
 
         // Apply treatment (remove hair) at UV position
-        public void ApplyTreatment(Vector2 uvPosition, Vector2 size, float angle, int subMeshIndex, int decalShape = 0)
+        // toolType: Shaver = shortens to 0.2, Laser = removes to 0.0
+        public void ApplyTreatment(Vector2 uvPosition, Vector2 size, float angle, int subMeshIndex, int decalShape = 0, TreatmentToolType toolType = TreatmentToolType.Shaver)
         {
             if (paintMaterial == null)
             {
@@ -332,7 +335,7 @@ namespace HairRemovalSim.Treatment
                 return;
             }
 
-            //Debug.Log($"[HairTreatmentController] Applying treatment at {uvPosition}, Size: {size}, Angle: {angle}, SubMesh: {subMeshIndex}");
+            //Debug.Log($"[HairTreatmentController] Applying treatment at {uvPosition}, Size: {size}, Angle: {angle}, SubMesh: {subMeshIndex}, Tool: {toolType}");
 
             // Track which submesh we're treating (set on first paint)
             if (!hasActiveSubmesh)
@@ -344,33 +347,118 @@ namespace HairRemovalSim.Treatment
                 Debug.Log($"[HairTreatmentController] Active submesh set to {activeSubmeshIndex}, initial pixels: {initialWhitePixels}");
             }
 
-            // Setup paint material based on shape
+            // Setup paint material based on shape - use GLOBAL shader properties
             if (decalShape == 0)
             {
                 // Rectangle mode
-                paintMaterial.SetFloat("_BrushMode", 1.0f);
-                paintMaterial.SetVector("_BrushRect", new Vector4(uvPosition.x, uvPosition.y, size.x, size.y));
-                paintMaterial.SetFloat("_BrushAngle", angle);
+                Shader.SetGlobalFloat("_BrushMode", 1.0f);
+                Shader.SetGlobalVector("_BrushRect", new Vector4(uvPosition.x, uvPosition.y, size.x, size.y));
+                Shader.SetGlobalFloat("_BrushAngle", angle);
             }
             else
             {
                 // Circle mode - use width as diameter
-                paintMaterial.SetFloat("_BrushMode", 0.0f);
-                paintMaterial.SetVector("_BrushPos", new Vector4(uvPosition.x, uvPosition.y, 0, 0));
-                paintMaterial.SetFloat("_BrushSize", size.x * 0.5f); // Radius = diameter / 2
+                Shader.SetGlobalFloat("_BrushMode", 0.0f);
+                Shader.SetGlobalVector("_BrushPos", new Vector4(uvPosition.x, uvPosition.y, 0, 0));
+                Shader.SetGlobalFloat("_BrushSize", size.x * 0.5f); // Radius = diameter / 2
             }
-            paintMaterial.SetColor("_BrushColor", Color.black); // Paint black to remove hair
             
-            // Draw black shape on the specific mask texture
+            // Set brush color based on tool type
+            // Shaver: paint gray (0.2) to create stubble
+            // Laser: paint black (0.0) to completely remove
+            // None/Other: default to Shaver behavior
+            Color brushColor;
+            if (toolType == TreatmentToolType.Laser)
+            {
+                brushColor = Color.black; // 0.0 - complete removal
+            }
+            else
+            {
+                brushColor = new Color(0.3f, 0.3f, 0.3f, 1f); // 0.2 - stubble
+            }
+            
+            Debug.Log($"[HairTreatmentController] ApplyTreatment - Tool: {toolType}, BrushIntensity: {brushColor.r}");
+            // Use GLOBAL shader property
+            Shader.SetGlobalFloat("_BrushIntensity", brushColor.r);
+            
+            // For Shaver: Check if the area is already laser-removed (mask < threshold)
+            // If so, skip drawing to prevent "regrowing" hair
+            if (toolType == TreatmentToolType.Shaver)
+            {
+                // Read current mask value at the center of the brush
+                RenderTexture.active = maskTextures[subMeshIndex];
+                Texture2D readTex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                int px = Mathf.Clamp((int)(uvPosition.x * maskTextures[subMeshIndex].width), 0, maskTextures[subMeshIndex].width - 1);
+                int py = Mathf.Clamp((int)(uvPosition.y * maskTextures[subMeshIndex].height), 0, maskTextures[subMeshIndex].height - 1);
+                readTex.ReadPixels(new Rect(px, py, 1, 1), 0, 0);
+                readTex.Apply();
+                float currentMaskValue = readTex.GetPixel(0, 0).r;
+                DestroyImmediate(readTex);
+                RenderTexture.active = null;
+                
+                // If already laser-removed (mask < 0.1), don't apply shaver
+                if (currentMaskValue < 0.1f)
+                {
+                    Debug.Log($"[HairTreatmentController] Skipping shaver - area already laser-removed (mask={currentMaskValue})");
+                    return;
+                }
+            }
+            
+            // Draw shape on the specific mask texture
             RenderTexture.active = maskTextures[subMeshIndex];
             GL.PushMatrix();
             GL.LoadOrtho();
             
-            // Use Graphics.Blit with shader to handle brush shape
-            RenderTexture temp = RenderTexture.GetTemporary(maskTextures[subMeshIndex].width, maskTextures[subMeshIndex].height, 0, RenderTextureFormat.ARGB32);
-            Graphics.Blit(maskTextures[subMeshIndex], temp);
-            Graphics.Blit(temp, maskTextures[subMeshIndex], paintMaterial);
-            RenderTexture.ReleaseTemporary(temp);
+            // Create a simple unlit material for GL drawing if needed
+            if (glMaterial == null)
+            {
+                glMaterial = new Material(Shader.Find("Hidden/Internal-Colored"));
+                glMaterial.hideFlags = HideFlags.HideAndDontSave;
+                glMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+                glMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
+                glMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+                glMaterial.SetInt("_ZWrite", 0);
+            }
+            
+            glMaterial.SetPass(0);
+            
+            // Draw rectangle directly with GL
+            GL.Begin(GL.QUADS);
+            GL.Color(brushColor);
+            
+            if (decalShape == 0)
+            {
+                // Rectangle mode
+                float halfW = size.x * 0.5f;
+                float halfH = size.y * 0.5f;
+                
+                // Calculate rotated corners
+                float cos = Mathf.Cos(-angle);
+                float sin = Mathf.Sin(-angle);
+                
+                Vector2[] corners = new Vector2[4];
+                corners[0] = new Vector2(-halfW, -halfH); // Bottom-left
+                corners[1] = new Vector2(halfW, -halfH);  // Bottom-right
+                corners[2] = new Vector2(halfW, halfH);   // Top-right
+                corners[3] = new Vector2(-halfW, halfH);  // Top-left
+                
+                for (int i = 0; i < 4; i++)
+                {
+                    float rotX = corners[i].x * cos - corners[i].y * sin;
+                    float rotY = corners[i].x * sin + corners[i].y * cos;
+                    GL.Vertex3(uvPosition.x + rotX, uvPosition.y + rotY, 0);
+                }
+            }
+            else
+            {
+                // Circle mode - approximate with quad for now
+                float radius = size.x * 0.5f;
+                GL.Vertex3(uvPosition.x - radius, uvPosition.y - radius, 0);
+                GL.Vertex3(uvPosition.x + radius, uvPosition.y - radius, 0);
+                GL.Vertex3(uvPosition.x + radius, uvPosition.y + radius, 0);
+                GL.Vertex3(uvPosition.x - radius, uvPosition.y + radius, 0);
+            }
+            GL.End();
             
             GL.PopMatrix();
             RenderTexture.active = null;

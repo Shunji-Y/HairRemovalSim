@@ -158,6 +158,7 @@ Shader "Custom/HairShader"
                 float4 tangentWS : TEXCOORD5;
                 float2 uv : TEXCOORD0;
                 float isHair : TEXCOORD4;
+                float maskValue : TEXCOORD6; // Hair length multiplier from mask (1.0 = full, 0.2 = stubble, 0.0 = removed)
             };
 
             CBUFFER_START(UnityPerMaterial)
@@ -284,10 +285,14 @@ Shader "Custom/HairShader"
                 output.tangentWS = float4(normalInput.tangentWS, input.tangentOS.w);
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
                 output.isHair = 0.0;
+                
+                // Sample the MaskMap to get the hair length multiplier (1.0 = full, 0.2 = stubble, 0.0 = removed)
+                output.maskValue = SAMPLE_TEXTURE2D_LOD(_MaskMap, sampler_MaskMap, output.uv, 0).r;
+                
                 return output;
             }
 
-            [maxvertexcount(60)] 
+            [maxvertexcount(56)] 
             void geom(triangle Varyings input[3], uint pid : SV_PrimitiveID, inout TriangleStream<Varyings> triStream)
             {
                 // 1. Emit Body
@@ -299,6 +304,13 @@ Shader "Custom/HairShader"
                     triStream.Append(v);
                 }
                 triStream.RestartStrip();
+                
+                // Calculate average mask value for this triangle
+                float avgMaskValue = (input[0].maskValue + input[1].maskValue + input[2].maskValue) / 3.0;
+                
+                // Skip hair generation if mask is too low (< 0.05 means completely removed)
+                if (avgMaskValue < 0.05)
+                    return;
 
                 // 2. Calculate Area & Count
                 float3 p0 = input[0].positionWS;
@@ -339,8 +351,9 @@ Shader "Custom/HairShader"
                     float rRot = rand(seed + 3.0);
                     float rCurveX = rand(seed + 4.0) - 0.5;
                     float rCurveZ = rand(seed + 5.0) - 0.5;
-
-                    float currentLength = _HairLength * (1.0 - (_HairRandom * 0.5 * rLen)); 
+                    
+                    // Use avgMaskValue to scale hair length (1.0 = full length, 0.2 = stubble)
+                    float currentLength = _HairLength * avgMaskValue * (1.0 - (_HairRandom * 0.5 * rLen)); 
                     
                     float3 baseTangent = normalize(cross(worldNormal, float3(0,1,0) + float3(0.01, 0.01, 0.01)));
                     float3 baseBitangent = normalize(cross(worldNormal, baseTangent));
@@ -384,6 +397,7 @@ Shader "Custom/HairShader"
                         v.isHair = 1.0;
                         v.uv = uv;
                         v.tangentWS = float4(0, 0, 0, 0); // Hair doesn't use normal mapping
+                        v.maskValue = 1.0; // Fragment shader will sample actual mask value
                         
                         // Left Vertex
                         v.positionWS = currentPos - t1 * w; 
