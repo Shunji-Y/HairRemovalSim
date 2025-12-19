@@ -357,7 +357,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.4
-  m_Speed: 3.5
+  m_Speed: 2.2
   m_Acceleration: 8
   avoidancePriority: 50
   m_AngularSpeed: 120
@@ -389,7 +389,6 @@ MonoBehaviour:
     painTolerance: 0
     painToleranceLevel: 0
     patience: 0
-    baseBudget: 0
     requestPlan: 0
     selectedTreatmentPlan: -1
     requestedBodyParts: []
@@ -404,6 +403,8 @@ MonoBehaviour:
   maxPain: 100
   IsCompleted: 0
   baseReviewValue: 30
+  staffReviewCoefficient: 1
+  upsellSuccess: 0
   assignedBed: {fileID: 0}
   isInitialized: 0
   paymentDelay: 2

@@ -682,7 +682,7 @@ namespace HairRemovalSim.Customer
         
         /// <summary>
         /// Calculate final payment based on completed requested parts only
-        /// Uses baseBudget as price per body part
+        /// Uses confirmedPrice from reception
         /// </summary>
         public int CalculateFinalPayment()
         {
@@ -708,9 +708,10 @@ namespace HairRemovalSim.Customer
                 }
             }
             
-            // Calculate payment: baseBudget × completed parts
-            int payment = completedCount * data.baseBudget;
-            Debug.Log($"[CustomerController] Payment calculation: {completedCount}/{targetPartNames.Count} parts completed × ${data.baseBudget}/part = ${payment}");
+            // Calculate payment: confirmedPrice if all parts complete, proportional otherwise
+            int totalParts = targetPartNames.Count;
+            int payment = totalParts > 0 ? (data.confirmedPrice * completedCount) / totalParts : 0;
+            Debug.Log($"[CustomerController] Payment calculation: {completedCount}/{totalParts} parts completed, ${payment} of ${data.confirmedPrice}");
             
             return payment;
         }
@@ -1623,9 +1624,8 @@ namespace HairRemovalSim.Customer
         
         private int CalculatePayment()
         {
-            // Simple calculation based on budget
-            // TODO: Factor in satisfaction, treatment quality, etc.
-            return data.baseBudget;
+            // Return confirmed price from reception
+            return data.confirmedPrice;
         }
         private void OnDestroy()
         {

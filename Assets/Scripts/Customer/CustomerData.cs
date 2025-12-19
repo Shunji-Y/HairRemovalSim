@@ -16,7 +16,6 @@ namespace HairRemovalSim.Customer
         public float painTolerance; // 0.0 - 1.0
         public PainToleranceLevel painToleranceLevel; // For UI display
         public float patience; // 0.0 - 1.0
-        public int baseBudget; // Customer's total budget
 
         [Header("Request")]
         public CustomerRequestPlan requestPlan; // One of 12 plans
@@ -33,15 +32,6 @@ namespace HairRemovalSim.Customer
         public CustomerData()
         {
             // Random generation logic can go here or in a factory
-        }
-        
-        /// <summary>
-        /// Calculate total price based on requested body parts
-        /// Uses baseBudget as price per body part
-        /// </summary>
-        public int GetTotalPrice()
-        {
-            return requestedBodyParts.Count * baseBudget;
         }
         
         /// <summary>

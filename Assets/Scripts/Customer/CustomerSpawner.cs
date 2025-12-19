@@ -409,37 +409,13 @@ namespace HairRemovalSim.Customer
                     data.requestPlan = CustomerPlanHelper.GetRandomPlanForWealthLevel(data.wealth);
                 }
                 
-                // Adjust budget based on plan complexity (number of parts)
+                // Get required parts info for logging
                 var requiredParts = CustomerPlanHelper.GetRequiredParts(data.requestPlan);
                 var detailedParts = CustomerPlanHelper.GetDetailedTreatmentParts(requiredParts);
                 int partCount = detailedParts.Length;
                 
-                // Budget per part based on wealth level
-                int budgetPerPart;
-                switch (data.wealth)
-                {
-                    case WealthLevel.Poorest:
-                        budgetPerPart = Random.Range(10, 16); // $10-15 per part
-                        break;
-                    case WealthLevel.Poor:
-                        budgetPerPart = Random.Range(15, 21); // $15-20 per part
-                        break;
-                    case WealthLevel.Normal:
-                        budgetPerPart = Random.Range(20, 31); // $20-30 per part
-                        break;
-                    case WealthLevel.Rich:
-                        budgetPerPart = Random.Range(30, 46); // $30-45 per part
-                        break;
-                    case WealthLevel.Richest:
-                        budgetPerPart = Random.Range(45, 71); // $45-70 per part
-                        break;
-                    default:
-                        budgetPerPart = 20;
-                        break;
-                }
-                
-                // Final budget = budget per part × parts (minimum parts = 1)
-                data.baseBudget = budgetPerPart * Mathf.Max(1, partCount);
+                // Price is now fixed per plan, not budget-based
+                int planPrice = CustomerPlanHelper.GetPlanPrice(data.requestPlan);
                 
                 customer.Initialize(data, exitPoint, receptionPoint, cashRegisterPoint, this);
                 
@@ -447,7 +423,7 @@ namespace HairRemovalSim.Customer
                 if (checkoutTestMode)
                 {
                     // Set test values
-                    data.confirmedPrice = testConfirmedPrice > 0 ? testConfirmedPrice : Random.Range(30, 150);
+                    data.confirmedPrice = testConfirmedPrice > 0 ? testConfirmedPrice : planPrice;
                     data.confirmedParts = requiredParts;
                     data.reviewPenalty = testReviewValue != 0 ? -testReviewValue + customer.GetBaseReviewValue() : Random.Range(0, 40);
                     
@@ -469,7 +445,7 @@ namespace HairRemovalSim.Customer
                     return;
                 }
                 
-                Debug.Log($"[CustomerSpawner] {data.customerName} requested plan: {data.GetPlanDisplayName()} ({partCount} parts), budget: ${data.baseBudget} (${budgetPerPart}/part), tolerance: {data.painToleranceLevel}");
+                Debug.Log($"[CustomerSpawner] {data.customerName} requested plan: {data.GetPlanDisplayName()} ({partCount} parts), price: ${planPrice}, tolerance: {data.painToleranceLevel}");
                 
                 // Register with reception to get queue position
                 if (receptionManager != null)

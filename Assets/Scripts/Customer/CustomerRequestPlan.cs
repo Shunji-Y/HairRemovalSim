@@ -240,5 +240,31 @@ namespace HairRemovalSim.Customer
             var plans = GetPlansForWealthLevel(wealth);
             return plans[UnityEngine.Random.Range(0, plans.Length)];
         }
+        
+        /// <summary>
+        /// Get fixed price for a customer request plan
+        /// 胸=20, 腹=30, 脇=40, 背中=45, ひげ=50, 腕=80, 脚=90
+        /// 腕&脚=180, 上半身(腕なし)=150, 上半身(腕あり)=240
+        /// 全身(ひげなし)=320, 全身(ひげあり)=380
+        /// </summary>
+        public static int GetPlanPrice(CustomerRequestPlan plan)
+        {
+            switch (plan)
+            {
+                case CustomerRequestPlan.Chest: return 20;
+                case CustomerRequestPlan.Stomach: return 30;
+                case CustomerRequestPlan.Underarms: return 40;
+                case CustomerRequestPlan.Back: return 45;
+                case CustomerRequestPlan.Beard: return 50;
+                case CustomerRequestPlan.Arms: return 80;
+                case CustomerRequestPlan.Legs: return 90;
+                case CustomerRequestPlan.ArmsAndLegs: return 180;
+                case CustomerRequestPlan.UpperBodyNoArms: return 150;
+                case CustomerRequestPlan.UpperBody: return 240;
+                case CustomerRequestPlan.FullBodyNoBeard: return 320;
+                case CustomerRequestPlan.FullBodyWithBeard: return 380;
+                default: return 50;
+            }
+        }
     }
 }

@@ -19,7 +19,6 @@ namespace HairRemovalSim.UI
         [Header("Customer Info (Right Side)")]
         [SerializeField] private TMP_Text targetText;
         [SerializeField] private TMP_Text toleranceText;
-        [SerializeField] private TMP_Text budgetText;
         
         [Header("Body Part Buttons (Left Side)")]
         [SerializeField] private Toggle armsToggle;
@@ -29,10 +28,6 @@ namespace HairRemovalSim.UI
         [SerializeField] private Toggle absToggle;
         [SerializeField] private Toggle beardToggle;
         [SerializeField] private Toggle backToggle;
-        
-        [Header("Machine Selection")]
-        [SerializeField] private Toggle shaverToggle;
-        [SerializeField] private Toggle laserToggle;
         
         [Header("Extra Items")]
         [SerializeField] private ExtraItemDropTarget extraItemDropTarget;
@@ -48,7 +43,6 @@ namespace HairRemovalSim.UI
         // Current state
         private CustomerController currentCustomer;
         private TreatmentBodyPart selectedParts = TreatmentBodyPart.None;
-        private TreatmentMachine selectedMachine = TreatmentMachine.Shaver;
         private int calculatedPrice = 0;
         
         // Callbacks
@@ -68,9 +62,6 @@ namespace HairRemovalSim.UI
             if (absToggle != null) absToggle.onValueChanged.AddListener(v => OnPartToggled(TreatmentBodyPart.Abs, v));
             if (beardToggle != null) beardToggle.onValueChanged.AddListener(v => OnPartToggled(TreatmentBodyPart.Beard, v));
             if (backToggle != null) backToggle.onValueChanged.AddListener(v => OnPartToggled(TreatmentBodyPart.Back, v));
-            
-            if (shaverToggle != null) shaverToggle.onValueChanged.AddListener(v => { if (v) OnMachineSelected(TreatmentMachine.Shaver); });
-            if (laserToggle != null) laserToggle.onValueChanged.AddListener(v => { if (v) OnMachineSelected(TreatmentMachine.Laser); });
             
             // Extra item drop target callback
             if (extraItemDropTarget != null) extraItemDropTarget.OnItemSet = OnExtraItemSet;
@@ -156,7 +147,6 @@ namespace HairRemovalSim.UI
         private void ResetSelections()
         {
             selectedParts = TreatmentBodyPart.None;
-            selectedMachine = TreatmentMachine.Shaver;
             
             // Reset all toggles WITHOUT triggering events
             if (armsToggle != null) armsToggle.SetIsOnWithoutNotify(false);
@@ -166,9 +156,6 @@ namespace HairRemovalSim.UI
             if (absToggle != null) absToggle.SetIsOnWithoutNotify(false);
             if (beardToggle != null) beardToggle.SetIsOnWithoutNotify(false);
             if (backToggle != null) backToggle.SetIsOnWithoutNotify(false);
-            
-            if (shaverToggle != null) shaverToggle.SetIsOnWithoutNotify(true);
-            if (laserToggle != null) laserToggle.SetIsOnWithoutNotify(false);
             
             // Don't clear extra item drop target - keep it across panel opens
             
@@ -185,9 +172,6 @@ namespace HairRemovalSim.UI
             
             if (toleranceText != null)
                 toleranceText.text = data.painToleranceLevel.ToString();
-            
-            if (budgetText != null)
-                budgetText.text = $"${data.baseBudget}";
         }
         
         private void OnPartToggled(TreatmentBodyPart part, bool isOn)
@@ -203,14 +187,6 @@ namespace HairRemovalSim.UI
             RecalculatePrice();
         }
         
-        private void OnMachineSelected(TreatmentMachine machine)
-        {
-            Debug.Log($"[ReceptionPanel] OnMachineSelected: {machine}, before selectedMachine = {selectedMachine}");
-            selectedMachine = machine;
-            Debug.Log($"[ReceptionPanel] OnMachineSelected: after selectedMachine = {selectedMachine}, selectedParts = {selectedParts}");
-            RecalculatePrice();
-        }
-        
         private void OnExtraItemSet(string itemId)
         {
             RecalculatePrice();
@@ -219,10 +195,23 @@ namespace HairRemovalSim.UI
         
         private void RecalculatePrice()
         {
-            if (priceTable == null || currentCustomer == null) return;
+            if (currentCustomer == null) return;
             
-            bool hasExtraItem = extraItemDropTarget != null && extraItemDropTarget.HasItem;
-            calculatedPrice = priceTable.CalculatePrice(selectedParts, selectedMachine, hasExtraItem);
+            // Base price from plan
+            int planPrice = CustomerPlanHelper.GetPlanPrice(currentCustomer.data.requestPlan);
+            
+            // Add extra item price if set
+            int extraItemPrice = 0;
+            if (extraItemDropTarget != null && extraItemDropTarget.HasItem)
+            {
+                var itemData = Core.ItemDataRegistry.Instance?.GetItem(extraItemDropTarget.ItemId);
+                if (itemData != null)
+                {
+                    extraItemPrice = itemData.price;
+                }
+            }
+            
+            calculatedPrice = planPrice + extraItemPrice;
             
             if (priceText != null)
                 priceText.text = $"${calculatedPrice}";
@@ -234,7 +223,7 @@ namespace HairRemovalSim.UI
         
         private void OnConfirmClicked()
         {
-            if (currentCustomer == null || priceTable == null) return;
+            if (currentCustomer == null) return;
             
             var data = currentCustomer.data;
             bool hasExtraItem = extraItemDropTarget != null && extraItemDropTarget.HasItem;
@@ -242,43 +231,17 @@ namespace HairRemovalSim.UI
             
             // Check if extra item is anesthesia cream
             bool useAnesthesia = extraItemId == "anesthesia_cream";
-            
-            // Calculate penalty
-            int penalty = priceTable.CalculatePenalty(selectedParts, data.requestPlan, calculatedPrice, data.baseBudget);
-            data.reviewPenalty += penalty;
             data.useAnesthesiaCream = useAnesthesia;
-            
-            // Check if customer should leave
-            if (priceTable.ShouldCustomerLeave(data.reviewPenalty))
-            {
-                Debug.Log($"[ReceptionPanel] Customer {data.customerName} leaving due to penalty: {data.reviewPenalty}");
-                
-                // Generate negative review for leaving at reception
-                GenerateReceptionLeaveReview(currentCustomer);
-                
-                // Clear current customer in ReceptionManager so next interact works properly
-                ReceptionManager.Instance?.ClearCurrentCustomer(currentCustomer);
-                
-                // Don't clear dropTarget - keep item there
-                
-                currentCustomer.LeaveShop();
-                
-                if (panel != null) panel.SetActive(false);
-                currentCustomer = null;
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
-                return;
-            }
             
             // Save confirmed selections to customer data
             data.confirmedParts = selectedParts;
-            data.confirmedMachine = selectedMachine;
+            data.confirmedMachine = TreatmentMachine.Shaver; // Default, no toggle now
             data.confirmedPrice = calculatedPrice;
             
-            Debug.Log($"[ReceptionPanel] Confirmed - Parts: {selectedParts}, Machine: {selectedMachine}, Price: ${calculatedPrice}");
+            Debug.Log($"[ReceptionPanel] Confirmed - Parts: {selectedParts}, Price: ${calculatedPrice}");
             
             // Invoke callback
-            onConfirm?.Invoke(currentCustomer, selectedParts, selectedMachine, useAnesthesia, calculatedPrice);
+            onConfirm?.Invoke(currentCustomer, selectedParts, TreatmentMachine.Shaver, useAnesthesia, calculatedPrice);
             
             Hide();
         }

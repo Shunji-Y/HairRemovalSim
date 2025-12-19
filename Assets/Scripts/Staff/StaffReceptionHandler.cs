@@ -8,7 +8,7 @@ namespace HairRemovalSim.Staff
     /// <summary>
     /// Handles automatic reception processing when staff is assigned
     /// - Processes customer's request as-is
-    /// - Price = customer's budget
+    /// - Price = plan fixed price + optional upsell
     /// - Applies review coefficient
     /// - Rolls for success based on customer wealth
     /// </summary>
@@ -140,7 +140,7 @@ namespace HairRemovalSim.Staff
         }
         
         /// <summary>
-        /// Process customer request - use their request plan as-is, price = budget
+        /// Process customer request - use their request plan as-is, price = plan fixed price
         /// </summary>
         private void ProcessCustomerRequest(CustomerController customer, StaffRankData rankData)
         {
@@ -150,7 +150,7 @@ namespace HairRemovalSim.Staff
             
             // Set confirmed values from customer's request
             data.confirmedParts = data.GetRequiredParts(); // Customer's requested parts
-            data.confirmedPrice = data.baseBudget; // Price = customer's budget
+            data.confirmedPrice = CustomerPlanHelper.GetPlanPrice(data.requestPlan); // Fixed plan price
             
             // Apply review coefficient (simpler approach - store as multiplier)
             if (rankData != null)

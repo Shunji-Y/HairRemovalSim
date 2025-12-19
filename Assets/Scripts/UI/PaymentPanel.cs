@@ -21,7 +21,6 @@ namespace HairRemovalSim.UI
         
         [Header("Customer Info")]
         [SerializeField] private Image moodIcon;
-        [SerializeField] private TextMeshProUGUI budgetText;
         
         [Header("Mood Icons (0=Angry, 4=VeryHappy)")]
         [SerializeField] private Sprite[] moodSprites; // 5 sprites for mood levels
@@ -108,7 +107,7 @@ namespace HairRemovalSim.UI
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             
-            Debug.Log($"[PaymentPanel] Opened for {data.customerName}, fee: ${treatmentFee}, budget: ${data.baseBudget}");
+            Debug.Log($"[PaymentPanel] Opened for {data.customerName}, fee: ${treatmentFee}");
         }
         
         /// <summary>
@@ -167,10 +166,6 @@ namespace HairRemovalSim.UI
             if (currentCustomer == null) return;
             var data = currentCustomer.data;
             
-            // Budget
-            if (budgetText != null)
-                budgetText.text = $"${data.baseBudget}";
-            
             // Treatment fee
             if (treatmentFeeText != null)
                 treatmentFeeText.text = $"${treatmentFee}";
@@ -215,21 +210,11 @@ namespace HairRemovalSim.UI
             // Base review from customer controller
             int baseReview = currentCustomer.GetBaseReviewValue(); // 10-50
             
-            // Subtract accumulated penalties (pain, reception issues)
+            // Subtract accumulated penalties (pain, treatment issues)
             int totalReview = baseReview - data.reviewPenalty;
             
             // Add item bonus
             totalReview += addedItemReviewBonus;
-            
-            // Calculate budget overage penalty
-            int totalPrice = treatmentFee + addedItemPrice;
-            int overBudget = totalPrice - data.baseBudget;
-            if (overBudget > 0)
-            {
-                // Penalty scales with overage
-                int overagePenalty = Mathf.RoundToInt(overBudget * 0.5f);
-                totalReview -= overagePenalty;
-            }
             
             return totalReview;
         }
@@ -313,6 +298,30 @@ namespace HairRemovalSim.UI
         {
             if (currentCustomer == null) return;
             var data = currentCustomer.data;
+            
+            // Check wrong part penalty - 20% leave chance per wrong part
+            int wrongPartCount = CountWrongParts(data.confirmedParts, data.requestPlan);
+            if (wrongPartCount > 0)
+            {
+                float leaveChance = wrongPartCount * 0.20f;
+                if (Random.value < leaveChance)
+                {
+                    Debug.Log($"[PaymentPanel] Customer {data.customerName} leaves due to wrong parts! ({wrongPartCount} wrong, {leaveChance*100:F0}% chance)");
+                    
+                    // Submit negative review
+                    int angryReview = -30;
+                    if (ShopManager.Instance != null)
+                    {
+                        ShopManager.Instance.AddReview(angryReview, currentCustomer.GetPainMaxCount());
+                        ShopManager.Instance.AddCustomerReview(1); // 1 star
+                    }
+                    
+                    OnPaymentComplete(currentCustomer, false);
+                    currentCustomer.LeaveShop();
+                    Hide();
+                    return;
+                }
+            }
             
             int finalReview = CalculateCurrentReview();
             int totalAmount = treatmentFee + addedItemPrice;
@@ -462,6 +471,38 @@ namespace HairRemovalSim.UI
             Debug.Log($"[PaymentPanel] Staff consumed checkout item: {itemId}, price: ${price}, review: +{reviewBonus}");
             
             return (itemId, price, reviewBonus);
+        }
+        
+        /// <summary>
+        /// Count the number of wrong parts (missing or extra) compared to the customer's request
+        /// </summary>
+        private int CountWrongParts(TreatmentBodyPart confirmedParts, CustomerRequestPlan requestPlan)
+        {
+            TreatmentBodyPart requiredParts = CustomerPlanHelper.GetRequiredParts(requestPlan);
+            
+            // Count missing parts (required but not selected)
+            TreatmentBodyPart missing = requiredParts & ~confirmedParts;
+            int missingCount = CountSetBits((int)missing);
+            
+            // Count extra parts (selected but not required)
+            TreatmentBodyPart extra = confirmedParts & ~requiredParts;
+            int extraCount = CountSetBits((int)extra);
+            
+            return missingCount + extraCount;
+        }
+        
+        /// <summary>
+        /// Count set bits in a flags enum
+        /// </summary>
+        private int CountSetBits(int value)
+        {
+            int count = 0;
+            while (value != 0)
+            {
+                count += value & 1;
+                value >>= 1;
+            }
+            return count;
         }
     }
 }
