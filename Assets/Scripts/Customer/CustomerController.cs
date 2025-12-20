@@ -62,7 +62,9 @@ namespace HairRemovalSim.Customer
         [SerializeField] private GameObject boxerObject;
         [Tooltip("Shoes - always hidden when lying down")]
         [SerializeField] private GameObject shoesObject;
-        
+
+        [SerializeField] private HairRemovalSim.Core.BodyPart bodyPart;
+
         [Header("Rotation")]
         public bool isSupine = true; // true = face-up, false = face-down
         private bool isRotating = false;
@@ -1424,7 +1426,7 @@ namespace HairRemovalSim.Customer
             }
             
             // Wait a bit for animation to start transitioning
-            yield return new WaitForSeconds(0.1f);
+           // yield return new WaitForSeconds(0.1f);
             
             // THEN: Smoothly adjust position/rotation
             Vector3 startPos = transform.position;
@@ -1441,19 +1443,19 @@ namespace HairRemovalSim.Customer
                 targetPos = targetBed.position;
             }
             
-            float duration = 0f;
-            float elapsed = 0f;
+            //float duration = 0f;
+            //float elapsed = 0f;
             
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
+            //while (elapsed < duration)
+            //{
+            //    elapsed += Time.deltaTime;
+            //    float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
                 
-                transform.position = Vector3.Lerp(startPos, targetPos, t);
-                transform.rotation = Quaternion.Slerp(startRot, targetRot, t);
+            //    transform.position = Vector3.Lerp(startPos, targetPos, t);
+            //    transform.rotation = Quaternion.Slerp(startRot, targetRot, t);
                 
-                yield return null;
-            }
+            //    yield return null;
+            //}
             
             // Snap to final position/rotation
             transform.position = targetPos;
@@ -1483,6 +1485,7 @@ namespace HairRemovalSim.Customer
             
             // Start Treatment Session
             TreatmentManager.Instance.StartSession(this);
+            yield return null;
         }
         
         /// <summary>
@@ -1493,13 +1496,11 @@ namespace HairRemovalSim.Customer
         {
             // Hide clothing when lying down for treatment
             
-            var bodyParts = GetComponentsInChildren<HairRemovalSim.Core.BodyPart>();
-            foreach (var part in bodyParts)
-            {
-                part.BakeMeshForCollider();
-            }
+        
+            bodyPart.BakeMeshForCollider();
             
-            Debug.Log($"[CustomerController] OnLieDownComplete: Baked mesh colliders for {bodyParts.Length} body parts");
+            
+            Debug.Log($"[CustomerController] OnLieDownComplete: Baked mesh colliders for  ");
         }
         
         /// <summary>

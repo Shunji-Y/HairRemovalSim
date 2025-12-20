@@ -51,6 +51,12 @@ namespace HairRemovalSim.Tools
         public abstract HandType GetHandType();
         
         /// <summary>
+        /// Returns true if the tool is currently hovering over a valid target (e.g. skin).
+        /// Used to prioritize tool usage over object interaction.
+        /// </summary>
+        public virtual bool IsHoveringTarget => false;
+        
+        /// <summary>
         /// Event fired when tool breaks (durability reaches 0)
         /// </summary>
         public event System.Action<ToolBase> OnToolBroken;

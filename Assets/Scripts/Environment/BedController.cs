@@ -20,6 +20,9 @@ namespace HairRemovalSim.Environment
         [Tooltip("Position where staff stands when assigned to this bed")]
         public Transform staffPoint;
         
+        [Tooltip("If true, staff cannot be assigned to this bed (player only)")]
+        public bool isVipOnly = false;
+        
         [Header("Curtain Doors")]
         [Tooltip("Left curtain door")]
         public CurtainDoor leftDoor;

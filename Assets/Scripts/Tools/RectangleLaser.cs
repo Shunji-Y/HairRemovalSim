@@ -386,6 +386,34 @@ namespace HairRemovalSim.Tools
                     return;
                 }
                 
+                // Check if part is found at UV - block if not found
+                if (customer != null && customer.bodyPartsDatabase != null)
+                {
+                    Vector2 hitUV = GetNormalizedUV(currentHit.textureCoord);
+                    int subMesh = GetSubMeshIndex(currentHit);
+                    var partDef = customer.bodyPartsDatabase.GetPartByUV(hitUV, subMesh);
+
+                    Debug.Log(partDef);
+                    if (partDef == null)
+                    {
+                        // No part found - Face tools block, Body/All tools allow
+                        if (itemData != null && itemData.targetArea == ToolTargetArea.Face)
+                        {
+                            Debug.LogWarning($"[RectangleLaser] No part found at UV={hitUV}, subMesh={subMesh} - Face tool blocked");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        // Part found - check if tool can treat this part
+                        if (itemData != null && !itemData.CanTreatBodyPart(partDef.partName))
+                        {
+                            Debug.Log($"[RectangleLaser] Cannot treat '{partDef.partName}' with {itemData.targetArea} tool");
+                            return;
+                        }
+                    }
+                }
+                
                 UVRect uvRect = CalculateUVRect(currentHit, decalWidth, decalHeight);
                 int subMeshIndex = GetSubMeshIndex(currentHit);
                 
@@ -566,6 +594,8 @@ namespace HairRemovalSim.Tools
             // Hide all decals and reset state
             HideAllDecals();
         }
+
+        public override bool IsHoveringTarget => isHoveringBodyPart;
         private bool IsUVInCompletedPart(HairRemovalSim.Customer.CustomerController customer, string partName, Vector2 uv)
         {
             if (customer == null || customer.bodyPartsDatabase == null) return false;

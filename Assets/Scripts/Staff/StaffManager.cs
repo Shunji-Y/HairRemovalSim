@@ -192,6 +192,13 @@ namespace HairRemovalSim.Staff
             
             for (int i = 0; i < beds.Length; i++)
             {
+                // Skip VIP beds - staff cannot be assigned to them
+                if (beds[i] != null && beds[i].isVipOnly)
+                {
+                    Debug.Log($"[StaffManager] Bed {i}: VIP only, skipping");
+                    continue;
+                }
+                
                 bool occupied = IsPositionOccupied(StaffAssignment.Treatment, i);
                 Debug.Log($"[StaffManager] Bed {i}: occupied={occupied}");
                 if (!occupied)

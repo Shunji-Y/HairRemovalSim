@@ -101,7 +101,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_Back:
-        m_Texture: {fileID: 2800000, guid: 4b3cf85416515794caa1f2fd3de668f4, type: 3}
+        m_Texture: {fileID: 2800000, guid: be6f0d2359b67e14084833d0dd9a80d0, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_Beard:
@@ -109,7 +109,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_Chest:
-        m_Texture: {fileID: 2800000, guid: 5569efdb830307b40b5abf15710f3d64, type: 3}
+        m_Texture: {fileID: 2800000, guid: 63751b600ed116541be8ba157b462092, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_LeftArmpit:

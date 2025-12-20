@@ -140,12 +140,12 @@ namespace HairRemovalSim.Environment
         public void OnInteract(InteractionController interactor)
         {
             // Block door interaction during treatment (when slider is visible)
-            var playerController = interactor?.GetComponent<PlayerController>();
-            if (playerController != null && playerController.IsInTreatmentMode)
-            {
-                Debug.Log("[CurtainDoor] Cannot interact with door during treatment");
-                return;
-            }
+            //var playerController = interactor?.GetComponent<PlayerController>();
+            //if (playerController != null && playerController.IsInTreatmentMode)
+            //{
+            //    Debug.Log("[CurtainDoor] Cannot interact with door during treatment");
+            //    return;
+            //}
             
             Toggle();
         }

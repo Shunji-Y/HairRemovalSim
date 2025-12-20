@@ -179,6 +179,33 @@ namespace HairRemovalSim.Core
         {
             return shopGrade >= requiredShopGrade;
         }
+        
+        /// <summary>
+        /// Check if this tool can treat the specified body part based on targetArea
+        /// Face: Beard, Armpits only
+        /// Body: Everything except Beard, Armpits
+        /// All: Everything
+        /// </summary>
+        public bool CanTreatBodyPart(string bodyPartName)
+        {
+            if (string.IsNullOrEmpty(bodyPartName)) return false;
+            
+            // Determine if body part is "Face" category (Beard, Armpits)
+            bool isFacePart = bodyPartName.Contains("Beard") || 
+                              bodyPartName.Contains("Armpit");
+            
+            switch (targetArea)
+            {
+                case ToolTargetArea.Face:
+                    return isFacePart;
+                case ToolTargetArea.Body:
+                    return !isFacePart;
+                case ToolTargetArea.All:
+                    return true;
+                default:
+                    return true;
+            }
+        }
     }
     
     /// <summary>

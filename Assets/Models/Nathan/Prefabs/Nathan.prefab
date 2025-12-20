@@ -299,6 +299,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2100000, guid: da0c73239372e3647b8cb6f31a8b4d6f, type: 2}
     - target: {fileID: 5866666021909216657, guid: fe179d60b6e969a46ae904f5c4b816dd, type: 3}
+      propertyPath: m_Avatar
+      value: 
+      objectReference: {fileID: 9000000, guid: fe179d60b6e969a46ae904f5c4b816dd, type: 3}
+    - target: {fileID: 5866666021909216657, guid: fe179d60b6e969a46ae904f5c4b816dd, type: 3}
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: 49f9fa5b5e1662d4d8b4723777a1a47e, type: 2}
@@ -413,6 +417,7 @@ MonoBehaviour:
   pantsObject: {fileID: 1150378136443159341}
   boxerObject: {fileID: 5343472502141356911}
   shoesObject: {fileID: 0}
+  bodyPart: {fileID: 483544450492158292}
   isSupine: 1
   rotationDuration: 1
   playerLeaveDistance: 3

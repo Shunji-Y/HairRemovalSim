@@ -5,18 +5,19 @@ namespace HairRemovalSim.Customer
     /// </summary>
     public enum CustomerRequestPlan
     {
-        Beard,              // ひげ
+        Beard,              // ひげ(普通)
+        BeardHighQuality,   // ひげ高品質
         Arms,               // 腕
         Legs,               // 脚
         ArmsAndLegs,        // 腕、脚
         Chest,              // 胸
-        Stomach,            // お腹
+        Stomach,            // お腹(腹)
         Back,               // 背中
         UpperBodyNoArms,    // 上半身(腕なし) = Chest + Stomach + Back
-        UpperBody,          // 上半身 = Chest + Stomach + Back + Arms
-        Underarms,          // わき
-        FullBodyNoBeard,    // 全身脱毛(ひげなし)
-        FullBodyWithBeard   // 全身脱毛(ひげあり)
+        UpperBody,          // 上半身(腕アリ) = Chest + Stomach + Back + Arms
+        Underarms,          // 脇
+        FullBodyNoBeard,    // 全身(顔なし)
+        FullBodyWithBeard   // 全身(ひげ込み)
     }
     
     /// <summary>
@@ -48,6 +49,8 @@ namespace HairRemovalSim.Customer
             switch (plan)
             {
                 case CustomerRequestPlan.Beard:
+                    return TreatmentBodyPart.Beard;
+                case CustomerRequestPlan.BeardHighQuality:
                     return TreatmentBodyPart.Beard;
                 case CustomerRequestPlan.Arms:
                     return TreatmentBodyPart.Arms;
@@ -86,6 +89,7 @@ namespace HairRemovalSim.Customer
             switch (plan)
             {
                 case CustomerRequestPlan.Beard: return "Beard";
+                case CustomerRequestPlan.BeardHighQuality: return "Beard (High Quality)";
                 case CustomerRequestPlan.Arms: return "Arms";
                 case CustomerRequestPlan.Legs: return "Legs";
                 case CustomerRequestPlan.ArmsAndLegs: return "Arms & Legs";
@@ -204,8 +208,8 @@ namespace HairRemovalSim.Customer
         /// Get available treatment plans for a specific wealth level
         /// 極貧: Chest, Stomach
         /// 貧乏: Underarms, Back, Beard
-        /// 普通: Arms, Legs
-        /// 富豪: ArmsAndLegs, UpperBodyNoArms, UpperBody
+        /// 普通: Arms, Legs, BeardHighQuality
+        /// 富豪: ArmsAndLegs, UpperBodyNoArms, UpperBody, BeardHighQuality
         /// 大富豪: FullBodyNoBeard, FullBodyWithBeard
         /// </summary>
         public static CustomerRequestPlan[] GetPlansForWealthLevel(WealthLevel wealth)
@@ -219,10 +223,10 @@ namespace HairRemovalSim.Customer
                     return new[] { CustomerRequestPlan.Underarms, CustomerRequestPlan.Back, CustomerRequestPlan.Beard };
                     
                 case WealthLevel.Normal:
-                    return new[] { CustomerRequestPlan.Arms, CustomerRequestPlan.Legs };
+                    return new[] { CustomerRequestPlan.Arms, CustomerRequestPlan.Legs, CustomerRequestPlan.BeardHighQuality };
                     
                 case WealthLevel.Rich:
-                    return new[] { CustomerRequestPlan.ArmsAndLegs, CustomerRequestPlan.UpperBodyNoArms, CustomerRequestPlan.UpperBody };
+                    return new[] { CustomerRequestPlan.ArmsAndLegs, CustomerRequestPlan.UpperBodyNoArms, CustomerRequestPlan.UpperBody, CustomerRequestPlan.BeardHighQuality };
                     
                 case WealthLevel.Richest:
                     return new[] { CustomerRequestPlan.FullBodyNoBeard, CustomerRequestPlan.FullBodyWithBeard };
@@ -243,9 +247,9 @@ namespace HairRemovalSim.Customer
         
         /// <summary>
         /// Get fixed price for a customer request plan
-        /// 胸=20, 腹=30, 脇=40, 背中=45, ひげ=50, 腕=80, 脚=90
+        /// 胸=20, 腹=30, 脇=35, 背中=45, ひげ=50, 腕=80, 脚=90, ひげ高品質=100
         /// 腕&脚=180, 上半身(腕なし)=150, 上半身(腕あり)=240
-        /// 全身(ひげなし)=320, 全身(ひげあり)=380
+        /// 全身(顔なし)=350, 全身(ひげ込み)=420
         /// </summary>
         public static int GetPlanPrice(CustomerRequestPlan plan)
         {
@@ -253,16 +257,17 @@ namespace HairRemovalSim.Customer
             {
                 case CustomerRequestPlan.Chest: return 20;
                 case CustomerRequestPlan.Stomach: return 30;
-                case CustomerRequestPlan.Underarms: return 40;
+                case CustomerRequestPlan.Underarms: return 35;
                 case CustomerRequestPlan.Back: return 45;
                 case CustomerRequestPlan.Beard: return 50;
                 case CustomerRequestPlan.Arms: return 80;
                 case CustomerRequestPlan.Legs: return 90;
+                case CustomerRequestPlan.BeardHighQuality: return 100;
                 case CustomerRequestPlan.ArmsAndLegs: return 180;
                 case CustomerRequestPlan.UpperBodyNoArms: return 150;
                 case CustomerRequestPlan.UpperBody: return 240;
-                case CustomerRequestPlan.FullBodyNoBeard: return 320;
-                case CustomerRequestPlan.FullBodyWithBeard: return 380;
+                case CustomerRequestPlan.FullBodyNoBeard: return 350;
+                case CustomerRequestPlan.FullBodyWithBeard: return 420;
                 default: return 50;
             }
         }

@@ -141,7 +141,10 @@ namespace HairRemovalSim.Player
             // Right Click (attackAction) = Left Hand Tool
             
             // 1. Interaction (Priority - Left Click)
-            if (interactAction.WasPressedThisFrame())
+            // UNLESS tool is aiming at a valid target (e.g. skin treatment)
+            bool prioritizeTool = currentTool != null && currentTool.IsHoveringTarget;
+
+            if (interactAction.WasPressedThisFrame() && !prioritizeTool)
             {
                 if (currentInteractable != null)
                 {

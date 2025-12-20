@@ -64911,7 +64911,6 @@ MonoBehaviour:
     painTolerance: 0
     painToleranceLevel: 0
     patience: 0
-    baseBudget: 0
     requestPlan: 0
     selectedTreatmentPlan: -1
     requestedBodyParts: []
@@ -64926,6 +64925,8 @@ MonoBehaviour:
   maxPain: 100
   IsCompleted: 0
   baseReviewValue: 30
+  staffReviewCoefficient: 1
+  upsellSuccess: 0
   assignedBed: {fileID: 0}
   isInitialized: 0
   paymentDelay: 2
@@ -64934,6 +64935,7 @@ MonoBehaviour:
   pantsObject: {fileID: 6231516120533440697}
   boxerObject: {fileID: 1417490230434468091}
   shoesObject: {fileID: 4771710295786759507}
+  bodyPart: {fileID: 1153284617902123476}
   isSupine: 1
   rotationDuration: 1
   playerLeaveDistance: 3
