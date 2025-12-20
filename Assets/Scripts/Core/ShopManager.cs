@@ -54,7 +54,7 @@ namespace HairRemovalSim.Core
         /// <summary>
         /// All beds in the shop
         /// </summary>
-        public IReadOnlyList<Environment.BedController> Beds => beds;
+        public List<Environment.BedController> Beds => beds;
         
         /// <summary>
         /// Get total bed count

@@ -17,11 +17,17 @@ namespace HairRemovalSim.UI
         [SerializeField] private Transform slotGridParent;
         [SerializeField] private GameObject shelfSlotPrefab;
         
-        // Linked shelf
+        [Header("Laser Slots")]
+        [SerializeField] private ShelfSlotUI faceLaserSlotUI;
+        [SerializeField] private ShelfSlotUI bodyLaserSlotUI;
+        
+        // Linked shelf and bed
         private TreatmentShelf linkedShelf;
+        private BedController linkedBed;
         private List<ShelfSlotUI> slotUIs = new List<ShelfSlotUI>();
         
         public TreatmentShelf LinkedShelf => linkedShelf;
+        public BedController LinkedBed => linkedBed;
         
         public void Initialize(TreatmentShelf shelf, string cartName)
         {
@@ -33,6 +39,23 @@ namespace HairRemovalSim.UI
             }
             
             CreateSlotUIs();
+        }
+        
+        /// <summary>
+        /// Initialize with bed reference for laser slots
+        /// </summary>
+        public void Initialize(TreatmentShelf shelf, BedController bed, string cartName)
+        {
+            linkedShelf = shelf;
+            linkedBed = bed;
+            
+            if (titleText != null)
+            {
+                titleText.text = cartName;
+            }
+            
+            CreateSlotUIs();
+            InitializeLaserSlots();
         }
         
         private void CreateSlotUIs()
@@ -62,12 +85,33 @@ namespace HairRemovalSim.UI
             }
         }
         
+        private void InitializeLaserSlots()
+        {
+            if (linkedBed == null) return;
+            
+            if (faceLaserSlotUI != null)
+            {
+                faceLaserSlotUI.InitializeAsLaserSlot(linkedBed, ShelfSlotUI.SlotMode.FaceLaser);
+            }
+            
+            if (bodyLaserSlotUI != null)
+            {
+                bodyLaserSlotUI.InitializeAsLaserSlot(linkedBed, ShelfSlotUI.SlotMode.BodyLaser);
+            }
+        }
+        
         public void RefreshFromShelf()
         {
             foreach (var slot in slotUIs)
             {
                 slot.RefreshFromShelf();
             }
+        }
+        
+        public void RefreshLaserSlots()
+        {
+            faceLaserSlotUI?.RefreshFromLaserBody();
+            bodyLaserSlotUI?.RefreshFromLaserBody();
         }
     }
 }

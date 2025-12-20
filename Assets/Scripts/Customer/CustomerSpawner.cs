@@ -390,10 +390,10 @@ namespace HairRemovalSim.Customer
                 data.wealth = useTestSettings ? testWealthLevel : GetRandomCustomerWealthLevel();
                 
                 // Generate pain tolerance level
-                data.painTolerance = Random.Range(0f, 1f);
-                if (data.painTolerance < 0.33f)
+                data.painTolerance = Random.Range(0.5f, 1f);
+                if (data.painTolerance < 0.66f)
                     data.painToleranceLevel = PainToleranceLevel.Low;
-                else if (data.painTolerance < 0.66f)
+                else if (data.painTolerance < 0.83f)
                     data.painToleranceLevel = PainToleranceLevel.Medium;
                 else
                     data.painToleranceLevel = PainToleranceLevel.High;

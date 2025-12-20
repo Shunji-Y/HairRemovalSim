@@ -23,6 +23,11 @@ namespace HairRemovalSim.Player
         public Transform decalPivot;
         public ToolBase currentTool; // Right hand tool (left click)
         
+        /// <summary>
+        /// Public accessor for the current right-hand tool
+        /// </summary>
+        public ToolBase CurrentTool => currentTool;
+        
         [Header("Left Hand Equipment")]
         public Transform leftHandPoint;
         public ToolBase leftHandTool; // Left hand tool (right click)
@@ -202,6 +207,28 @@ namespace HairRemovalSim.Player
             {
                 EquipLeftHand(tool);
             }
+        }
+        
+        /// <summary>
+        /// Unequip current right hand tool without dropping it.
+        /// Used when placing tool back on a slot.
+        /// </summary>
+        public void UnequipCurrentTool()
+        {
+            if (currentTool == null) return;
+            
+            // Call Unequip on right hand tool (hides decal etc)
+            var rightHandTool = currentTool as RightHandTool;
+            if (rightHandTool != null) rightHandTool.Unequip();
+            
+            // Detach from hand but don't drop
+            currentTool.transform.SetParent(null);
+            
+            // Update UI
+            if (EquippedToolUI.Instance != null) EquippedToolUI.Instance.SetRightHandUI(null);
+            
+            Debug.Log($"Unequipped (Right Hand): {currentTool.toolName}");
+            currentTool = null;
         }
         
         private void EquipRightHand(ToolBase tool)

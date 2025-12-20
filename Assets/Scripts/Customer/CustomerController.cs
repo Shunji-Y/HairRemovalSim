@@ -1141,6 +1141,29 @@ namespace HairRemovalSim.Customer
                 painHoldTimer = painHoldDuration; // Hold at 100% before decay starts
                 painMaxCount++; // Track for review penalty
                 
+                // Check if customer should leave due to too much pain (3 times max)
+                if (painMaxCount >= 3)
+                {
+                    Debug.LogWarning($"[CustomerController] {data.customerName} has hit max pain 3 times! Leaving with -50 review.");
+                    
+                    // Add negative review
+                    if (Core.ShopManager.Instance != null)
+                    {
+                        Core.ShopManager.Instance.AddReview(-50, painMaxCount);
+                        Core.ShopManager.Instance.AddCustomerReview(1); // 1 star
+                    }
+                    
+                    // Release bed first
+                    if (assignedBed != null)
+                    {
+                        assignedBed.ClearCustomer();
+                    }
+                    
+                    // Customer leaves without paying
+                    FailAndLeave();
+                    return true;
+                }
+                
                 // Trigger writhing animation
                 if (animator != null)
                 {
@@ -1158,7 +1181,7 @@ namespace HairRemovalSim.Customer
                     hasAppliedReviewPenalty = true;
                 }
                 
-                Debug.LogWarning($"[CustomerController] {data.customerName} is in extreme pain! Treatment blocked until pain drops to {painRecoveryThreshold}%.");
+                Debug.LogWarning($"[CustomerController] {data.customerName} is in extreme pain! Treatment blocked until pain drops to {painRecoveryThreshold}%. (Pain max count: {painMaxCount}/3)");
                 triggeredReaction = true;
             }
             

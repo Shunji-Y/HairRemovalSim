@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using HairRemovalSim.Environment;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.Staff
 {
@@ -24,8 +25,8 @@ namespace HairRemovalSim.Staff
         public Transform staffSpawnPoint;
         
         [Header("References")]
-        [Tooltip("Reference to beds for treatment assignment")]
-        public BedController[] beds;
+        // Beds are now referenced from ShopManager.Instance.Beds
+        public IReadOnlyList<BedController> beds => ShopManager.Instance?.Beds;
         
         [Header("Debug")]
         [SerializeField] private List<HiredStaffData> hiredStaff = new List<HiredStaffData>();
@@ -42,12 +43,7 @@ namespace HairRemovalSim.Staff
         
         private void Start()
         {
-            // Auto-find beds if not assigned
-            if (beds == null || beds.Length == 0)
-            {
-                beds = FindObjectsOfType<BedController>();
-                Debug.Log($"[StaffManager] Auto-found {beds?.Length ?? 0} beds in scene");
-            }
+            // Beds are now referenced from ShopManager.Instance.Beds
             
             // Subscribe to day change event via GameEvents
             Core.GameEvents.OnDayChanged += OnDayChanged;
@@ -132,6 +128,10 @@ namespace HairRemovalSim.Staff
                 return false;
             }
             
+            // Save previous assignment for door handling
+            staffData.previousAssignment = staffData.assignment;
+            staffData.previousBedIndex = staffData.assignedBedIndex;
+            
             staffData.assignment = assignment;
             staffData.assignedBedIndex = assignment == StaffAssignment.Treatment ? bedIndex : -1;
             
@@ -176,21 +176,21 @@ namespace HairRemovalSim.Staff
         /// </summary>
         public int GetFirstAvailableBedIndex()
         {
-            Debug.Log($"[StaffManager] GetFirstAvailableBedIndex: beds={beds?.Length ?? -1}");
+            Debug.Log($"[StaffManager] GetFirstAvailableBedIndex: beds={beds?.Count ?? -1}");
             
             if (beds == null)
             {
-                Debug.LogWarning("[StaffManager] beds array is null!");
+                Debug.LogWarning("[StaffManager] beds is null!");
                 return -1;
             }
             
-            if (beds.Length == 0)
+            if (beds.Count == 0)
             {
-                Debug.LogWarning("[StaffManager] beds array is empty!");
+                Debug.LogWarning("[StaffManager] beds is empty!");
                 return -1;
             }
             
-            for (int i = 0; i < beds.Length; i++)
+            for (int i = 0; i < beds.Count; i++)
             {
                 // Skip VIP beds - staff cannot be assigned to them
                 if (beds[i] != null && beds[i].isVipOnly)
@@ -350,16 +350,8 @@ namespace HairRemovalSim.Staff
         /// </summary>
         public void RefreshBedAssignments()
         {
-            var shopManager = Core.ShopManager.Instance;
-            if (shopManager == null || shopManager.Beds == null) return;
-            
-            beds = new BedController[shopManager.Beds.Count];
-            for (int i = 0; i < shopManager.Beds.Count; i++)
-            {
-                beds[i] = shopManager.Beds[i];
-            }
-            
-            Debug.Log($"[StaffManager] Refreshed bed assignments. Total beds: {beds.Length}");
+            // Beds are now auto-referenced from ShopManager.Instance.Beds
+            Debug.Log($"[StaffManager] Beds auto-referenced from ShopManager. Total beds: {beds?.Count ?? 0}");
         }
     }
 }

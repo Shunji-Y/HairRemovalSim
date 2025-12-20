@@ -238,6 +238,18 @@ namespace HairRemovalSim.Environment
                 return false;
             }
             
+            // Slot [0,0] is shaver-only, and shaver can only be at [0,0]
+            if (row == 0 && col == 0 && itemData.toolType != TreatmentToolType.Shaver)
+            {
+                Debug.Log($"[TreatmentShelf] Slot [0,0] is shaver-only. Cannot place {itemData.toolType}");
+                return false;
+            }
+            if (itemData.toolType == TreatmentToolType.Shaver && (row != 0 || col != 0))
+            {
+                Debug.Log($"[TreatmentShelf] Shaver can only be placed at [0,0], not [{row},{col}]");
+                return false;
+            }
+            
             // Check max stack
             int newQuantity = slot.quantity + quantity;
             if (newQuantity > itemData.maxStackOnShelf)
@@ -322,6 +334,18 @@ namespace HairRemovalSim.Environment
             if (itemData == null)
             {
                 Debug.LogWarning($"[TreatmentShelf] Unknown item: {itemId}");
+                return false;
+            }
+            
+            // Slot [0,0] is shaver-only, and shaver can only be at [0,0]
+            if (row == 0 && col == 0 && itemData.toolType != TreatmentToolType.Shaver)
+            {
+                Debug.Log($"[TreatmentShelf] Slot [0,0] is shaver-only. Cannot place {itemData.toolType}");
+                return false;
+            }
+            if (itemData.toolType == TreatmentToolType.Shaver && (row != 0 || col != 0))
+            {
+                Debug.Log($"[TreatmentShelf] Shaver can only be placed at [0,0], not [{row},{col}]");
                 return false;
             }
             
@@ -624,13 +648,16 @@ namespace HairRemovalSim.Environment
         /// </summary>
         public (string itemId, Core.ItemData itemData)? ConsumeRandomItem()
         {
-            // Collect all slots with items
+            // Collect all slots with items (skip [0,0] which is reserved for shaver)
             var slotsWithItems = new List<(int row, int col, string itemId)>();
             
             for (int row = 0; row < rowCount; row++)
             {
                 for (int col = 0; col < columnCount; col++)
                 {
+                    // Skip shaver slot [0,0] - never consume shaver
+                    if (row == 0 && col == 0) continue;
+                    
                     var slot = slots[row, col];
                     if (!string.IsNullOrEmpty(slot.itemId) && slot.quantity > 0)
                     {

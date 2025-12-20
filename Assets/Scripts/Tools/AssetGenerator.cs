@@ -93,17 +93,8 @@ namespace HairRemovalSim.Tools
             var receptionManager = reception.AddComponent<UI.ReceptionManager>();
             reception.AddComponent<Effects.OutlineHighlighter>();
             
-            // Find and assign beds
-            var beds = FindObjectsOfType<BedController>();
-            if (beds.Length > 0)
-            {
-                receptionManager.beds = beds;
-                Debug.Log($"Reception Desk created with {beds.Length} beds assigned!");
-            }
-            else
-            {
-                Debug.LogWarning("Reception Desk created but no beds found. Assign beds manually in Inspector.");
-            }
+            // Beds are now automatically referenced from ShopManager
+            Debug.Log("Reception Desk created! Beds will be auto-referenced from ShopManager.");
         }
 
         [ContextMenu("Create Bed Placeholder")]

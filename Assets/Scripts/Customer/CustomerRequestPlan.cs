@@ -217,10 +217,10 @@ namespace HairRemovalSim.Customer
             switch (wealth)
             {
                 case WealthLevel.Poorest:
-                    return new[] { CustomerRequestPlan.Chest, CustomerRequestPlan.Stomach };
+                    return new[] { CustomerRequestPlan.Chest, CustomerRequestPlan.Stomach, CustomerRequestPlan.Underarms };
                     
                 case WealthLevel.Poor:
-                    return new[] { CustomerRequestPlan.Underarms, CustomerRequestPlan.Back, CustomerRequestPlan.Beard };
+                    return new[] { CustomerRequestPlan.Back, CustomerRequestPlan.Beard };
                     
                 case WealthLevel.Normal:
                     return new[] { CustomerRequestPlan.Arms, CustomerRequestPlan.Legs, CustomerRequestPlan.BeardHighQuality };
@@ -270,6 +270,28 @@ namespace HairRemovalSim.Customer
                 case CustomerRequestPlan.FullBodyWithBeard: return 420;
                 default: return 50;
             }
+        }
+        
+        /// <summary>
+        /// Check if the selected parts contain Face-category parts (Beard, Armpits)
+        /// These require a Face laser
+        /// </summary>
+        public static bool ContainsFaceParts(TreatmentBodyPart selectedParts)
+        {
+            const TreatmentBodyPart faceParts = TreatmentBodyPart.Beard | TreatmentBodyPart.Armpits;
+            return (selectedParts & faceParts) != 0;
+        }
+        
+        /// <summary>
+        /// Check if the selected parts contain Body-category parts (everything except Beard/Armpits)
+        /// These require a Body laser
+        /// </summary>
+        public static bool ContainsBodyParts(TreatmentBodyPart selectedParts)
+        {
+            const TreatmentBodyPart bodyParts = TreatmentBodyPart.Arms | TreatmentBodyPart.Legs | 
+                                                 TreatmentBodyPart.Chest | TreatmentBodyPart.Abs | 
+                                                 TreatmentBodyPart.Back;
+            return (selectedParts & bodyParts) != 0;
         }
     }
 }

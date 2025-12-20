@@ -116,6 +116,9 @@ namespace HairRemovalSim.Core
         [Tooltip("Can this item be placed in reception desk slots (EXTRA ITEMS)?")]
         public bool canPlaceAtReception = false;
         
+        [Tooltip("If true, this item cannot be sold in ToolShopPanel")]
+        public bool cantSell = false;
+        
         // ==========================================
         // 【レジ】Checkout Settings
         // ==========================================

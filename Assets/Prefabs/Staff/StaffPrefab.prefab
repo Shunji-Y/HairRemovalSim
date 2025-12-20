@@ -152,3 +152,4 @@ MonoBehaviour:
   exitPoint: {fileID: 0}
   wanderRadius: 5
   wanderInterval: 3
+  doorOpenDistance: 2

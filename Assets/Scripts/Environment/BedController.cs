@@ -1,6 +1,7 @@
 using UnityEngine;
 using HairRemovalSim.Customer;
 using System.Collections;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.Environment
 {
@@ -29,6 +30,10 @@ namespace HairRemovalSim.Environment
         [Tooltip("Right curtain door")]
         public CurtainDoor rightDoor;
         
+        [Header("Laser Body")]
+        [Tooltip("The laser body unit for this bed")]
+        public LaserBody laserBody;
+        
         [Header("Treatment Shelves")]
         [Tooltip("Transform positions where shelves can be placed (max 2)")]
         public Transform[] shelfSlots = new Transform[2];
@@ -53,6 +58,17 @@ namespace HairRemovalSim.Environment
         private int doorsOpened = 0;
         private int doorsToCloseTarget = 0;
         private int doorsToOpenTarget = 0;
+        
+        [Header("Staff Treatment UI")]
+        [Tooltip("Prefab for staff treatment progress UI (spawned at runtime if not set)")]
+        public UI.StaffTreatmentProgressUI treatmentProgressUI;
+        [Tooltip("Position offset for treatment progress UI relative to bed")]
+        public Vector3 treatmentUIOffset = new Vector3(0, 2f, 0);
+        
+        /// <summary>
+        /// Get the linked StaffTreatmentHandler (if any staff is assigned to this bed)
+        /// </summary>
+        public Staff.StaffTreatmentHandler LinkedStaffHandler { get; private set; }
 
         private void Awake()
         {
@@ -80,8 +96,12 @@ namespace HairRemovalSim.Environment
             // Default state: doors open if no customer
             if (!IsOccupied)
             {
-                OpenDoors();
+             //   OpenDoors();
             }
+
+            ShopManager.Instance.Beds.Add(this);
+            // Sort beds by name so Bed1 comes before Bed2, etc.
+            ShopManager.Instance.Beds.Sort((a, b) => string.Compare(a.name, b.name, System.StringComparison.OrdinalIgnoreCase));
         }
         
         private void OnDestroy()
@@ -97,6 +117,9 @@ namespace HairRemovalSim.Environment
                 rightDoor.OnDoorClosed -= OnSingleDoorClosed;
                 rightDoor.OnDoorOpened -= OnSingleDoorOpened;
             }
+            
+            // Remove from ShopManager list
+            ShopManager.Instance?.Beds?.Remove(this);
         }
         
         private void OnSingleDoorClosed()
@@ -371,8 +394,53 @@ namespace HairRemovalSim.Environment
                 IsPlayerInside = false;
                 Debug.Log($"[BedController] Player exited bed area: {name}");
                 
+                // Return equipped laser to LaserBody if player has one
+                ReturnEquippedLaserToBody(other.gameObject);
+                
                 OnPlayerExited?.Invoke(this);
             }
+        }
+        
+        /// <summary>
+        /// Return player's equipped laser back to LaserBody when leaving bed area
+        /// </summary>
+        private void ReturnEquippedLaserToBody(GameObject playerObject)
+        {
+            if (laserBody == null) return;
+            
+            // Find InteractionController on player
+            var interactionController = playerObject.GetComponent<Player.InteractionController>();
+            if (interactionController == null)
+            {
+                interactionController = playerObject.GetComponentInChildren<Player.InteractionController>();
+            }
+            if (interactionController == null)
+            {
+                interactionController = FindObjectOfType<Player.InteractionController>();
+            }
+            if (interactionController == null) return;
+            
+            var currentTool = interactionController.CurrentTool;
+            if (currentTool == null) return;
+            
+            // Check if it's a laser (has targetArea set)
+            var itemData = currentTool.itemData;
+            if (itemData == null) return;
+            
+            // Only return Face/Body lasers
+            if (itemData.targetArea != Core.ToolTargetArea.Face && 
+                itemData.targetArea != Core.ToolTargetArea.Body)
+            {
+                return;
+            }
+            
+            // Unequip from player
+            interactionController.UnequipCurrentTool();
+            
+            // Place in appropriate slot
+            laserBody.PlaceItem(itemData.targetArea, itemData, currentTool.gameObject);
+            
+            Debug.Log($"[BedController] Returned {itemData.displayName} to LaserBody");
         }
         
         // ========== STAFF TREATMENT CONTROL ==========
@@ -440,6 +508,29 @@ namespace HairRemovalSim.Environment
                 }
             }
             return false;
+        }
+        
+        /// <summary>
+        /// Register a staff handler to this bed and initialize treatment UI
+        /// </summary>
+        public void RegisterStaffHandler(Staff.StaffTreatmentHandler handler)
+        {
+            LinkedStaffHandler = handler;
+            
+            // Initialize treatment UI if available
+            if (treatmentProgressUI != null && handler != null)
+            {
+                treatmentProgressUI.Initialize(handler, this);
+                Debug.Log($"[BedController] Registered staff handler and initialized treatment UI");
+            }
+        }
+        
+        /// <summary>
+        /// Unregister staff handler from this bed
+        /// </summary>
+        public void UnregisterStaffHandler()
+        {
+            LinkedStaffHandler = null;
         }
     }
 }

@@ -352,6 +352,19 @@ namespace HairRemovalSim.Environment
                 return;
             }
             
+            // Check if held tool is a laser - if so, return to LaserBody instead of placing on shelf
+            bool heldIsLaser = heldTool.itemData != null && 
+                (heldTool.itemData.targetArea == Core.ToolTargetArea.Face || 
+                 heldTool.itemData.targetArea == Core.ToolTargetArea.Body);
+            
+            if (heldIsLaser)
+            {
+                // Return laser to LaserBody, then pickup shelf item
+                ReturnLaserToBody(player, heldTool);
+                PickupItem(player);
+                return;
+            }
+            
             string heldItemId = !string.IsNullOrEmpty(heldTool.itemId) ? heldTool.itemId : heldTool.toolName.Replace(" ", "");
             
             // Unequip held tool
@@ -402,6 +415,50 @@ namespace HairRemovalSim.Environment
             Debug.Log($"[ShelfSlotInteractable] Swapped tools at [{row},{col}]");
         }
         
+        /// <summary>
+        /// Return laser to LaserBody (find via BedController)
+        /// </summary>
+        private void ReturnLaserToBody(InteractionController player, ToolBase laserTool)
+        {
+            if (laserTool?.itemData == null) return;
+            
+            // Find LaserBody - look for BedController that has this shelf
+            var bed = FindBedWithShelf();
+            if (bed?.laserBody == null)
+            {
+                Debug.LogWarning("[ShelfSlotInteractable] Cannot find LaserBody to return laser");
+                return;
+            }
+            
+            // Unequip laser
+            player.UnequipCurrentTool();
+            
+            // Place in matching slot
+            bed.laserBody.PlaceItem(laserTool.itemData.targetArea, laserTool.itemData, laserTool.gameObject);
+            Debug.Log($"[ShelfSlotInteractable] Returned {laserTool.itemData.displayName} to LaserBody");
+        }
+        
+        /// <summary>
+        /// Find BedController that has this shelf installed
+        /// </summary>
+        private BedController FindBedWithShelf()
+        {
+            if (shelf == null) return null;
+            
+            var beds = FindObjectsOfType<BedController>();
+            foreach (var bed in beds)
+            {
+                if (bed.installedShelves != null)
+                {
+                    foreach (var s in bed.installedShelves)
+                    {
+                        if (s == shelf) return bed;
+                    }
+                }
+            }
+            return null;
+        }
+        
         private void PickupItem(InteractionController player)
         {
             GameObject itemObj = GetSlotItem();
@@ -425,6 +482,13 @@ namespace HairRemovalSim.Environment
         
         private void PlaceItem(InteractionController player, ToolBase tool)
         {
+            // Block lasers from being placed on TreatmentShelf - they go on LaserBody only
+            if (tool.itemData != null && tool.itemData.toolType == Core.TreatmentToolType.Laser)
+            {
+                Debug.Log($"[ShelfSlotInteractable] Cannot place laser on shelf - use LaserBody");
+                return;
+            }
+            
             // Check if slot already has items of different hand type
             if (!IsSlotEmpty())
             {
@@ -442,6 +506,9 @@ namespace HairRemovalSim.Environment
             // Unequip
             var rightHandTool = tool as RightHandTool;
             if (rightHandTool != null) rightHandTool.Unequip();
+            
+            var leftHandTool = tool as LeftHandTool;
+            if (leftHandTool != null) leftHandTool.Unequip();
             
             // Save for recovery
             Transform originalParent = tool.transform.parent;

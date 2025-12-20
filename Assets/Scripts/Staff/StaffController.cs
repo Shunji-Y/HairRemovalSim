@@ -46,6 +46,11 @@ namespace HairRemovalSim.Staff
         public StaffState CurrentState => currentState;
         public HiredStaffData StaffData => staffData;
         
+        // Door handling for treatment assignment
+        private bool hasOpenedDoorForEntry = false;
+        private BedController targetBedForDoor = null;
+        [SerializeField] private float doorOpenDistance = 3f;
+        
         private void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
@@ -109,6 +114,7 @@ namespace HairRemovalSim.Staff
                     
                 case StaffState.WalkingToStation:
                     CheckArrivalAtStation();
+                    CheckDoorDistanceForEntry();
                     break;
                     
                 case StaffState.AtStation:
@@ -160,7 +166,66 @@ namespace HairRemovalSim.Staff
             
             Debug.Log($"[StaffController] {staffData.Name} assignment updated to {staffData.GetAssignmentDisplayText()}");
             
+            // If was doing treatment, cancel it so player can take over
+            var treatmentHandler = GetComponent<StaffTreatmentHandler>();
+            if (treatmentHandler != null && treatmentHandler.IsProcessing)
+            {
+                treatmentHandler.CancelTreatment();
+            }
+            
+            // If leaving a bed, handle door exit
+            var previousAssignment = staffData.previousAssignment;
+            if (previousAssignment == StaffAssignment.Treatment && staffData.assignment != StaffAssignment.Treatment)
+            {
+                StartCoroutine(ExitBedWithDoor());
+            }
+            else
+            {
+                GoToAssignedStation();
+            }
+        }
+        
+        /// <summary>
+        /// Exit bed area with door handling (open, exit, close)
+        /// </summary>
+        private System.Collections.IEnumerator ExitBedWithDoor()
+        {
+            // Get the bed we're leaving from using previous bed index
+            BedController bed = null;
+            if (staffData != null && staffData.previousBedIndex >= 0)
+            {
+                var beds = StaffManager.Instance?.beds;
+                if (beds != null && staffData.previousBedIndex < beds.Count)
+                {
+                    bed = beds[staffData.previousBedIndex];
+                }
+            }
+            
+            if (bed == null)
+            {
+                GoToAssignedStation();
+                yield break;
+            }
+            
+            // Open the door (use right door as exit)
+            var exitDoor = bed.rightDoor ?? bed.leftDoor;
+            if (exitDoor != null && !exitDoor.IsOpen)
+            {
+                exitDoor.Open();
+                yield return new WaitForSeconds(exitDoor.animationDuration + 0.1f);
+            }
+            
+            // Move to station
             GoToAssignedStation();
+            
+            // Wait until we've moved away from bed
+            yield return new WaitForSeconds(1.5f);
+            
+            // Close the door
+            if (exitDoor != null && exitDoor.IsOpen)
+            {
+                exitDoor.Close();
+            }
         }
         
         /// <summary>
@@ -176,6 +241,18 @@ namespace HairRemovalSim.Staff
             {
                 SetDestination(destination.position);
                 SetState(StaffState.WalkingToStation);
+                
+                // Track door handling for treatment assignment
+                if (staffData.assignment == StaffAssignment.Treatment)
+                {
+                    targetBedForDoor = GetAssignedBed();
+                    hasOpenedDoorForEntry = false;
+                }
+                else
+                {
+                    targetBedForDoor = null;
+                    hasOpenedDoorForEntry = false;
+                }
             }
             else
             {
@@ -199,7 +276,7 @@ namespace HairRemovalSim.Staff
                     if (staffData.assignedBedIndex >= 0)
                     {
                         var beds = StaffManager.Instance?.beds;
-                        if (beds != null && staffData.assignedBedIndex < beds.Length)
+                        if (beds != null && staffData.assignedBedIndex < beds.Count)
                         {
                             var bed = beds[staffData.assignedBedIndex];
                             // Use staffPoint if available, otherwise arrivalPoint or transform
@@ -273,6 +350,37 @@ namespace HairRemovalSim.Staff
             {
                 SetState(StaffState.AtStation);
                 Debug.Log($"[StaffController] {staffData?.Name} arrived at station");
+                
+                // Close doors after arriving at treatment station
+                if (targetBedForDoor != null && hasOpenedDoorForEntry)
+                {
+                    targetBedForDoor.CloseDoors();
+                    Debug.Log($"[StaffController] Closing doors after arriving at bed");
+                    hasOpenedDoorForEntry = false;
+                    targetBedForDoor = null;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Check if staff is close enough to door to open it
+        /// </summary>
+        private void CheckDoorDistanceForEntry()
+        {
+            if (targetBedForDoor == null || hasOpenedDoorForEntry) return;
+            
+            // Check distance to bed's staff point
+            if (targetBedForDoor.staffPoint != null)
+            {
+                float distanceToBed = Vector3.Distance(transform.position, targetBedForDoor.staffPoint.position);
+                
+                if (distanceToBed <= doorOpenDistance)
+                {
+                    // Open the doors
+                    targetBedForDoor.OpenDoors();
+                    hasOpenedDoorForEntry = true;
+                    Debug.Log($"[StaffController] Opening doors to enter bed area");
+                }
             }
         }
         
@@ -360,7 +468,7 @@ namespace HairRemovalSim.Staff
                 return null;
             
             var beds = StaffManager.Instance?.beds;
-            if (beds != null && staffData.assignedBedIndex < beds.Length)
+            if (beds != null && staffData.assignedBedIndex < beds.Count)
             {
                 return beds[staffData.assignedBedIndex];
             }

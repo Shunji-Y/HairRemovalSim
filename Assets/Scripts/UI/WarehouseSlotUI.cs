@@ -16,6 +16,7 @@ namespace HairRemovalSim.UI
         [SerializeField] private Image iconImage;
         [SerializeField] private TMP_Text quantityText;
         [SerializeField] private GameObject emptyLabel;
+        [SerializeField] private Image categoryIconImage;
         
         [Header("Settings")]
         [SerializeField] private Color normalColor = Color.white;
@@ -89,6 +90,21 @@ namespace HairRemovalSim.UI
                 quantityText.text = $"×{quantity}";
                 quantityText.enabled = true;
                 if (emptyLabel != null) emptyLabel.SetActive(false);
+                
+                // Show category icon
+                if (categoryIconImage != null && WarehousePanel.Instance != null)
+                {
+                    var categoryIcon = WarehousePanel.Instance.GetCategoryIcon(itemData);
+                    if (categoryIcon != null)
+                    {
+                        categoryIconImage.sprite = categoryIcon;
+                        categoryIconImage.enabled = true;
+                    }
+                    else
+                    {
+                        categoryIconImage.enabled = false;
+                    }
+                }
             }
             else
             {
@@ -103,6 +119,7 @@ namespace HairRemovalSim.UI
             iconImage.enabled = false;
             quantityText.enabled = false;
             if (emptyLabel != null) emptyLabel.SetActive(true);
+            if (categoryIconImage != null) categoryIconImage.enabled = false;
         }
         
         #region Drag and Drop
@@ -169,12 +186,27 @@ namespace HairRemovalSim.UI
                 return;
             }
             
-            // Handle drop from ShelfSlotUI
+            // Handle drop from ShelfSlotUI (including laser slots)
             var shelfSource = eventData.pointerDrag?.GetComponent<ShelfSlotUI>();
             if (shelfSource != null && !shelfSource.IsEmpty)
             {
-                HandleShelfDrop(shelfSource);
+                if (shelfSource.IsLaserSlot)
+                {
+                    // Laser slot -> return laser to warehouse
+                    HandleLaserSlotDrop(shelfSource);
+                }
+                else
+                {
+                    HandleShelfDrop(shelfSource);
+                }
             }
+        }
+        
+        private void HandleLaserSlotDrop(ShelfSlotUI laserSource)
+        {
+            // Let the laser slot handle the return, passing target slot index
+            laserSource.ReturnLaserToWarehouse(slotIndex);
+            RefreshFromWarehouse();
         }
         
         private void HandleWarehouseDrop(WarehouseSlotUI source)

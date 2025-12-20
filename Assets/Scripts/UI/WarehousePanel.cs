@@ -23,6 +23,13 @@ namespace HairRemovalSim.UI
         [SerializeField] private Transform receptionStockParent;
         [Tooltip("Slot for anesthesia cream stock at reception")]
 
+        [Header("Category Icons")]
+        [SerializeField] private Sprite faceLaserIcon;
+        [SerializeField] private Sprite bodyLaserIcon;
+        [SerializeField] private Sprite shaverIcon;
+        [SerializeField] private Sprite shelfItemIcon;
+        [SerializeField] private Sprite receptionItemIcon;
+        [SerializeField] private Sprite checkoutItemIcon;
         
         [Header("UI References")]
         [SerializeField] private GameObject panel;
@@ -199,8 +206,8 @@ namespace HairRemovalSim.UI
                     var cartUI = cartObj.GetComponent<ShelfCartUI>();
                     if (cartUI != null)
                     {
-                        string cartName = $"{bed.name} : Cart{i + 1}";
-                        cartUI.Initialize(shelf, cartName);
+                        string cartName = $"{bed.name}";// : Cart{i + 1}";
+                        cartUI.Initialize(shelf, bed, cartName); // Pass bed for laser slots
                         shelfCarts.Add(cartUI);
                     }
                 }
@@ -264,6 +271,37 @@ namespace HairRemovalSim.UI
             {
                 slot.SyncFromReceptionPanel();
             }
+        }
+        
+        /// <summary>
+        /// Get category icon for an item based on its properties
+        /// </summary>
+        public Sprite GetCategoryIcon(ItemData itemData)
+        {
+            if (itemData == null) return null;
+            
+            // Priority order: Laser > Shaver > Reception > Checkout > Shelf
+            if (itemData.toolType == TreatmentToolType.Laser)
+            {
+                if (itemData.targetArea == ToolTargetArea.Face)
+                    return faceLaserIcon;
+                else if (itemData.targetArea == ToolTargetArea.Body)
+                    return bodyLaserIcon;
+            }
+            
+            if (itemData.toolType == TreatmentToolType.Shaver)
+                return shaverIcon;
+            
+            if (itemData.canPlaceAtReception)
+                return receptionItemIcon;
+            
+            if (itemData.canUseAtCheckout)
+                return checkoutItemIcon;
+            
+            if (itemData.canPlaceOnShelf)
+                return shelfItemIcon;
+            
+            return null;
         }
     }
 }

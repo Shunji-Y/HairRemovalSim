@@ -236,13 +236,13 @@ namespace HairRemovalSim.Staff
             
             // Get all beds from StaffManager
             var beds = StaffManager.Instance?.beds;
-            if (beds == null || beds.Length == 0)
+            if (beds == null || beds.Count == 0)
             {
                 Debug.Log("[StaffRestockHandler] No beds found in StaffManager");
                 return targets;
             }
             
-            Debug.Log($"[StaffRestockHandler] Checking {beds.Length} beds for shelf restocking");
+            Debug.Log($"[StaffRestockHandler] Checking {beds.Count} beds for shelf restocking");
             
             foreach (var bed in beds)
             {

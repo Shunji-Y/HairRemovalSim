@@ -1,5 +1,8 @@
 using UnityEngine;
+using System.Collections.Generic;
+using HairRemovalSim.Core;
 using HairRemovalSim.Customer;
+using HairRemovalSim.Environment;
 using HairRemovalSim.Interaction;
 using HairRemovalSim.Player;
 
@@ -15,7 +18,8 @@ namespace HairRemovalSim.UI
         }
         
         [Header("Settings")]
-        public Environment.BedController[] beds; // Available beds
+        // Beds are now referenced from ShopManager.Instance.Beds
+        public IReadOnlyList<BedController> beds => ShopManager.Instance?.Beds;
         public float detectionRadius = 2.0f; // Distance to detect customers
         
         [Header("Staff")]
@@ -204,7 +208,7 @@ namespace HairRemovalSim.UI
 
         public void AssignBed(int bedIndex)
         {
-            if (bedIndex >= 0 && bedIndex < beds.Length)
+            if (beds != null && bedIndex >= 0 && bedIndex < beds.Count)
             {
                 currentCustomerAtReception.GoToBed(beds[bedIndex]);
                 currentCustomerAtReception = null; // Clear reception
@@ -407,16 +411,8 @@ namespace HairRemovalSim.UI
         /// </summary>
         public void RefreshBedReferences()
         {
-            var shopManager = Core.ShopManager.Instance;
-            if (shopManager == null || shopManager.Beds == null) return;
-            
-            beds = new Environment.BedController[shopManager.Beds.Count];
-            for (int i = 0; i < shopManager.Beds.Count; i++)
-            {
-                beds[i] = shopManager.Beds[i];
-            }
-            
-            Debug.Log($"[ReceptionManager] Refreshed bed references. Total beds: {beds.Length}");
+            // Beds are now auto-referenced from ShopManager.Instance.Beds
+            Debug.Log($"[ReceptionManager] Beds auto-referenced from ShopManager. Total beds: {beds?.Count ?? 0}");
         }
     }
 }

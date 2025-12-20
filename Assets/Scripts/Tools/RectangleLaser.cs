@@ -393,7 +393,6 @@ namespace HairRemovalSim.Tools
                     int subMesh = GetSubMeshIndex(currentHit);
                     var partDef = customer.bodyPartsDatabase.GetPartByUV(hitUV, subMesh);
 
-                    Debug.Log(partDef);
                     if (partDef == null)
                     {
                         // No part found - Face tools block, Body/All tools allow

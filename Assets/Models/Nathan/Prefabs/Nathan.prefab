@@ -426,8 +426,8 @@ MonoBehaviour:
   painDecayRate: 5
   painRecoveryThreshold: 60
   painHoldDuration: 1
-  doorDetectionDistance: 1.5
-  bedArrivalDistance: 1.5
+  doorDetectionDistance: 3
+  bedArrivalDistance: 1.3
 --- !u!4 &3024892618530802381 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: fe179d60b6e969a46ae904f5c4b816dd, type: 3}

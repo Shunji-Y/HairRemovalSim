@@ -15,6 +15,14 @@ namespace HairRemovalSim.Staff
         [Header("Assignment")]
         public StaffAssignment assignment = StaffAssignment.None;
         
+        [Tooltip("Previous assignment (used for door handling when leaving bed)")]
+        [System.NonSerialized]
+        public StaffAssignment previousAssignment = StaffAssignment.None;
+        
+        [Tooltip("Previous bed index (used for door handling when leaving bed)")]
+        [System.NonSerialized]
+        public int previousBedIndex = -1;
+        
         [Tooltip("If assigned to Treatment, which bed index")]
         public int assignedBedIndex = -1;
         

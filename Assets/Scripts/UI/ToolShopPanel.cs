@@ -395,6 +395,12 @@ namespace HairRemovalSim.UI
                 var itemData = ItemDataRegistry.Instance?.GetItem(kvp.Key);
                 Debug.Log($"[ToolShopPanel] Checking item: {kvp.Key}, qty: {kvp.Value}, itemData: {itemData?.displayName ?? "null"}, IsTool: {itemData?.IsTreatmentTool}");
                 
+                if (itemData != null && itemData.cantSell)
+                {
+                    Debug.Log($"[ToolShopPanel] Skipping {kvp.Key} - cantSell is true");
+                    continue;
+                }
+                
                 if (itemData != null && itemData.IsTreatmentTool && kvp.Value > 0)
                 {
                     CreateSellCard(itemData, kvp.Value);
