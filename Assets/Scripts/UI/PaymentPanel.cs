@@ -365,6 +365,10 @@ namespace HairRemovalSim.UI
                 // Add customer review for review panel
                 int stars = GetStarsFromMood(GetMoodFromReview(finalReview));
                 ShopManager.Instance.AddCustomerReview(stars);
+                
+                // Record for daily attraction update
+                var spawner = FindObjectOfType<CustomerSpawner>();
+                spawner?.RecordDailyReview(finalReview);
             }
             
             Debug.Log($"[PaymentPanel] {data.customerName} paid ${totalAmount}, review: {finalReview}");

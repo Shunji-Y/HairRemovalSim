@@ -45,7 +45,8 @@ namespace HairRemovalSim.Core
     public class RentManager : Singleton<RentManager>
     {
         [Header("Settings")]
-        [SerializeField] private int rentAmount = 50000;
+        [Tooltip("Fallback rent if ShopManager not available")]
+        [SerializeField] private int fallbackRentAmount = 50;
         
         [Tooltip("Days between rent bills (e.g., 3 = due on days 1, 4, 7, 10...)")]
         [SerializeField] private int rentIntervalDays = 3;
@@ -66,7 +67,10 @@ namespace HairRemovalSim.Core
         public Action OnRentOverdue;
         public Action OnGameOverDueToRent;
         
-        public int RentAmount => rentAmount;
+        /// <summary>
+        /// Get current rent amount (from ShopManager based on grade)
+        /// </summary>
+        public int RentAmount => ShopManager.Instance?.GetCurrentRent() ?? fallbackRentAmount;
         public int RentIntervalDays => rentIntervalDays;
         public List<RentPaymentCard> RentCards => rentCards;
         
@@ -118,10 +122,10 @@ namespace HairRemovalSim.Core
             // Generate new bill if we haven't for this period
             if (scheduledBillDay > lastBillDay)
             {
-                var newCard = new RentPaymentCard(scheduledBillDay, gracePeriodDays, rentAmount);
+                var newCard = new RentPaymentCard(scheduledBillDay, gracePeriodDays, RentAmount);
                 rentCards.Add(newCard);
                 lastBillDay = scheduledBillDay;
-                Debug.Log($"[RentManager] New rent bill generated on day {scheduledBillDay}, due by day {newCard.dueDay}");
+                Debug.Log($"[RentManager] New rent bill generated on day {scheduledBillDay}, due by day {newCard.dueDay}, amount: ${RentAmount}");
                 OnRentDue?.Invoke();
             }
             

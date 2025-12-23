@@ -1,0 +1,132 @@
+Category,Key,Attribute,Value,Note
+Grade,1,upgrade_cost,0,
+Grade,1,beds,1,
+Grade,1,staff_slots,4,
+Grade,1,rent,50,
+Grade,1,required_stars,1,
+Grade,1,attraction_cap,100,
+Grade,1,max_customers,18,
+Grade,2,upgrade_cost,6000,
+Grade,2,beds,2,
+Grade,2,staff_slots,5,
+Grade,2,rent,150,
+Grade,2,required_stars,2,
+Grade,2,attraction_cap,250,
+Grade,2,max_customers,36,
+Grade,3,upgrade_cost,12000,
+Grade,3,beds,4,
+Grade,3,staff_slots,7,
+Grade,3,rent,400,
+Grade,3,required_stars,3,
+Grade,3,attraction_cap,400,
+Grade,3,max_customers,72,
+Grade,4,upgrade_cost,80000,
+Grade,4,beds,6,
+Grade,4,staff_slots,9,
+Grade,4,rent,800,
+Grade,4,required_stars,4,
+Grade,4,attraction_cap,600,
+Grade,4,max_customers,108,
+Grade,5,upgrade_cost,350000,
+Grade,5,beds,8,
+Grade,5,staff_slots,11,
+Grade,5,rent,1200,
+Grade,5,required_stars,5,
+Grade,5,attraction_cap,800,
+Grade,5,max_customers,144,
+Grade,6,upgrade_cost,1000000,
+Grade,6,beds,10,
+Grade,6,staff_slots,13,
+Grade,6,rent,1800,
+Grade,6,required_stars,6,
+Grade,6,attraction_cap,1200,
+Grade,6,max_customers,220,
+Grade,7,upgrade_cost,4500000,
+Grade,7,beds,10,
+Grade,7,staff_slots,13,
+Grade,7,rent,2500,
+Grade,7,required_stars,7,
+Grade,7,attraction_cap,1200,
+Grade,7,max_customers,220,
+ReviewThreshold,1,points,0,
+ReviewThreshold,2,points,1200,
+ReviewThreshold,3,points,4500,
+ReviewThreshold,4,points,22000,
+ReviewThreshold,5,points,50000,
+ReviewThreshold,6,points,140000,
+ReviewThreshold,7,points,400000,
+FacilityBoost,1,boost,0%,
+FacilityBoost,2,boost,0%,
+FacilityBoost,3,boost,10%,空気清浄機等
+FacilityBoost,4,boost,15%,
+FacilityBoost,5,boost,20%,
+FacilityBoost,6,boost,30%,
+Ad,none,cost,0,Boost:0 Duration:0 Decay:0 Grade:1
+Ad,free_sns,cost,0,Boost:5 Duration:3 Decay:1 Grade:1
+Ad,flyer,cost,500,Boost:15 Duration:5 Decay:3 Grade:2
+Ad,paid_sns,cost,1500,Boost:30 Duration:4 Decay:5 Grade:3
+Ad,magazine,cost,3500,Boost:50 Duration:5 Decay:8 Grade:3
+Ad,train_poster,cost,6000,Boost:80 Duration:5 Decay:12 Grade:4
+Ad,tv_cm,cost,30000,Boost:150 Duration:5 Decay:25 Grade:5
+Ad,billboard,cost,60000,Boost:200 Duration:5 Decay:30 Grade:5
+Ad,video_ad,cost,20000,Boost:100 Duration:4 Decay:20 Grade:4
+Ad,influencer,cost,80000,Boost:250 Duration:5 Decay:40 Grade:6
+Loan,starter,max_amount,8000,Rate: 0.5% Term: 5d
+Loan,business,max_amount,40000,Rate: 0.5% Term: 10d
+Loan,expert,max_amount,300000,Rate: 1.0% Term: 6d
+Loan,premium,max_amount,1200000,Rate: 1.2% Term: 7d
+Loan,elite,max_amount,6000000,Rate: 1.5% Term: 7d
+Tool,G1_face,cost,500,Name: スムースレイフェイス
+Tool,G1_body,cost,500,Name: スムースレイボディ
+Tool,G1_shaver,cost,250,Name: おんぼろシェーバー
+Tool,G2_face,cost,1000,Name: スムースレイフェイスプロ
+Tool,G2_body,cost,1000,Name: スムースレイボディプロ
+Tool,G2_shaver,cost,500,Name: ザ・シェーバー
+Tool,G3_face,cost,3000,Name: スムースレイフェイスプロマックス
+Tool,G3_body,cost,3000,Name: スムースレイボディプロマックス
+Tool,G3_shaver,cost,1500,Name: 高級シェーバー
+Tool,G4_face,cost,10000,Name: スムースレイフェイスウルトラ
+Tool,G4_body,cost,10000,Name: スムースレイボディウルトラ
+Tool,G4_shaver,cost,5000,Name: プレミアムシェーバー
+Tool,G5_face,cost,25000,Name: ニュースムースレイフェイス
+Tool,G5_body,cost,25000,Name: ニュースムースレイボディ
+Tool,G5_shaver,cost,12000,Name: エリートシェーバー
+Tool,G6_face,cost,60000,Name: スムースレイオメガフェイス
+Tool,G6_body,cost,60000,Name: スムースレイオメガボディ
+Tool,G6_shaver,cost,30000,Name: オメガシェーバー
+Item,G1_Reception,冷却ジェル(低),Cost:20 Price:30,Review:+1
+Item,G1_Reception,麻酔クリーム(低),Cost:40 Price:60,Review:+1
+Item,G1_Reception,アメちゃん,Cost:5 Price:0,Review:+2
+Item,G1_Reception,ウォーターサーバー,Cost:10 Price:0,Review:+2
+Item,G1_Register,アフターケアセット,Cost:50 Price:75,Review:+2
+Item,G1_Register,粗品タオル,Cost:20 Price:0,Review:+1
+Item,G1_Register,氷嚢,Cost:15 Price:0,Review:+1
+Item,G1_Register,会員スタンプ,Cost:5 Price:0,Review:+2
+Item,G2_Reception,冷却ジェル(普通),Cost:40 Price:100,Review:+2
+Item,G2_Reception,麻酔クリーム(普通),Cost:60 Price:140,Review:+2
+Item,G2_Reception,ストレスボール,Cost:30 Price:0,Review:+3
+Item,G2_Register,保湿マスク,Cost:50 Price:120,Review:+3
+Item,G2_Register,美容液,Cost:80 Price:200,Review:+3
+Item,G2_Register,クーポン券,Cost:5 Price:0,Review:+2
+Item,G2_Register,ARキット,Cost:150 Price:300,Review:+5
+Item,G3_Reception,冷却ジェル(高),Cost:100 Price:160,Review:+3
+Item,G3_Reception,麻酔クリーム(高),Cost:150 Price:240,Review:+3
+Item,G3_Reception,笑気麻酔,Cost:250 Price:400,Review:+7
+Item,G3_Reception,敏感肌用保護ジェル,Cost:120 Price:180,Review:+4
+Item,G3_Register,高級ローション,Cost:120 Price:200,Review:+4
+Item,G3_Register,ルンバ,Cost:400 Price:600,Review:+8
+Item,G3_Register,空気清浄機,Cost:300 Price:500,Review:+5
+Item,G4_Reception,リラックスアロマ,Cost:200 Price:350,Review:+4
+Item,G4_Register,高級乳液,Cost:250 Price:400,Review:+5
+Item,G4_Register,ギフトカード,Cost:300 Price:450,Review:+6
+Item,G4_Register,アロマディフューザー,Cost:400 Price:650,Review:+10
+Item,G4_Register,ホームケアキット,Cost:500 Price:800,Review:+12
+Item,G5_Register,VIPパック,Cost:700 Price:1200,Review:+15
+Item,G5_Register,高級ギフトカード,Cost:800 Price:1300,Review:+18
+Item,G6_Reception,VIPアロマ,Cost:300 Price:500,Review:+5
+Item,G6_Register,プラチナ会員権,Cost:1000 Price:1800,Review:+35
+Item,G6_Register,プラチナパック,Cost:1200 Price:1600,Review:+20
+Item,G6_Register,プラチナギフトカード,Cost:1500 Price:2000,Review:+25
+SimulationResult,WithLoans,days,35,Target: 35
+SimulationResult,NoLoans,days,47,Target: 50
+SimulationResult,TimeSaved,days,12,

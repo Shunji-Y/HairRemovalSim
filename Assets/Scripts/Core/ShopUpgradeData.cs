@@ -13,7 +13,7 @@ namespace HairRemovalSim.Core
     {
         [Header("Grade Info")]
         [Tooltip("The grade this upgrade unlocks (2-6)")]
-        [Range(2, 6)]
+        [Range(1, 7)]
         public int targetGrade = 2;
         
         [Header("Cost")]

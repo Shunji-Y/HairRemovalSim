@@ -602,7 +602,7 @@ namespace HairRemovalSim.Treatment
                     float partPercentage = Mathf.Clamp((float)removedPartPixels / initialPartPixels * 100f + completionBuffer, 0f, 100f);
                     
                     // Round up to 100% when reaching 99.5% or higher
-                    if (partPercentage >= 99.5f)
+                    if (partPercentage >= 99f)
                     {
                         partPercentage = 100f;
                     }

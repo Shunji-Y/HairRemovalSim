@@ -2,6 +2,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using HairRemovalSim.Staff;
+using HairRemovalSim.Core;
+using HairRemovalSim.Customer;
 
 namespace HairRemovalSim.UI
 {
@@ -9,6 +11,7 @@ namespace HairRemovalSim.UI
     /// World-space UI that shows staff treatment progress
     /// Fades in when player approaches, fades out when far
     /// Shows warning when treatment is paused due to missing tools
+    /// Also shows "Waiting for treatment" when customer is on bed but no staff
     /// </summary>
     public class StaffTreatmentProgressUI : MonoBehaviour
     {
@@ -32,6 +35,7 @@ namespace HairRemovalSim.UI
         [Header("Colors (HDR)")]
         [SerializeField] [ColorUsage(true, true)] private Color progressColor = new Color(1f, 0.8f, 0.2f, 1f);
         [SerializeField] [ColorUsage(true, true)] private Color pausedColor = new Color(1f, 0.3f, 0.3f, 1f);
+        [SerializeField] [ColorUsage(true, true)] private Color waitingColor = new Color(0.5f, 0.5f, 1f, 1f);
         
         private StaffTreatmentHandler treatmentHandler;
         private Transform playerTransform;
@@ -39,10 +43,22 @@ namespace HairRemovalSim.UI
         private Material fillMaterial;
         private bool isInitialized = false;
         
+        // Localization shorthand
+        private LocalizationManager L => LocalizationManager.Instance;
+        
         /// <summary>
         /// Reference to the bed this UI is attached to
         /// </summary>
         public Environment.BedController LinkedBed { get; private set; }
+        
+        /// <summary>
+        /// Set the linked bed (called by BedController on Start)
+        /// </summary>
+        public void SetLinkedBed(Environment.BedController bed)
+        {
+            LinkedBed = bed;
+            Debug.Log($"[StaffTreatmentProgressUI] Linked to bed: {bed?.name}");
+        }
         
         private void Start()
         {
@@ -116,16 +132,18 @@ namespace HairRemovalSim.UI
             // Clean up material instance
             if (fillMaterial != null)
             {
-                Destroy(fillMaterial);
+               // Destroy(fillMaterial);
             }
         }
         
         private void Update()
         {
-            if (treatmentHandler == null || canvasGroup == null) return;
+            if (canvasGroup == null) return;
             
-            // Only show when staff is processing
-            bool shouldShow = treatmentHandler.IsProcessing && treatmentHandler.CurrentCustomer != null;
+            // Determine display mode
+            DisplayMode mode = GetDisplayMode();
+            
+            bool shouldShow = mode != DisplayMode.Hidden;
             
             if (shouldShow && playerTransform != null)
             {
@@ -146,6 +164,9 @@ namespace HairRemovalSim.UI
                     float t = (distance - fadeInDistance) / (fadeOutDistance - fadeInDistance);
                     targetAlpha = 1f - t;
                 }
+                
+                // Update display based on mode
+                UpdateDisplayForMode(mode);
             }
             else
             {
@@ -154,13 +175,76 @@ namespace HairRemovalSim.UI
             
             // Smooth fade
             canvasGroup.alpha = Mathf.MoveTowards(canvasGroup.alpha, targetAlpha, fadeSpeed * Time.deltaTime);
+        }
+        
+        private enum DisplayMode
+        {
+            Hidden,
+            WaitingForTreatment,
+            StaffTreating,
+            StaffPaused
+        }
+        
+        private DisplayMode GetDisplayMode()
+        {
+            // Check if staff is processing
+            if (treatmentHandler != null && treatmentHandler.IsProcessing && treatmentHandler.CurrentCustomer != null)
+            {
+                return treatmentHandler.IsPaused ? DisplayMode.StaffPaused : DisplayMode.StaffTreating;
+            }
             
-            //// Face camera
-            //if (Camera.main != null)
-            //{
-            //    transform.LookAt(Camera.main.transform);
-            //    transform.Rotate(0, 180, 0);
-            //}
+            // Check if customer is waiting on bed (no staff)
+            if (LinkedBed != null && LinkedBed.CurrentCustomer != null)
+            {
+                var customer = LinkedBed.CurrentCustomer;
+                if (customer.CurrentState == CustomerController.CustomerState.InTreatment)
+                {
+                    return DisplayMode.WaitingForTreatment;
+                }
+            }
+            
+            return DisplayMode.Hidden;
+        }
+        
+        private void UpdateDisplayForMode(DisplayMode mode)
+        {
+            switch (mode)
+            {
+                case DisplayMode.WaitingForTreatment:
+                    ShowWaitingState();
+                    break;
+                case DisplayMode.StaffTreating:
+                    // Already handled by events
+                    break;
+                case DisplayMode.StaffPaused:
+                    // Already handled by events
+                    break;
+            }
+        }
+        
+        private void ShowWaitingState()
+        {
+            if (statusText != null)
+            {
+                statusText.text = L?.Get("treatment.status.waiting") ?? "施術待ち";
+            }
+            
+            if (progressSlider != null)
+            {
+                progressSlider.value = 0f;
+            }
+            
+            if (progressText != null)
+            {
+                progressText.text = "--";
+            }
+            
+            if (warningPanel != null)
+            {
+                warningPanel.SetActive(false);
+            }
+            
+            SetFillEmissionColor(waitingColor);
         }
         
         private void OnProgressChanged(float current, float max)
@@ -175,6 +259,11 @@ namespace HairRemovalSim.UI
                 int percent = max > 0 ? Mathf.RoundToInt((current / max) * 100f) : 0;
                 progressText.text = $"{percent}%";
             }
+            
+            if (statusText != null)
+            {
+                statusText.text = L?.Get("treatment.status.inprogress") ?? "脱毛進行中";
+            }
         }
         
         private void OnToolStatusChanged(bool isPaused, string message)
@@ -186,12 +275,27 @@ namespace HairRemovalSim.UI
             
             if (warningText != null)
             {
-                warningText.text = isPaused ? $"!{message}!" : "";
+                if (isPaused)
+                {
+                    string warningPrefix = L?.Get("treatment.warning.missingtools") ?? "施術ツールがありません";
+                    warningText.text = $"!{message}!";
+                }
+                else
+                {
+                    warningText.text = "";
+                }
             }
             
             if (statusText != null)
             {
-                statusText.text = isPaused ? "停止中" : "脱毛進行中";
+                if (isPaused)
+                {
+                    statusText.text = L?.Get("treatment.status.paused") ?? "停止中";
+                }
+                else
+                {
+                    statusText.text = L?.Get("treatment.status.inprogress") ?? "脱毛進行中";
+                }
             }
             
             // Change emission color on material

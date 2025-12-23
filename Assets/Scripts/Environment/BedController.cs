@@ -130,7 +130,7 @@ namespace HairRemovalSim.Environment
                 doorsClosed = 0;
                 doorsToCloseTarget = 0;
                 OnDoorsClosed?.Invoke();
-                Debug.Log("[BedController] All doors closed");
+             
             }
         }
         
@@ -142,7 +142,6 @@ namespace HairRemovalSim.Environment
                 doorsOpened = 0;
                 doorsToOpenTarget = 0;
                 OnDoorsOpened?.Invoke();
-                Debug.Log("[BedController] All doors opened");
             }
         }
         
@@ -218,7 +217,6 @@ namespace HairRemovalSim.Environment
             if (doorsToOpen == 0)
             {
                 OnDoorsOpened?.Invoke();
-                Debug.Log("[BedController] All doors already open, event fired immediately");
             }
         }
         
@@ -255,7 +253,6 @@ namespace HairRemovalSim.Environment
             if (doorsToClose == 0)
             {
                 OnDoorsClosed?.Invoke();
-                Debug.Log("[BedController] All doors already closed, event fired immediately");
             }
         }
         

@@ -113,11 +113,11 @@ namespace HairRemovalSim.UI
             // Effect
             if (effectText != null)
             {
-                string effect = $"+{adData.attractionBoost:F0}%";
+                string effect = $"+{adData.attractionBoost:F0}";
                 if (adData.vipCoefficientBoost > 0)
                     effect += $" | VIP +{adData.vipCoefficientBoost:F0}";
-                if (adData.decayRatePerDay > 0)
-                    effect += $" | -{adData.decayRatePerDay:F0}%/d";
+                if (adData.decayPerDay > 0)
+                    effect += $" | -{adData.decayPerDay:F0}/d";
                 effectText.text = effect;
             }
             

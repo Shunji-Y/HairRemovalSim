@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
 using HairRemovalSim.Customer;
 using HairRemovalSim.Player;
 
@@ -20,7 +21,7 @@ namespace HairRemovalSim.UI
         [SerializeField] private TMP_Text targetText;
         [SerializeField] private TMP_Text toleranceText;
         
-        [Header("Body Part Buttons (Left Side)")]
+        [Header("Body Part Buttons (Legacy 7-toggle)")]
         [SerializeField] private Toggle armsToggle;
         [SerializeField] private Toggle armpitsToggle;
         [SerializeField] private Toggle legsToggle;
@@ -28,6 +29,10 @@ namespace HairRemovalSim.UI
         [SerializeField] private Toggle absToggle;
         [SerializeField] private Toggle beardToggle;
         [SerializeField] private Toggle backToggle;
+        
+        [Header("Body Part Toggles (New 14-part visual system)")]
+        [SerializeField] private BodyPartToggleUI[] bodyPartToggles;
+        [SerializeField] private Core.BodyPartsDatabase bodyPartsDatabase;
         
         [Header("Extra Items")]
         [SerializeField] private ExtraItemDropTarget extraItemDropTarget;
@@ -44,6 +49,9 @@ namespace HairRemovalSim.UI
         private CustomerController currentCustomer;
         private TreatmentBodyPart selectedParts = TreatmentBodyPart.None;
         private int calculatedPrice = 0;
+        private HashSet<string> selectedDetailedParts = new HashSet<string>();
+        private HashSet<string> requestedDetailedParts = new HashSet<string>();
+        private bool useNewToggleSystem = false;
         
         // Callbacks
         private System.Action<CustomerController, TreatmentBodyPart, TreatmentMachine, bool, int> onConfirm;
@@ -54,7 +62,10 @@ namespace HairRemovalSim.UI
         {
             Instance = this;
             
-            // Setup button listeners
+            // Check which system to use
+            useNewToggleSystem = bodyPartToggles != null && bodyPartToggles.Length > 0;
+            
+            // Setup legacy button listeners
             if (armsToggle != null) armsToggle.onValueChanged.AddListener(v => OnPartToggled(TreatmentBodyPart.Arms, v));
             if (armpitsToggle != null) armpitsToggle.onValueChanged.AddListener(v => OnPartToggled(TreatmentBodyPart.Armpits, v));
             if (legsToggle != null) legsToggle.onValueChanged.AddListener(v => OnPartToggled(TreatmentBodyPart.Legs, v));
@@ -62,6 +73,18 @@ namespace HairRemovalSim.UI
             if (absToggle != null) absToggle.onValueChanged.AddListener(v => OnPartToggled(TreatmentBodyPart.Abs, v));
             if (beardToggle != null) beardToggle.onValueChanged.AddListener(v => OnPartToggled(TreatmentBodyPart.Beard, v));
             if (backToggle != null) backToggle.onValueChanged.AddListener(v => OnPartToggled(TreatmentBodyPart.Back, v));
+            
+            // Setup new toggle system listeners
+            if (useNewToggleSystem)
+            {
+                foreach (var toggle in bodyPartToggles)
+                {
+                    if (toggle != null)
+                    {
+                        toggle.OnSelectionChanged += OnBodyPartToggleChanged;
+                    }
+                }
+            }
             
             // Extra item drop target callback
             if (extraItemDropTarget != null) extraItemDropTarget.OnItemSet = OnExtraItemSet;
@@ -93,6 +116,12 @@ namespace HairRemovalSim.UI
             
             // Reset selections
             ResetSelections();
+            
+            // Setup new toggle system if available
+            if (useNewToggleSystem && customer != null)
+            {
+                SetupBodyPartToggles(customer.data.requestPlan);
+            }
             
             // Display customer info
             DisplayCustomerInfo();
@@ -147,8 +176,10 @@ namespace HairRemovalSim.UI
         private void ResetSelections()
         {
             selectedParts = TreatmentBodyPart.None;
+            selectedDetailedParts.Clear();
+            requestedDetailedParts.Clear();
             
-            // Reset all toggles WITHOUT triggering events
+            // Reset legacy toggles WITHOUT triggering events
             if (armsToggle != null) armsToggle.SetIsOnWithoutNotify(false);
             if (armpitsToggle != null) armpitsToggle.SetIsOnWithoutNotify(false);
             if (legsToggle != null) legsToggle.SetIsOnWithoutNotify(false);
@@ -156,6 +187,15 @@ namespace HairRemovalSim.UI
             if (absToggle != null) absToggle.SetIsOnWithoutNotify(false);
             if (beardToggle != null) beardToggle.SetIsOnWithoutNotify(false);
             if (backToggle != null) backToggle.SetIsOnWithoutNotify(false);
+            
+            // Reset new toggle system
+            if (useNewToggleSystem && bodyPartToggles != null)
+            {
+                foreach (var toggle in bodyPartToggles)
+                {
+                    if (toggle != null) toggle.Reset();
+                }
+            }
             
             // Don't clear extra item drop target - keep it across panel opens
             
@@ -353,6 +393,108 @@ namespace HairRemovalSim.UI
             
             return (itemId, price);
         }
+        
+        #region New 14-part Toggle System
+        
+        /// <summary>
+        /// Setup body part toggles based on customer's request plan
+        /// </summary>
+        private void SetupBodyPartToggles(CustomerRequestPlan plan)
+        {
+            if (bodyPartToggles == null) return;
+            
+            // Get detailed part names for this plan
+            var requestedParts = CustomerPlanHelper.GetDetailedPartNamesForPlan(plan);
+            requestedDetailedParts.Clear();
+            foreach (var partName in requestedParts)
+            {
+                requestedDetailedParts.Add(partName);
+            }
+            
+            // Setup each toggle
+            foreach (var toggle in bodyPartToggles)
+            {
+                if (toggle == null) continue;
+                
+                bool isRequested = requestedDetailedParts.Contains(toggle.PartName);
+                toggle.SetRequested(isRequested);
+            }
+        }
+        
+        /// <summary>
+        /// Handle body part toggle changed event
+        /// </summary>
+        private void OnBodyPartToggleChanged(BodyPartToggleUI toggle, bool isSelected)
+        {
+            if (toggle == null) return;
+            
+            if (isSelected)
+            {
+                selectedDetailedParts.Add(toggle.PartName);
+            }
+            else
+            {
+                selectedDetailedParts.Remove(toggle.PartName);
+            }
+            
+            // Convert detailed parts to TreatmentBodyPart flags for backward compatibility
+            selectedParts = ConvertSelectionToBodyParts(selectedDetailedParts);
+            
+            Debug.Log($"[ReceptionPanel] Toggle changed: {toggle.PartName} = {isSelected}, selectedParts = {selectedParts}");
+            
+            RecalculatePrice();
+        }
+        
+        /// <summary>
+        /// Convert 14-part selection to 7-part TreatmentBodyPart flags
+        /// </summary>
+        private TreatmentBodyPart ConvertSelectionToBodyParts(HashSet<string> detailedParts)
+        {
+            var result = TreatmentBodyPart.None;
+            
+            // Arms (any arm part)
+            if (detailedParts.Contains("LeftUpperArm") || detailedParts.Contains("LeftLowerArm") ||
+                detailedParts.Contains("RightUpperArm") || detailedParts.Contains("RightLowerArm"))
+            {
+                result |= TreatmentBodyPart.Arms;
+            }
+            
+            // Armpits
+            if (detailedParts.Contains("LeftArmpit") || detailedParts.Contains("RightArmpit"))
+            {
+                result |= TreatmentBodyPart.Armpits;
+            }
+            
+            // Legs (any leg part)
+            if (detailedParts.Contains("LeftThigh") || detailedParts.Contains("LeftCalf") ||
+                detailedParts.Contains("RightThigh") || detailedParts.Contains("RightCalf"))
+            {
+                result |= TreatmentBodyPart.Legs;
+            }
+            
+            // Single parts
+            if (detailedParts.Contains("Chest")) result |= TreatmentBodyPart.Chest;
+            if (detailedParts.Contains("Abs")) result |= TreatmentBodyPart.Abs;
+            if (detailedParts.Contains("Beard")) result |= TreatmentBodyPart.Beard;
+            if (detailedParts.Contains("Back")) result |= TreatmentBodyPart.Back;
+            
+            return result;
+        }
+        
+        /// <summary>
+        /// Check if all requested parts are selected
+        /// </summary>
+        private bool AreAllRequestedPartsSelected()
+        {
+            foreach (var part in requestedDetailedParts)
+            {
+                if (!selectedDetailedParts.Contains(part))
+                    return false;
+            }
+            return requestedDetailedParts.Count > 0;
+        }
+        
+        #endregion
     }
 }
 

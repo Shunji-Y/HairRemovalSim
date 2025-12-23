@@ -303,6 +303,13 @@ namespace HairRemovalSim.UI
             // Start whiteout transition
             if (ScreenTransitionManager.Instance != null)
             {
+                // Disable player input during transition
+                var playerInput = FindObjectOfType<UnityEngine.InputSystem.PlayerInput>();
+                if (playerInput != null)
+                {
+                    playerInput.enabled = false;
+                }
+                
                 ScreenTransitionManager.Instance.DoWhiteout(
                     onPeak: () =>
                     {
@@ -311,6 +318,12 @@ namespace HairRemovalSim.UI
                     },
                     onComplete: () =>
                     {
+                        // Re-enable player input
+                        if (playerInput != null)
+                        {
+                            playerInput.enabled = true;
+                        }
+                        
                         // Refresh display after transition
                         RefreshDisplay();
                     }

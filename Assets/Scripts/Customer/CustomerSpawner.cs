@@ -43,20 +43,25 @@ namespace HairRemovalSim.Customer
         [Tooltip("Test confirmed price for checkout test (randomized if 0)")]
         public int testConfirmedPrice = 0;
         
-        [Header("Attraction Rate Settings")]
-        [Tooltip("Base attraction rate without any bonuses (%)")]
-        [SerializeField] private float _baseAttractionRate = 30f;
+        [Header("Attraction Level Settings (Python-based)")]
+        [Tooltip("Current base attraction level (starts at 50, increases with good reviews)")]
+        [SerializeField] private float _currentAttractionLevel = 50f;
         
-        [Tooltip("Customer spawn interval at 100% attraction (seconds)")]
-        [SerializeField] private float minSpawnInterval = 30f;
+        [Tooltip("Facility boost from items like air purifier (0 to 0.3)")]
+        [SerializeField] private float _facilityBoost = 0f;
         
-        [Tooltip("Customer spawn interval at 0% attraction (seconds)")]
-        [SerializeField] private float maxSpawnInterval = 120f;
+        [Tooltip("Business hours in seconds (10:00-19:00 = 9 hours = 540 real seconds at 60x speed)")]
+        [SerializeField] private float businessHoursSeconds = 600f;
         
         /// <summary>
-        /// Base attraction rate (read-only for UI display)
+        /// Current base attraction level (read-only for UI display)
         /// </summary>
-        public float BaseAttractionRate => _baseAttractionRate;
+        public float CurrentAttractionLevel => _currentAttractionLevel;
+        
+        /// <summary>
+        /// Current facility boost multiplier (read-only)
+        /// </summary>
+        public float FacilityBoost => _facilityBoost;
 
         private List<CustomerController> customerPool = new List<CustomerController>();
         private List<CustomerController> activeCustomers = new List<CustomerController>();
@@ -65,25 +70,86 @@ namespace HairRemovalSim.Customer
         private bool poolInitialized = false;
         
         // ==========================================
-        // Attraction Rate & VIP Coefficient
+        // Attraction Level System (Python-based)
         // ==========================================
         
         /// <summary>
-        /// Get current attraction rate (0-100%)
-        /// Base rate + star bonus + ad boost
+        /// Get attraction cap for current grade (100, 200, 300, 400, 500, 600)
+        /// </summary>
+        public int GetAttractionCap()
+        {
+            return ShopManager.Instance?.GetCurrentAttractionCap() ?? 100;
+        }
+        
+        /// <summary>
+        /// Get effective attraction level including ad boost
+        /// </summary>
+        public float GetEffectiveAttraction()
+        {
+            float total = _currentAttractionLevel;
+            
+            // Add advertising boost (now in points, not percentage)
+            total += AdvertisingManager.Instance?.GetAttractionBoost() ?? 0f;
+            
+            // Clamp to cap
+            int cap = GetAttractionCap();
+            return Mathf.Clamp(total, 0f, cap);
+        }
+        
+        /// <summary>
+        /// Get attraction ratio (0 to 1) for spawn interval calculation
+        /// </summary>
+        public float GetAttractionRatio()
+        {
+            int cap = GetAttractionCap();
+            if (cap <= 0) return 0f;
+            return GetEffectiveAttraction() / cap;
+        }
+        
+        /// <summary>
+        /// Get max customers for current grade with facility boost
+        /// </summary>
+        public int GetMaxCustomers()
+        {
+            int baseMax = ShopManager.Instance?.GetCurrentMaxCustomers() ?? 18;
+            return Mathf.RoundToInt(baseMax * (1f + _facilityBoost));
+        }
+        
+        /// <summary>
+        /// Update attraction level based on average review (call at day end)
+        /// Formula: (avgReview / 5) × grade = points added
+        /// </summary>
+        public void UpdateAttractionLevel(float avgReviewPerCustomer)
+        {
+            int grade = ShopManager.Instance?.ShopGrade ?? 1;
+            float change = (avgReviewPerCustomer / 5f) * grade;
+            int cap = GetAttractionCap();
+            _currentAttractionLevel = Mathf.Clamp(_currentAttractionLevel + change, 10f, cap);
+            Debug.Log($"[CustomerSpawner] Attraction updated: +{change:F1} (G{grade}) → {_currentAttractionLevel:F0}/{cap}");
+        }
+        
+        /// <summary>
+        /// Add facility boost from purchased items (air purifier, etc.)
+        /// </summary>
+        public void AddFacilityBoost(float boost)
+        {
+            _facilityBoost = Mathf.Clamp(_facilityBoost + boost, 0f, 0.3f);
+            Debug.Log($"[CustomerSpawner] Facility boost updated: {_facilityBoost:P0}");
+        }
+        
+        /// <summary>
+        /// Legacy: Get current attraction rate as percentage for UI compatibility
         /// </summary>
         public float GetCurrentAttractionRate()
         {
-            float total = _baseAttractionRate;
-            
-            // Add star rating bonus from ShopManager
-            total += ShopManager.Instance?.GetStarRatingBonus() ?? 0f;
-            
-            // Add advertising boost
-            total += AdvertisingManager.Instance?.GetAttractionBoost() ?? 0f;
-            
-            return Mathf.Clamp(total, 0f, 100f);
+            return GetAttractionRatio() * 100f;
         }
+        
+        /// <summary>
+        /// Legacy: Base attraction rate for AdvertisingPanel compatibility
+        /// Returns base attraction as percentage of cap
+        /// </summary>
+        public float BaseAttractionRate => (_currentAttractionLevel / GetAttractionCap()) * 100f;
         
         /// <summary>
         /// Get current VIP coefficient (0-100)
@@ -103,14 +169,28 @@ namespace HairRemovalSim.Customer
         }
         
         /// <summary>
-        /// Get current spawn interval based on attraction rate
-        /// Higher attraction = shorter interval
+        /// Get expected customers for today based on attraction level
+        /// Formula: maxCustomers × (effectiveAttraction / attractionCap)
+        /// </summary>
+        public int GetExpectedCustomers()
+        {
+            int maxCust = GetMaxCustomers();
+            float ratio = GetAttractionRatio();
+            int expected = Mathf.Max(1, Mathf.RoundToInt(maxCust * ratio));
+            return expected;
+        }
+        
+        /// <summary>
+        /// Get current spawn interval based on expected customers
+        /// Formula: businessHours / expectedCustomers
+        /// Recalculates immediately when ads affect attraction
         /// </summary>
         public float GetCurrentSpawnInterval()
         {
-            float attraction = GetCurrentAttractionRate();
-            // Lerp between max (0%) and min (100%)
-            return Mathf.Lerp(maxSpawnInterval, minSpawnInterval, attraction / 100f);
+            int expected = GetExpectedCustomers();
+            float interval = businessHoursSeconds / expected;
+            // Clamp to reasonable range (min 5 seconds, max 300 seconds)
+            return Mathf.Clamp(interval, 5f, 300f);
         }
         
         /// <summary>
@@ -182,6 +262,64 @@ namespace HairRemovalSim.Customer
             }
             
             return WealthLevel.Poorest;
+        }
+        
+        // ==========================================
+        // Daily Review Tracking for Attraction Update
+        // ==========================================
+        
+        private float _dailyReviewTotal = 0f;
+        private int _dailyCustomerCount = 0;
+        
+        /// <summary>
+        /// Record a customer's review for daily attraction update
+        /// Call this from CheckoutPanel when customer completes checkout
+        /// </summary>
+        public void RecordDailyReview(float reviewValue)
+        {
+            _dailyReviewTotal += reviewValue;
+            _dailyCustomerCount++;
+        }
+        
+        private void OnEnable()
+        {
+            // Subscribe to shop closed event for daily attraction update
+            GameEvents.OnShopClosed += OnDayEnd;
+            GameEvents.OnShopOpened += OnDayStart;
+        }
+        
+        private void OnDisable()
+        {
+            GameEvents.OnShopClosed -= OnDayEnd;
+            GameEvents.OnShopOpened -= OnDayStart;
+        }
+        
+        private void OnDayEnd()
+        {
+            // Calculate average review and update attraction level
+            if (_dailyCustomerCount > 0)
+            {
+                float avgReview = _dailyReviewTotal / _dailyCustomerCount;
+                Debug.Log($"[CustomerSpawner] Day End - Customers: {_dailyCustomerCount}, TotalReview: {_dailyReviewTotal:F0}, AvgReview: {avgReview:F1}");
+                UpdateAttractionLevel(avgReview);
+            }
+            else
+            {
+                Debug.Log("[CustomerSpawner] No customers today, attraction unchanged");
+            }
+        }
+        
+        private void OnDayStart()
+        {
+            // Reset daily tracking
+            _dailyReviewTotal = 0f;
+            _dailyCustomerCount = 0;
+            
+            // First customer spawns within 0-20 seconds of opening
+            timer = GetCurrentSpawnInterval() - Random.Range(0f, 20f);
+            timer = Mathf.Max(0f, timer); // Ensure non-negative
+            
+            Debug.Log($"[CustomerSpawner] Day started. Attraction: {_currentAttractionLevel:F0}/{GetAttractionCap()}, Expected: {GetExpectedCustomers()}, Interval: {GetCurrentSpawnInterval():F1}s");
         }
 
         private void Start()

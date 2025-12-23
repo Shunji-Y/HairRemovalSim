@@ -41,6 +41,10 @@ namespace HairRemovalSim.Core
         [Header("Staff (Placeholder)")]
         [SerializeField] private int staffCount = 0;
         
+        [Header("Grade Configuration")]
+        [Tooltip("Database containing all grade-specific settings")]
+        [SerializeField] private GradeConfigDatabase gradeConfigDatabase;
+        
         // Events
         public System.Action<CustomerReview> OnReviewAdded;
         public System.Action<int, int> OnStarRatingChanged; // old, new
@@ -76,12 +80,16 @@ namespace HairRemovalSim.Core
         public int ReviewScore => reviewScore;
         
         /// <summary>
-        /// Current star rating (1-5)
+        /// Current star rating (1-7) based on cumulative review score
         /// </summary>
         public int StarRating
         {
             get
             {
+                if (gradeConfigDatabase != null)
+                    return gradeConfigDatabase.GetStarRatingFromReview(reviewScore);
+                
+                // Fallback to old logic
                 int stars = 1 + (reviewScore / REVIEW_PER_STAR);
                 return Mathf.Clamp(stars, 1, MAX_STARS);
             }
@@ -94,10 +102,38 @@ namespace HairRemovalSim.Core
         {
             get
             {
+                if (gradeConfigDatabase != null)
+                    return gradeConfigDatabase.GetStarProgress(reviewScore, StarRating);
+                
+                // Fallback to old logic
                 if (StarRating >= MAX_STARS) return 1f;
                 int currentStarBase = (StarRating - 1) * REVIEW_PER_STAR;
                 return (float)(reviewScore - currentStarBase) / REVIEW_PER_STAR;
             }
+        }
+        
+        /// <summary>
+        /// Get progress details towards next star (for UI display)
+        /// Returns: (currentProgress, rangeSize, nextStar)
+        /// </summary>
+        public (int current, int total, int nextStar) GetProgressToNextStar()
+        {
+            int currentStars = StarRating;
+            if (currentStars >= 7)
+                return (0, 0, 7);
+            
+            if (gradeConfigDatabase != null)
+            {
+                int currentThreshold = gradeConfigDatabase.GetReviewThreshold(currentStars);
+                int nextThreshold = gradeConfigDatabase.GetReviewThreshold(currentStars + 1);
+                int current = reviewScore - currentThreshold;
+                int total = nextThreshold - currentThreshold;
+                return (current, total, currentStars + 1);
+            }
+            
+            // Fallback
+            int currentBase = (currentStars - 1) * REVIEW_PER_STAR;
+            return (reviewScore - currentBase, REVIEW_PER_STAR, currentStars + 1);
         }
         
         /// <summary>
@@ -262,8 +298,7 @@ namespace HairRemovalSim.Core
         
         #region Treatment Shelf System
         
-        [Header("Treatment Shelves")]
-        [SerializeField] private Environment.TreatmentShelf shelfPrefab;
+
         
         // Pending shelf installations (applied at day start)
         private int pendingShelfPurchases = 0;
@@ -312,35 +347,7 @@ namespace HairRemovalSim.Core
             return true;
         }
         
-        /// <summary>
-        /// Install pending shelves (call at day start)
-        /// </summary>
-        public void InstallPendingShelves()
-        {
-            if (pendingShelfPurchases <= 0 || shelfPrefab == null) return;
-            
-            var beds = FindObjectsOfType<Environment.BedController>();
-            
-            foreach (var bed in beds)
-            {
-                if (pendingShelfPurchases <= 0) break;
-                
-                if (bed.HasAvailableShelfSlot())
-                {
-                    if (bed.InstallShelf(shelfPrefab))
-                    {
-                        pendingShelfPurchases--;
-                    }
-                }
-            }
-            
-            if (pendingShelfPurchases > 0)
-            {
-                Debug.LogWarning($"[ShopManager] Could not install {pendingShelfPurchases} shelf(s) - no slots available");
-                pendingShelfPurchases = 0;
-            }
-        }
-        
+
         /// <summary>
         /// Get pending shelf purchase count
         /// </summary>
@@ -396,6 +403,36 @@ namespace HairRemovalSim.Core
         public ShopUpgradeData GetNextUpgradeData()
         {
             return GetUpgradeData(shopGrade + 1);
+        }
+        
+        /// <summary>
+        /// Get maximum customers for current grade (base value before facility boost)
+        /// </summary>
+        public int GetCurrentMaxCustomers()
+        {
+            if (gradeConfigDatabase != null)
+                return gradeConfigDatabase.GetMaxCustomers(shopGrade);
+            return 18; // Default fallback
+        }
+        
+        /// <summary>
+        /// Get attraction cap for current grade
+        /// </summary>
+        public int GetCurrentAttractionCap()
+        {
+            if (gradeConfigDatabase != null)
+                return gradeConfigDatabase.GetAttractionCap(shopGrade);
+            return 100; // Default fallback
+        }
+        
+        /// <summary>
+        /// Get rent cost for current grade
+        /// </summary>
+        public int GetCurrentRent()
+        {
+            if (gradeConfigDatabase != null)
+                return gradeConfigDatabase.GetRent(shopGrade);
+            return 50; // Default fallback
         }
         
         /// <summary>

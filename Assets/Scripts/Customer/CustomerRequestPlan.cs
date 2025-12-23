@@ -82,6 +82,15 @@ namespace HairRemovalSim.Customer
         }
         
         /// <summary>
+        /// Get 14-part detailed names for a customer's request plan
+        /// </summary>
+        public static string[] GetDetailedPartNamesForPlan(CustomerRequestPlan plan)
+        {
+            var requiredParts = GetRequiredParts(plan);
+            return GetDetailedTreatmentParts(requiredParts);
+        }
+        
+        /// <summary>
         /// Get display name for a plan
         /// </summary>
         public static string GetPlanDisplayName(CustomerRequestPlan plan)

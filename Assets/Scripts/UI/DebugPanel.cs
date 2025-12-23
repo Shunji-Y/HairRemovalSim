@@ -199,6 +199,14 @@ namespace HairRemovalSim.UI
         {
             if (GameManager.Instance != null)
             {
+                // If currently in Day or Preparation, trigger day end events first
+                if (GameManager.Instance.CurrentState == GameManager.GameState.Day ||
+                    GameManager.Instance.CurrentState == GameManager.GameState.Preparation)
+                {
+                    Debug.Log("[DebugPanel] Triggering day end events...");
+                    GameEvents.TriggerShopClosed();
+                }
+                
                 GameManager.Instance.StartNextDay();
                 Debug.Log("[DebugPanel] Skipped to next day");
             }

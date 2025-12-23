@@ -245,12 +245,22 @@ namespace HairRemovalSim.Core
                 }
             }
             
+            // Determine effective start day based on when ad is purchased
+            // - During Preparation or Day: starts today
+            // - During Night (after business hours): starts tomorrow
+            int effectiveStartDay = currentDay;
+            if (GameManager.Instance?.CurrentState == GameManager.GameState.Night)
+            {
+                effectiveStartDay = currentDay + 1;
+                Debug.Log($"[AdvertisingManager] Ad purchased after business hours - will start tomorrow (Day {effectiveStartDay})");
+            }
+            
             // Create active ad
-            var activeAd = new ActiveAdvertisement(adData.adId, currentDay, adData.durationDays);
+            var activeAd = new ActiveAdvertisement(adData.adId, effectiveStartDay, adData.durationDays);
             activeAds.Add(activeAd);
             lastUsedDay[adData.adId] = currentDay;
             
-            Debug.Log($"[AdvertisingManager] Started '{adData.displayName}' - Days: {adData.durationDays}, Attraction: +{adData.attractionBoost}%");
+            Debug.Log($"[AdvertisingManager] Started '{adData.displayName}' - Duration: {adData.durationDays}d, Attraction: +{adData.attractionBoost}, Start: Day {effectiveStartDay}");
             
             OnAdsUpdated?.Invoke();
             return true;

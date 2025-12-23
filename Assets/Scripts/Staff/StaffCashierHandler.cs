@@ -177,6 +177,10 @@ namespace HairRemovalSim.Staff
                 ShopManager.Instance.AddReview(finalReview, customer.GetPainMaxCount());
                 int stars = GetStarsFromReview(finalReview);
                 ShopManager.Instance.AddCustomerReview(stars);
+                
+                // Record for daily attraction update
+                var spawner = FindObjectOfType<CustomerSpawner>();
+                spawner?.RecordDailyReview(finalReview);
             }
             
             Debug.Log($"[StaffCashierHandler] Payment: ${totalPayment}, Review: {finalReview} (base: {baseReview} × coef: {coefficient} - penalty: {data.reviewPenalty} + bonus: {additionalReviewBonus})");

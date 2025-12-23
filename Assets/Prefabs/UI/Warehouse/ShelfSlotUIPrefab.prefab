@@ -275,7 +275,7 @@ MonoBehaviour:
   m_Material: {fileID: 0}
   m_Color: {r: 0.191, g: 0.191, b: 0.191, a: 0.7882353}
   m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: -70.2}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
@@ -305,5 +305,6 @@ MonoBehaviour:
   backgroundImage: {fileID: 1996401533084923014}
   iconImage: {fileID: 2829032893396293484}
   quantityText: {fileID: 2604692232551768108}
+  slotMode: 0
   normalColor: {r: 0.19215687, g: 0.19215687, b: 0.19215687, a: 0.7882353}
   highlightColor: {r: 0.8, g: 1, b: 0.8, a: 1}

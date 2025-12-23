@@ -49,7 +49,7 @@ namespace HairRemovalSim.Staff
         // Door handling for treatment assignment
         private bool hasOpenedDoorForEntry = false;
         private BedController targetBedForDoor = null;
-        [SerializeField] private float doorOpenDistance = 3f;
+        [SerializeField] private float doorOpenDistance = 2f;
         
         private void Awake()
         {

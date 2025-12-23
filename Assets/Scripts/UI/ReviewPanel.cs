@@ -127,7 +127,7 @@ namespace HairRemovalSim.UI
             {
                 int currentStars = ShopManager.Instance?.StarRating ?? 1;
                 string stars = "";
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < 7; i++)
                 {
                     stars += i < currentStars ? "★" : "☆";
                 }
@@ -141,7 +141,7 @@ namespace HairRemovalSim.UI
                 int currentStars = ShopManager.Instance?.StarRating ?? 1;
                 float progress = ShopManager.Instance?.StarProgress ?? 0f;
                 
-                if (currentStars >= 5)
+                if (currentStars >= 7)
                 {
                     starProgressSlider.value = 1f;
                     starProgressSlider.gameObject.SetActive(false);
@@ -153,21 +153,19 @@ namespace HairRemovalSim.UI
                 }
             }
             
-            // Progress text (e.g., "500/1000 to ★4")
+            // Progress text (e.g., "500/1200 → ★2")
             if (progressText != null)
             {
                 int currentStars = ShopManager.Instance?.StarRating ?? 1;
-                int score = ShopManager.Instance?.ReviewScore ?? 0;
                 
-                if (currentStars >= 5)
+                if (currentStars >= 7)
                 {
                     progressText.text = L?.Get("review.max_stars") ?? "Max Rating!";
                 }
                 else
                 {
-                    int nextStarScore = currentStars * ShopManager.REVIEW_PER_STAR;
-                    int current = score - ((currentStars - 1) * ShopManager.REVIEW_PER_STAR);
-                    progressText.text = $"{current}/{ShopManager.REVIEW_PER_STAR} → ★{currentStars + 1}";
+                    var progress = ShopManager.Instance?.GetProgressToNextStar() ?? (0, 1000, 2);
+                    progressText.text = $"{progress.current}/{progress.total} → ★{progress.nextStar}";
                 }
             }
         }

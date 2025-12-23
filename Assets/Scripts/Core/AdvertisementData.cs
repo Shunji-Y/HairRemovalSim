@@ -34,7 +34,7 @@ namespace HairRemovalSim.Core
         public int cost = 0;
         
         [Tooltip("Required shop grade to unlock (1-5)")]
-        [Range(1, 5)]
+        [Range(1, 6)]
         public int requiredShopGrade = 1;
         
         [Header("Duration & Effect")]
@@ -42,13 +42,11 @@ namespace HairRemovalSim.Core
         [Min(1)]
         public int durationDays = 1;
         
-        [Tooltip("Initial attraction rate boost (%)")]
-        [Range(0f, 100f)]
+        [Tooltip("Initial attraction boost (points)")]
         public float attractionBoost = 5f;
         
-        [Tooltip("Daily decay rate (% of current effect lost per day)")]
-        [Range(0f, 50f)]
-        public float decayRatePerDay = 0f;
+        [Tooltip("Daily decay amount (points subtracted per day)")]
+        public float decayPerDay = 0f;
         
         [Tooltip("VIP coefficient boost (0-100 scale)")]
         [Range(0f, 50f)]
@@ -72,27 +70,30 @@ namespace HairRemovalSim.Core
         
         /// <summary>
         /// Calculate the effect after decay for a given day
+        /// Linear decay: attractionBoost - (decayPerDay * daysSinceStart)
         /// </summary>
         public float GetAttractionBoostForDay(int daysSinceStart)
         {
             if (daysSinceStart <= 0) return attractionBoost;
             if (daysSinceStart >= durationDays) return 0f;
             
-            // Apply decay: effect * (1 - decayRate)^days
-            float remainingEffect = attractionBoost * Mathf.Pow(1f - (decayRatePerDay / 100f), daysSinceStart);
+            // Apply linear decay: boost - (decay * days)
+            float remainingEffect = attractionBoost - (decayPerDay * daysSinceStart);
             return Mathf.Max(0f, remainingEffect);
         }
         
         /// <summary>
         /// Calculate VIP boost after decay
+        /// Linear decay proportional to attraction decay
         /// </summary>
         public float GetVipBoostForDay(int daysSinceStart)
         {
             if (daysSinceStart <= 0) return vipCoefficientBoost;
             if (daysSinceStart >= durationDays) return 0f;
             
-            // VIP boost also decays
-            float remainingEffect = vipCoefficientBoost * Mathf.Pow(1f - (decayRatePerDay / 100f), daysSinceStart);
+            // VIP boost decays at same rate ratio as attraction
+            float decayRatio = attractionBoost > 0 ? (attractionBoost - (decayPerDay * daysSinceStart)) / attractionBoost : 0f;
+            float remainingEffect = vipCoefficientBoost * Mathf.Max(0f, decayRatio);
             return Mathf.Max(0f, remainingEffect);
         }
     }

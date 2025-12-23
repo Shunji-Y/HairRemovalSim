@@ -128,25 +128,25 @@ namespace HairRemovalSim.UI
         
         private void UpdateCurrentEffects()
         {
-            // Get CustomerSpawner for attraction rate and VIP coefficient
+            // Get CustomerSpawner for attraction level and VIP coefficient
             var customerSpawner = FindObjectOfType<HairRemovalSim.Customer.CustomerSpawner>();
             var shopManager = ShopManager.Instance;
             var adManager = AdvertisingManager.Instance;
             
-            // Calculate breakdown
-            float baseAttraction = customerSpawner?.BaseAttractionRate ?? 30f;
-            float starBonus = shopManager?.GetStarRatingBonus() ?? 0f;
+            // Get attraction level values (point-based system)
+            float baseAttraction = customerSpawner?.CurrentAttractionLevel ?? 50f;
             float adBoost = adManager?.GetAttractionBoost() ?? 0f;
-            float totalAttraction = baseAttraction + starBonus + adBoost;
-            totalAttraction = Mathf.Clamp(totalAttraction, 0f, 100f);
+            int attractionCap = customerSpawner?.GetAttractionCap() ?? 100;
+            float effectiveAttraction = customerSpawner?.GetEffectiveAttraction() ?? 50f;
             
+            // VIP values
             float baseVip = shopManager?.GetVipCoefficientFromReviews() ?? 50f;
             float adVipBoost = adManager?.GetVipBoost() ?? 0f;
             float totalVip = Mathf.Clamp(baseVip + adVipBoost, 0f, 100f);
             
-            // Total display
+            // Total display - show as "current/cap" format
             if (attractionRateText != null)
-                attractionRateText.text = $"{totalAttraction:F1}%";
+                attractionRateText.text = $"{effectiveAttraction:F0}/{attractionCap}";
             
             if (vipCoefficientText != null)
                 vipCoefficientText.text = $"{totalVip:F0}";
@@ -154,17 +154,15 @@ namespace HairRemovalSim.UI
             // Breakdown display - Base (yellow)
             if (baseAttractionText != null)
             {
-                float baseTotal = baseAttraction + starBonus;
-                string starSign = starBonus >= 0 ? "+" : "";
                 baseAttractionText.text = L?.Get("advertising.base_rate") ?? "Base";
-                baseAttractionText.text += $": {baseTotal:F0}% ({baseAttraction:F0}{starSign}{starBonus:F0})";
+                baseAttractionText.text += $": {baseAttraction:F0}";
             }
             
             // Breakdown display - Ad boost (green)
             if (adBoostText != null)
             {
                 if (adBoost > 0)
-                    adBoostText.text = $"{L?.Get("advertising.ad_boost") ?? "Ads"}: +{adBoost:F1}%";
+                    adBoostText.text = $"{L?.Get("advertising.ad_boost") ?? "Ads"}: +{adBoost:F0}";
                 else
                     adBoostText.text = $"{L?.Get("advertising.ad_boost") ?? "Ads"}: ---";
             }
@@ -181,11 +179,12 @@ namespace HairRemovalSim.UI
                     adVipBoostText.text = $"{L?.Get("advertising.ad_vip_boost") ?? "Ads"}: ---";
             }
             
+            // Attraction slider - max value is now attractionCap (dynamic per grade)
             if (attractionSlider != null)
             {
                 attractionSlider.minValue = 0;
-                attractionSlider.maxValue = 100;
-                attractionSlider.value = totalAttraction;
+                attractionSlider.maxValue = attractionCap;
+                attractionSlider.value = effectiveAttraction;
             }
             
             if (vipSlider != null)
@@ -269,7 +268,20 @@ namespace HairRemovalSim.UI
             
             if (success)
             {
-                Debug.Log($"[AdvertisingPanel] Started ad: {adData.displayName}");
+                // Get current spawner info
+                var spawner = FindObjectOfType<Customer.CustomerSpawner>();
+                int maxCust = spawner?.GetMaxCustomers() ?? 0;
+                int expectedCust = spawner?.GetExpectedCustomers() ?? 0;
+                int attractionCap = spawner?.GetAttractionCap() ?? 100;
+                float effectiveAttr = spawner?.GetEffectiveAttraction() ?? 0;
+                
+                // Check if it's Night (will be applied tomorrow)
+                bool isNight = GameManager.Instance?.CurrentState == GameManager.GameState.Night;
+                string timing = isNight ? " (明日適用されます)" : "";
+                
+                Debug.Log($"[AdvertisingPanel] Started ad: {adData.displayName}{timing}");
+                Debug.Log($"[AdvertisingPanel] MaxCustomers: {maxCust}, Expected: {expectedCust}, Attraction: {effectiveAttr:F0}/{attractionCap}");
+                
                 RefreshDisplay();
             }
         }

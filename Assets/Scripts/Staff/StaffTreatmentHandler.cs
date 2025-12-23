@@ -271,28 +271,71 @@ namespace HairRemovalSim.Staff
                 missingList.Add("シェーバー");
             }
             
-            // Check face laser
+            // Check lasers
             if (assignedBed.laserBody != null)
             {
                 var faceLaser = assignedBed.laserBody.GetItem(ToolTargetArea.Face);
-                if (faceLaser == null)
+                var bodyLaser = assignedBed.laserBody.GetItem(ToolTargetArea.Body);
+                
+                // Check if either laser has TargetArea.All (covers both face and body)
+                bool faceHasAllLaser = faceLaser != null && faceLaser.targetArea == ToolTargetArea.All;
+                bool bodyHasAllLaser = bodyLaser != null && bodyLaser.targetArea == ToolTargetArea.All;
+                bool hasAllLaser = faceHasAllLaser || bodyHasAllLaser;
+                
+                // Face laser check
+                bool faceCovered = false;
+                if (faceLaser != null)
+                {
+                    if (faceLaser.requiredShopGrade > staffRankGrade)
+                    {
+                        missingList.Add("顔用レーザー(ランク不足)");
+                    }
+                    else
+                    {
+                        faceCovered = true;
+                    }
+                }
+                else if (hasAllLaser)
+                {
+                    // All-type laser in body slot can cover face
+                    var allLaser = bodyHasAllLaser ? bodyLaser : faceLaser;
+                    if (allLaser.requiredShopGrade <= staffRankGrade)
+                    {
+                        faceCovered = true;
+                    }
+                }
+                
+                if (!faceCovered && !hasAllLaser)
                 {
                     missingList.Add("顔用レーザー");
                 }
-                else if (faceLaser.requiredShopGrade > staffRankGrade)
+                
+                // Body laser check
+                bool bodyCovered = false;
+                if (bodyLaser != null)
                 {
-                    missingList.Add($"顔用レーザー(ランク不足)");
+                    if (bodyLaser.requiredShopGrade > staffRankGrade)
+                    {
+                        missingList.Add("体用レーザー(ランク不足)");
+                    }
+                    else
+                    {
+                        bodyCovered = true;
+                    }
+                }
+                else if (hasAllLaser)
+                {
+                    // All-type laser in face slot can cover body
+                    var allLaser = faceHasAllLaser ? faceLaser : bodyLaser;
+                    if (allLaser.requiredShopGrade <= staffRankGrade)
+                    {
+                        bodyCovered = true;
+                    }
                 }
                 
-                // Check body laser
-                var bodyLaser = assignedBed.laserBody.GetItem(ToolTargetArea.Body);
-                if (bodyLaser == null)
+                if (!bodyCovered && !hasAllLaser)
                 {
                     missingList.Add("体用レーザー");
-                }
-                else if (bodyLaser.requiredShopGrade > staffRankGrade)
-                {
-                    missingList.Add($"体用レーザー(ランク不足)");
                 }
             }
             else
