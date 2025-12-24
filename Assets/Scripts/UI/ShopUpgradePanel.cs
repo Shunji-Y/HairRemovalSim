@@ -33,6 +33,7 @@ namespace HairRemovalSim.UI
         
         [Header("Cost & Button")]
         [SerializeField] private TMP_Text costText;
+        [SerializeField] private TMP_Text starRequirementText;
         [SerializeField] private Button upgradeButton;
         [SerializeField] private TMP_Text upgradeButtonText;
         
@@ -237,14 +238,36 @@ namespace HairRemovalSim.UI
                 costText.text = L?.Get("upgrade.cost", currentUpgradeData.upgradeCost) 
                     ?? $"Required: ${currentUpgradeData.upgradeCost:N0}";
             }
+            
+            // Update star requirement display
+            if (starRequirementText != null && ShopManager.Instance != null)
+            {
+                int requiredStars = ShopManager.Instance.GetRequiredStarsForNextUpgrade();
+                int currentStars = ShopManager.Instance.StarRating;
+                bool hasStars = ShopManager.Instance.HasRequiredStarsForUpgrade();
+                
+                if (hasStars)
+                {
+                    starRequirementText.text = L?.Get("upgrade.star_ok", requiredStars) 
+                        ?? $"★{requiredStars} Required ✓";
+                    starRequirementText.color = Color.green;
+                }
+                else
+                {
+                    starRequirementText.text = L?.Get("upgrade.star_needed", requiredStars, currentStars) 
+                        ?? $"★{requiredStars} Required (Current: ★{currentStars})";
+                    starRequirementText.color = Color.red;
+                }
+            }
         }
         
         private void UpdateUpgradeButton()
         {
             if (upgradeButton == null) return;
             
-            bool canAfford = ShopManager.Instance?.CanAffordNextUpgrade() ?? false;
-            upgradeButton.interactable = canAfford && !ShopManager.Instance.IsMaxGrade;
+            // Use CanUpgradeShop which checks both cost AND stars
+            bool canUpgrade = ShopManager.Instance?.CanUpgradeShop() ?? false;
+            upgradeButton.interactable = canUpgrade;
             
             if (upgradeButtonText != null)
             {

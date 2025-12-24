@@ -32,7 +32,7 @@ namespace HairRemovalSim.Store
                 pendingOrders[itemId] = quantity;
             }
             
-            Debug.Log($"[InventoryManager] Order placed: {quantity}x {item.displayName} (delivered next day)");
+            Debug.Log($"[InventoryManager] Order placed: {quantity}x {item.name} (delivered next day)");
         }
         
         /// <summary>
@@ -84,7 +84,7 @@ namespace HairRemovalSim.Store
         {
             if (item == null || quantity <= 0) return;
             AddItemById(item.itemId, quantity);
-            Debug.Log($"[InventoryManager] Added {quantity}x {item.displayName}. Total: {GetItemCount(item)}");
+            Debug.Log($"[InventoryManager] Added {quantity}x {item.name}. Total: {GetItemCount(item)}");
         }
         
         /// <summary>

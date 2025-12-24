@@ -195,6 +195,8 @@ Key,Id,Chinese (Simplified)(zh-CN),Chinese (Traditional)(zh-TW),English(en),Japa
 "upgrade.cost",700000000062,"所需金额: ${0}","所需金額: ${0}","Required: ${0}","必要金額: ${0}"
 "upgrade.button",700000000063,"升级","升級","UPGRADE","アップグレード"
 "upgrade.max_grade",700000000064,"已达最高等级!","已達最高等級!","Maximum Grade Reached!","最高グレード達成！"
+"upgrade.star_ok",700000000066,"★{0} 已达成 ✓","★{0} 已達成 ✓","★{0} Required ✓","★{0} 必要 ✓"
+"upgrade.star_needed",700000000067,"需要 ★{0} (当前: ★{1})","需要 ★{0} (當前: ★{1})","★{0} Required (Current: ★{1})","★{0} 必要 (現在: ★{1})"
 "upgrade.confirm_message",700000000065,"升级至{0}级？
 费用${1}","升級至{0}級？
 費用${1}","Upgrade to Grade {0}?

@@ -4,6 +4,7 @@ using TMPro;
 using System.Collections.Generic;
 using HairRemovalSim.Customer;
 using HairRemovalSim.Player;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.UI
 {
@@ -86,8 +87,12 @@ namespace HairRemovalSim.UI
                 }
             }
             
-            // Extra item drop target callback
-            if (extraItemDropTarget != null) extraItemDropTarget.OnItemSet = OnExtraItemSet;
+            // Extra item drop target callbacks
+            if (extraItemDropTarget != null)
+            {
+                extraItemDropTarget.OnItemSet = OnExtraItemSet;
+                extraItemDropTarget.OnItemCleared = OnExtraItemCleared;
+            }
             
             if (confirmButton != null) confirmButton.onClick.AddListener(OnConfirmClicked);
         }
@@ -233,6 +238,12 @@ namespace HairRemovalSim.UI
             Debug.Log($"[ReceptionPanel] Extra item set: {itemId}");
         }
         
+        private void OnExtraItemCleared()
+        {
+            RecalculatePrice();
+            Debug.Log($"[ReceptionPanel] Extra item cleared, price recalculated");
+        }
+        
         private void RecalculatePrice()
         {
             if (currentCustomer == null) return;
@@ -240,14 +251,14 @@ namespace HairRemovalSim.UI
             // Base price from plan
             int planPrice = CustomerPlanHelper.GetPlanPrice(currentCustomer.data.requestPlan);
             
-            // Add extra item price if set
+            // Add extra item upsell price if set
             int extraItemPrice = 0;
             if (extraItemDropTarget != null && extraItemDropTarget.HasItem)
             {
                 var itemData = Core.ItemDataRegistry.Instance?.GetItem(extraItemDropTarget.ItemId);
                 if (itemData != null)
                 {
-                    extraItemPrice = itemData.price;
+                    extraItemPrice = itemData.upsellPrice;
                 }
             }
             
@@ -269,7 +280,17 @@ namespace HairRemovalSim.UI
             bool hasExtraItem = extraItemDropTarget != null && extraItemDropTarget.HasItem;
             string extraItemId = hasExtraItem ? extraItemDropTarget.ItemId : null;
             
-            // Check if extra item is anesthesia cream
+            // Apply effects from extra item
+            if (hasExtraItem && !string.IsNullOrEmpty(extraItemId))
+            {
+                var itemData = ItemDataRegistry.Instance?.GetItem(extraItemId);
+                if (itemData != null)
+                {
+                    currentCustomer.ApplyReceptionEffects(itemData);
+                }
+            }
+            
+            // Legacy: Check if extra item is anesthesia cream
             bool useAnesthesia = extraItemId == "anesthesia_cream";
             data.useAnesthesiaCream = useAnesthesia;
             

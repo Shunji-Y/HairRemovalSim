@@ -4,6 +4,7 @@ using HairRemovalSim.Core;
 using HairRemovalSim.Treatment;
 using HairRemovalSim.Interaction;
 using HairRemovalSim.Player;
+using HairRemovalSim.Effects;
 
 namespace HairRemovalSim.Core
 {
@@ -145,13 +146,13 @@ namespace HairRemovalSim.Core
 
         public void OnHoverEnter()
         {
-            var outline = GetComponent<Effects.OutlineHighlighter>();
+            var outline = GetComponent<OutlineHighlighter>();
             if (outline != null) outline.enabled = true;
         }
 
         public void OnHoverExit()
         {
-            var outline = GetComponent<Effects.OutlineHighlighter>();
+            var outline = GetComponent<OutlineHighlighter>();
             if (outline != null) outline.enabled = false;
         }
 

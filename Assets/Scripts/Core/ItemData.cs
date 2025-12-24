@@ -1,5 +1,7 @@
 using UnityEngine;
 using HairRemovalSim.Tools;
+using HairRemovalSim.Core.Effects;
+using System.Collections.Generic;
 
 namespace HairRemovalSim.Core
 {
@@ -17,24 +19,14 @@ namespace HairRemovalSim.Core
         [Tooltip("Unique identifier for this item")]
         public string itemId;
         
-        [Tooltip("Display name shown in UI")]
-        public string displayName;
-        
         [Tooltip("Icon used in all UI (equipped, store, inventory, shelf)")]
         public Sprite icon;
         
         [Tooltip("Prefab to spawn for this item")]
         public GameObject prefab;
         
-        [Tooltip("Description of the item")]
-        [TextArea(2, 4)]
-        public string description;
-        
-        [Tooltip("Localization key for item name (optional, uses displayName if empty)")]
+        [Tooltip("Localization key for item name and description (name: nameKey, desc: nameKey.desc)")]
         public string nameKey;
-        
-       // [Tooltip("Localization key for item description (optional, uses description if empty)")]
-      //  public string descriptionKey;
         
         // ==========================================
         // 【施術用ツール】Treatment Tool Settings
@@ -133,13 +125,26 @@ namespace HairRemovalSim.Core
         public int upsellPrice = 0;
         
         // ==========================================
+        // 【特殊効果】Special Effects
+        // ==========================================
+        [Header("【特殊効果】")]
+        [Tooltip("List of special effects (pain reduction, attraction boost, etc.)")]
+        public List<EffectData> effects = new List<EffectData>();
+        
+        // ==========================================
+        // 【設置アイテム】Placement Item Settings
+        // ==========================================
+        [Header("【設置アイテム】")]
+        [Tooltip("Fixed placement slot ID for this item (e.g., 'air_purifier_slot')")]
+        public string placementSlotId;
+        
+        [Tooltip("Prefab to spawn when placed")]
+        public GameObject placementPrefab;
+
+        // ==========================================
         // 【ストア・購入】Store / Purchase Settings
         // ==========================================
         [Header("【ストア・購入】")]
-        [Tooltip("Description shown in store UI")]
-        [TextArea(2, 4)]
-        public string storeDescription;
-        
         [Tooltip("Purchase price")]
         public int price = 100;
         
@@ -164,6 +169,35 @@ namespace HairRemovalSim.Core
         public bool IsTreatmentTool => toolType != TreatmentToolType.None;
         public bool IsShaver => toolType == TreatmentToolType.Shaver;
         public bool IsLaser => toolType == TreatmentToolType.Laser;
+        
+        /// <summary>
+        /// Get localized name using nameKey, fallback to ScriptableObject name
+        /// </summary>
+        public string GetLocalizedName()
+        {
+            if (string.IsNullOrEmpty(nameKey)) return name;
+            
+            var L = LocalizationManager.Instance;
+            if (L == null) return name;
+            
+            string localized = L.Get(nameKey);
+            // If localization returns the key itself (not found), use SO name
+            return (!string.IsNullOrEmpty(localized) && !localized.StartsWith("[")) ? localized : name;
+        }
+        
+        /// <summary>
+        /// Get localized description using nameKey.desc, fallback to empty
+        /// </summary>
+        public string GetLocalizedDescription()
+        {
+            if (string.IsNullOrEmpty(nameKey)) return "";
+            
+            var L = LocalizationManager.Instance;
+            if (L == null) return "";
+            
+            string localized = L.Get(nameKey + ".desc");
+            return (!string.IsNullOrEmpty(localized) && !localized.StartsWith("[")) ? localized : "";
+        }
         
         /// <summary>
         /// Check if this tool can be used on hair of given length
@@ -237,6 +271,7 @@ namespace HairRemovalSim.Core
         Tool,           // 施術用ツール（旧式の分類）
         TreatmentTool,  // 施術用ツール（レーザー、シェーバー等）
         Consumable,     // 消耗品（ジェル等）
+        PlacementItem,  // 設置アイテム（観葉植物、空気清浄機等）
         Furniture,      // 家具
         Upgrade,        // アップグレード
         Other           // その他

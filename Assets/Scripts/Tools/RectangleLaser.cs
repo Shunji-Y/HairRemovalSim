@@ -440,7 +440,7 @@ namespace HairRemovalSim.Tools
                 controller.ApplyTreatment(normalizedUV, uvRect.size, uvRect.angle, subMeshIndex, shapeIndex, treatmentType, burnIntensity);
                 
                 // Add pain with hair length multiplier (Pain SE is handled by CustomerController)
-                if (customer != null)
+                if (customer != null && itemData.toolType !=TreatmentToolType.Shaver)
                 {
                     float finalPain = painMultiplier * hairPainMultiplier;
                     customer.AddPain(finalPain);

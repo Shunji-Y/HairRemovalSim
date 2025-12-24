@@ -284,6 +284,26 @@ namespace HairRemovalSim.Core
             }
         }
         
+        #region Placement Item Effects
+        
+        private float _reviewPercentBoost = 0f;
+        
+        /// <summary>
+        /// Get review percent boost from placement items (0.05 = 5%)
+        /// </summary>
+        public float ReviewPercentBoost => _reviewPercentBoost;
+        
+        /// <summary>
+        /// Add/remove review percent boost from placement items
+        /// </summary>
+        public void AddReviewPercentBoost(float percent)
+        {
+            _reviewPercentBoost += percent;
+            Debug.Log($"[ShopManager] Review percent boost changed: {percent:+#.##%;-#.##%;0%} → Total: {_reviewPercentBoost:P0}");
+        }
+        
+        #endregion
+        
         /// <summary>
         /// Reset store to initial state (new game)
         /// </summary>
@@ -293,6 +313,7 @@ namespace HairRemovalSim.Core
             reviewHistory.Clear();
             shopGrade = 1;
             staffCount = 0;
+            _reviewPercentBoost = 0f;
             Debug.Log("[ShopManager] Shop reset to initial state");
         }
         
@@ -446,6 +467,37 @@ namespace HairRemovalSim.Core
         }
         
         /// <summary>
+        /// Check if player has required stars for next upgrade
+        /// </summary>
+        public bool HasRequiredStarsForUpgrade()
+        {
+            int targetGrade = shopGrade + 1;
+            if (gradeConfigDatabase == null) return true; // No database, skip check
+            
+            int requiredStars = gradeConfigDatabase.GetRequiredStars(targetGrade);
+            return StarRating >= requiredStars;
+        }
+        
+        /// <summary>
+        /// Get required stars for next upgrade
+        /// </summary>
+        public int GetRequiredStarsForNextUpgrade()
+        {
+            int targetGrade = shopGrade + 1;
+            if (gradeConfigDatabase == null) return targetGrade; // Default: same as grade
+            return gradeConfigDatabase.GetRequiredStars(targetGrade);
+        }
+        
+        /// <summary>
+        /// Check if can upgrade (both cost and stars)
+        /// </summary>
+        public bool CanUpgradeShop()
+        {
+            if (IsMaxGrade) return false;
+            return CanAffordNextUpgrade() && HasRequiredStarsForUpgrade();
+        }
+        
+        /// <summary>
         /// Check if at max grade
         /// </summary>
         public bool IsMaxGrade => shopGrade >= 6;
@@ -465,6 +517,14 @@ namespace HairRemovalSim.Core
             if (config == null)
             {
                 Debug.LogError("[ShopManager] No upgrade config for next grade!");
+                return false;
+            }
+            
+            // Check star requirement
+            if (!HasRequiredStarsForUpgrade())
+            {
+                int required = GetRequiredStarsForNextUpgrade();
+                Debug.LogWarning($"[ShopManager] Not enough stars for upgrade! Need ★{required}, have ★{StarRating}");
                 return false;
             }
             

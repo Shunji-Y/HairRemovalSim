@@ -34,6 +34,8 @@ namespace HairRemovalSim.UI
         
         // Event when item is set
         public System.Action<string> OnItemSet;
+        // Event when item is cleared (dragged back to slot)
+        public System.Action OnItemCleared;
         
         private void Awake()
         {
@@ -175,6 +177,7 @@ namespace HairRemovalSim.UI
                         currentItemId = null;
                         sourceSlot = null;
                         RefreshDisplay();
+                        OnItemCleared?.Invoke();
                         
                         Debug.Log($"[ExtraItemDropTarget] Dragged item back to empty ExtraItemSlotUI");
                         return;
@@ -188,6 +191,7 @@ namespace HairRemovalSim.UI
                         currentItemId = null;
                         sourceSlot = null;
                         RefreshDisplay();
+                        OnItemCleared?.Invoke();
                         
                         Debug.Log($"[ExtraItemDropTarget] Dragged item back to same-item ExtraItemSlotUI");
                         return;

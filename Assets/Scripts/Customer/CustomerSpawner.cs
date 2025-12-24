@@ -82,14 +82,17 @@ namespace HairRemovalSim.Customer
         }
         
         /// <summary>
-        /// Get effective attraction level including ad boost
+        /// Get effective attraction level including ad boost and percentage boost
         /// </summary>
         public float GetEffectiveAttraction()
         {
-            float total = _currentAttractionLevel;
+            float baseAndAd = _currentAttractionLevel;
             
             // Add advertising boost (now in points, not percentage)
-            total += AdvertisingManager.Instance?.GetAttractionBoost() ?? 0f;
+            baseAndAd += AdvertisingManager.Instance?.GetAttractionBoost() ?? 0f;
+            
+            // Apply percentage boost from placement items (e.g., 10% boost)
+            float total = baseAndAd * (1f + _attractionPercentBoost);
             
             // Clamp to cap
             int cap = GetAttractionCap();
@@ -135,6 +138,61 @@ namespace HairRemovalSim.Customer
         {
             _facilityBoost = Mathf.Clamp(_facilityBoost + boost, 0f, 0.3f);
             Debug.Log($"[CustomerSpawner] Facility boost updated: {_facilityBoost:P0}");
+        }
+        
+        // ==========================================
+        // Checkout Item Effects
+        // ==========================================
+        
+        private float _nextDayAttractionBoost = 0f;
+        private float _attractionPercentBoost = 0f;
+        
+        /// <summary>
+        /// Add permanent attraction boost from checkout items (e.g. membership stamp)
+        /// </summary>
+        public void AddAttractionBoost(float boost)
+        {
+            int cap = GetAttractionCap();
+            _currentAttractionLevel = Mathf.Clamp(_currentAttractionLevel + boost, 10f, cap);
+            Debug.Log($"[CustomerSpawner] Attraction boost +{boost:F1} → {_currentAttractionLevel:F0}/{cap}");
+        }
+        
+        /// <summary>
+        /// Add percentage attraction boost from placement items (0.10 = 10%)
+        /// Applied as multiplier on (base + ad boost)
+        /// </summary>
+        public void AddAttractionPercentBoost(float percentBoost)
+        {
+            _attractionPercentBoost += percentBoost;
+            Debug.Log($"[CustomerSpawner] Attraction percent boost +{percentBoost:P0} (total: {_attractionPercentBoost:P0})");
+        }
+        
+        /// <summary>
+        /// Get current attraction percent boost
+        /// </summary>
+        public float AttractionPercentBoost => _attractionPercentBoost;
+        
+        /// <summary>
+        /// Add next-day attraction boost from checkout items (e.g. coupon)
+        /// Applied at day start, cleared at day end
+        /// </summary>
+        public void AddNextDayAttractionBoost(float boost)
+        {
+            _nextDayAttractionBoost += boost;
+            Debug.Log($"[CustomerSpawner] Next day attraction boost +{boost:F1} (total: {_nextDayAttractionBoost:F1})");
+        }
+        
+        /// <summary>
+        /// Apply pending next-day boosts (call at day start)
+        /// </summary>
+        public void ApplyNextDayBoosts()
+        {
+            if (_nextDayAttractionBoost > 0f)
+            {
+                AddAttractionBoost(_nextDayAttractionBoost);
+                Debug.Log($"[CustomerSpawner] Applied next day boost: +{_nextDayAttractionBoost:F1}");
+                _nextDayAttractionBoost = 0f;
+            }
         }
         
         /// <summary>

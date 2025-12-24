@@ -435,7 +435,7 @@ namespace HairRemovalSim.Environment
             
             // Place in matching slot
             bed.laserBody.PlaceItem(laserTool.itemData.targetArea, laserTool.itemData, laserTool.gameObject);
-            Debug.Log($"[ShelfSlotInteractable] Returned {laserTool.itemData.displayName} to LaserBody");
+            Debug.Log($"[ShelfSlotInteractable] Returned {laserTool.itemData.name} to LaserBody");
         }
         
         /// <summary>

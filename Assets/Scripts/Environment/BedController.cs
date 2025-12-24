@@ -437,7 +437,7 @@ namespace HairRemovalSim.Environment
             // Place in appropriate slot
             laserBody.PlaceItem(itemData.targetArea, itemData, currentTool.gameObject);
             
-            Debug.Log($"[BedController] Returned {itemData.displayName} to LaserBody");
+            Debug.Log($"[BedController] Returned {itemData.name} to LaserBody");
         }
         
         // ========== STAFF TREATMENT CONTROL ==========

@@ -4,6 +4,7 @@ using UnityEngine.EventSystems;
 using TMPro;
 using HairRemovalSim.Customer;
 using HairRemovalSim.Core;
+using HairRemovalSim.Core.Effects;
 using System.Collections.Generic;
 
 namespace HairRemovalSim.UI
@@ -216,6 +217,12 @@ namespace HairRemovalSim.UI
             // Add item bonus
             totalReview += addedItemReviewBonus;
             
+            // Apply placement item review percent boost (e.g., 5% boost)
+            if (ShopManager.Instance != null && ShopManager.Instance.ReviewPercentBoost > 0f)
+            {
+                totalReview = Mathf.RoundToInt(totalReview * (1f + ShopManager.Instance.ReviewPercentBoost));
+            }
+            
             return totalReview;
         }
         
@@ -278,6 +285,33 @@ namespace HairRemovalSim.UI
             UpdateDisplay();
             
             Debug.Log($"[PaymentPanel] Added item: {itemId}, price: ${addedItemPrice}, reviewBonus: {addedItemReviewBonus}");
+        }
+        
+        /// <summary>
+        /// Apply effects from checkout item (attraction boosts, etc.)
+        /// </summary>
+        private void ApplyCheckoutItemEffects(ItemData itemData)
+        {
+            if (itemData == null || itemData.effects == null || itemData.effects.Count == 0) return;
+            
+            var ctx = EffectContext.CreateForRegister();
+            EffectHelper.ApplyEffects(itemData, ctx);
+            
+            // Apply attraction boost to CustomerSpawner
+            var spawner = FindObjectOfType<CustomerSpawner>();
+            if (spawner != null)
+            {
+                if (ctx.AttractionBoost > 0f)
+                {
+                    spawner.AddAttractionBoost(ctx.AttractionBoost);
+                }
+                if (ctx.NextDayAttractionBoost > 0f)
+                {
+                    spawner.AddNextDayAttractionBoost(ctx.NextDayAttractionBoost);
+                }
+            }
+            
+            Debug.Log($"[PaymentPanel] Applied checkout effects: AttractionBoost={ctx.AttractionBoost}, NextDay={ctx.NextDayAttractionBoost}");
         }
         
         /// <summary>
@@ -357,6 +391,16 @@ namespace HairRemovalSim.UI
             
             // Process payment
             EconomyManager.Instance.AddMoney(totalAmount);
+            
+            // Apply checkout item effects on successful payment
+            if (!string.IsNullOrEmpty(addedItemId))
+            {
+                var itemData = ItemDataRegistry.Instance?.GetItem(addedItemId);
+                if (itemData != null)
+                {
+                    ApplyCheckoutItemEffects(itemData);
+                }
+            }
             
             // Submit review
             if (ShopManager.Instance != null)

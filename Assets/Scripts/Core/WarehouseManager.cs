@@ -169,7 +169,7 @@ namespace HairRemovalSim.Core
             int added = quantity - remaining;
             if (added > 0)
             {
-                Debug.Log($"[WarehouseManager] Added {added}x {itemData.displayName}");
+                Debug.Log($"[WarehouseManager] Added {added}x {itemData.name}");
                 OnWarehouseUpdated?.Invoke();
             }
             

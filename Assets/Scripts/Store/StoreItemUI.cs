@@ -88,7 +88,7 @@ namespace HairRemovalSim.Store
             if (iconImage != null)
                 iconImage.sprite = itemData.icon;
             if (nameText != null)
-                nameText.text = itemData.displayName;
+                nameText.text = itemData.GetLocalizedName();
             if (priceText != null)
                 priceText.text = $"${itemData.price * selectedQuantity:N0}";
             if (quantityText != null)
@@ -156,9 +156,7 @@ namespace HairRemovalSim.Store
                 
             if (storePanel != null && itemData != null)
             {
-                string tooltipText = !string.IsNullOrEmpty(itemData.storeDescription) 
-                    ? itemData.storeDescription 
-                    : itemData.description;
+                string tooltipText = itemData.GetLocalizedDescription();
                 storePanel.ShowTooltip(tooltipText, GetComponent<RectTransform>());
             }
         }

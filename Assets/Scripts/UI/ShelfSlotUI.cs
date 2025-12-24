@@ -343,7 +343,7 @@ namespace HairRemovalSim.UI
             // Check if this item can be placed on shelf
             if (!itemData.canPlaceOnShelf)
             {
-                Debug.Log($"[ShelfSlotUI] {itemData.displayName} cannot be placed on treatment shelf");
+                Debug.Log($"[ShelfSlotUI] {itemData.name} cannot be placed on treatment shelf");
                 return;
             }
             
@@ -412,14 +412,14 @@ namespace HairRemovalSim.UI
             // Validate this is a laser of correct type
             if (itemData.toolType != TreatmentToolType.Laser)
             {
-                Debug.Log($"[ShelfSlotUI] Only lasers can be placed in laser slot. {itemData.displayName} is {itemData.toolType}");
+                Debug.Log($"[ShelfSlotUI] Only lasers can be placed in laser slot. {itemData.name} is {itemData.toolType}");
                 return;
             }
             
             var requiredArea = slotMode == SlotMode.FaceLaser ? ToolTargetArea.Face : ToolTargetArea.Body;
             if (itemData.targetArea != requiredArea && itemData.targetArea != ToolTargetArea.All)
             {
-                Debug.Log($"[ShelfSlotUI] {itemData.displayName} is {itemData.targetArea}, slot requires {requiredArea}");
+                Debug.Log($"[ShelfSlotUI] {itemData.name} is {itemData.targetArea}, slot requires {requiredArea}");
                 return;
             }
             
@@ -447,7 +447,7 @@ namespace HairRemovalSim.UI
                 RefreshFromLaserBody();
                 warehouseSource.RefreshFromWarehouse();
                 
-                Debug.Log($"[ShelfSlotUI] Placed {itemData.displayName} on LaserBody {requiredArea} slot");
+                Debug.Log($"[ShelfSlotUI] Placed {itemData.name} on LaserBody {requiredArea} slot");
             }
             else
             {
@@ -505,13 +505,13 @@ namespace HairRemovalSim.UI
                     // Success - return to pool
                     ItemPoolManager.Instance?.ReturnItem(itemData.itemId, instance);
                     RefreshFromLaserBody();
-                    Debug.Log($"[ShelfSlotUI] Returned {itemData.displayName} to warehouse");
+                    Debug.Log($"[ShelfSlotUI] Returned {itemData.name} to warehouse");
                 }
                 else
                 {
                     // Failed to add to warehouse - put back on LaserBody
                     linkedBed.laserBody.PlaceItem(requiredArea, itemData, instance);
-                    Debug.LogWarning($"[ShelfSlotUI] Warehouse full, cannot return {itemData.displayName}");
+                    Debug.LogWarning($"[ShelfSlotUI] Warehouse full, cannot return {itemData.name}");
                 }
             }
         }

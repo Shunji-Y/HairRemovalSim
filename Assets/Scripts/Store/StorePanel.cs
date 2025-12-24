@@ -199,7 +199,7 @@ namespace HairRemovalSim.Store
             }
             
             RefreshCartDisplay();
-            Debug.Log($"[StorePanel] Added {quantity}x {item.displayName} to cart");
+            Debug.Log($"[StorePanel] Added {quantity}x {item.name} to cart");
         }
         
         /// <summary>
@@ -258,7 +258,7 @@ namespace HairRemovalSim.Store
                 {
                     cartUI.SetData(
                         entry.itemData.itemId,
-                        entry.itemData.displayName,
+                        entry.itemData.GetLocalizedName(),
                         entry.quantity,
                         entry.itemData.price,
                         this
@@ -332,7 +332,7 @@ namespace HairRemovalSim.Store
                     foreach (var entry in cart.Values)
                     {
                         InventoryManager.Instance.AddPendingOrder(entry.itemData, entry.quantity);
-                        Debug.Log($"[StorePanel] Ordered {entry.quantity}x {entry.itemData.displayName} (delivered tomorrow)");
+                        Debug.Log($"[StorePanel] Ordered {entry.quantity}x {entry.itemData.name} (delivered tomorrow)");
                     }
                 }
                 

@@ -3,6 +3,7 @@ using UnityEngine.AI;
 using System.Collections.Generic;
 using HairRemovalSim.Interaction;
 using HairRemovalSim.Core;
+using HairRemovalSim.Core.Effects;
 using HairRemovalSim.Player;
 using HairRemovalSim.Treatment;
 
@@ -32,6 +33,9 @@ namespace HairRemovalSim.Customer
         [Header("Staff Processing")]
         [SerializeField] private float staffReviewCoefficient = 1f; // Applied when staff handles
         [SerializeField] private bool upsellSuccess = false; // True if staff upsell succeeded
+        
+        [Header("Applied Effects")]
+        private EffectContext appliedEffects; // Effects applied from reception items
 
         private CustomerState currentState;
         public CustomerState CurrentState => currentState; // Public read-only access
@@ -1093,14 +1097,21 @@ namespace HairRemovalSim.Customer
         /// </summary>
         public bool AddPain(float amount)
         {
+            // Check if pain judgment should be skipped (from effects)
+            if (appliedEffects != null && appliedEffects.IgnorePainJudgment)
+            {
+                return false;
+            }
+            
             // Scale pain by tolerance (0 = no tolerance, 1 = full tolerance)
             float scaledAmount = amount * (1f - data.painTolerance);
             
-            // Apply anesthesia cream effect (50% pain reduction)
-            if (data.useAnesthesiaCream)
+            // Apply pain rate reduction from effects
+            if (appliedEffects != null && appliedEffects.PainRateMultiplier < 1f)
             {
-                scaledAmount *= 0.5f;
+                scaledAmount *= appliedEffects.PainRateMultiplier;
             }
+
             
             currentPain += scaledAmount;
             currentPain = Mathf.Clamp(currentPain, 0f, maxPain);
@@ -1108,10 +1119,13 @@ namespace HairRemovalSim.Customer
             int painLevel = PainLevel;
             bool triggeredReaction = false;
             
+            // Check if pain animation should be disabled (from effects)
+            bool disableAnimation = appliedEffects != null && appliedEffects.DisablePainAnimation;
+            
             // Stage 1: Small reaction with low probability (0-50%)
             if (painLevel == 1)
             {
-                if (animator != null && amount > 0 && Random.value < painReactionProbability)
+                if (!disableAnimation && animator != null && amount > 0 && Random.value < painReactionProbability)
                 {
                     animator.SetTrigger("Pain");
                     if (HairRemovalSim.Core.SoundManager.Instance != null)
@@ -1124,7 +1138,7 @@ namespace HairRemovalSim.Customer
             // Stage 2: Larger reaction with higher probability (51-99%)
             else if (painLevel == 2)
             {
-                if (animator != null && amount > 0 && Random.value < painReactionProbabilityStage2)
+                if (!disableAnimation && animator != null && amount > 0 && Random.value < painReactionProbabilityStage2)
                 {
                     animator.SetTrigger("PainStrong"); // Larger reaction
                     if (HairRemovalSim.Core.SoundManager.Instance != null)
@@ -1137,6 +1151,15 @@ namespace HairRemovalSim.Customer
             // Stage 3: Extreme pain, block treatment (100%)
             else if (painLevel == 3 && !isInPainStage3)
             {
+                // Check if customer can endure pain (from effects)
+                if (appliedEffects != null && appliedEffects.PainEnduranceCount > 0)
+                {
+                    appliedEffects.PainEnduranceCount--;
+                    currentPain = 0;// painRecoveryThreshold; // Reset to recovery threshold
+                    Debug.Log($"[CustomerController] {data.customerName} endured 100% pain! Remaining endurance: {appliedEffects.PainEnduranceCount}");
+                    return false; // No reaction, customer endured
+                }
+                
                 isInPainStage3 = true;
                 painHoldTimer = painHoldDuration; // Hold at 100% before decay starts
                 painMaxCount++; // Track for review penalty
@@ -1164,8 +1187,8 @@ namespace HairRemovalSim.Customer
                     return true;
                 }
                 
-                // Trigger writhing animation
-                if (animator != null)
+                // Trigger writhing animation (unless disabled)
+                if (!disableAnimation && animator != null)
                 {
                     animator.SetTrigger("PainExtreme");
                 }
@@ -1197,6 +1220,31 @@ namespace HairRemovalSim.Customer
             currentPain = Mathf.Max(0f, currentPain);
             Debug.Log($"[CustomerController] {data.customerName} pain reduced by {amount}. Current: {currentPain}");
         }
+        
+        /// <summary>
+        /// Apply reception item effects to this customer.
+        /// Called when reception confirms with an extra item.
+        /// </summary>
+        public void ApplyReceptionEffects(ItemData item)
+        {
+            if (item == null || item.effects == null || item.effects.Count == 0) return;
+            
+            // Initialize effect context if needed
+            if (appliedEffects == null)
+            {
+                appliedEffects = EffectContext.CreateForReception(this);
+            }
+            
+            // Apply all effects from the item
+            EffectHelper.ApplyEffects(item, appliedEffects);
+            
+            Debug.Log($"[CustomerController] Applied reception effects from {item.name} to {data.customerName}");
+        }
+        
+        /// <summary>
+        /// Get the applied effect context (for checking effect status)
+        /// </summary>
+        public EffectContext GetAppliedEffects() => appliedEffects;
         
         /// <summary>
         /// Apply review penalty when customer reaches pain stage 3

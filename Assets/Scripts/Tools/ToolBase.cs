@@ -42,7 +42,7 @@ namespace HairRemovalSim.Tools
         [SerializeField] protected int currentDurability;
         
         // Properties from ItemData
-        public string toolName => itemData != null ? itemData.displayName : gameObject.name;
+        public string toolName => itemData != null ? itemData.GetLocalizedName() : gameObject.name;
         public string itemId => itemData != null ? itemData.itemId : "";
         public Sprite toolIcon => itemData?.icon;
         public Vector3 handPositionOffset => itemData != null ? itemData.handPosition : Vector3.zero;

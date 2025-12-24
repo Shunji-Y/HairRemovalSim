@@ -12,8 +12,8 @@ namespace HairRemovalSim.Core
         [System.Serializable]
         public class ItemPoolEntry
         {
-            public string itemId;
-            public GameObject prefab;
+            [Tooltip("ItemData asset containing itemId and prefab")]
+            public ItemData itemData;
             public int initialPoolSize = 3;
         }
         
@@ -43,21 +43,36 @@ namespace HairRemovalSim.Core
             // Build lookup and create pools
             foreach (var entry in itemEntries)
             {
-                if (string.IsNullOrEmpty(entry.itemId) || entry.prefab == null)
+                if (entry.itemData == null)
                 {
-                    Debug.LogWarning("[ItemPoolManager] Invalid item entry - skipping");
+                    Debug.LogWarning("[ItemPoolManager] ItemData is null - skipping entry");
                     continue;
                 }
                 
-                itemLookup[entry.itemId] = entry;
-                itemPools[entry.itemId] = new Queue<GameObject>();
+                string itemId = entry.itemData.itemId;
+                GameObject prefab = entry.itemData.prefab;
+                
+                if (string.IsNullOrEmpty(itemId) || prefab == null)
+                {
+                    Debug.LogWarning($"[ItemPoolManager] Invalid ItemData '{entry.itemData.name}' - missing itemId or prefab");
+                    continue;
+                }
+                
+                if (itemLookup.ContainsKey(itemId))
+                {
+                    Debug.LogWarning($"[ItemPoolManager] Duplicate itemId '{itemId}' - skipping");
+                    continue;
+                }
+                
+                itemLookup[itemId] = entry;
+                itemPools[itemId] = new Queue<GameObject>();
                 
                 // Pre-instantiate pool
                 for (int i = 0; i < entry.initialPoolSize; i++)
                 {
-                    GameObject obj = Instantiate(entry.prefab, poolParent);
+                    GameObject obj = Instantiate(prefab, poolParent);
                     obj.SetActive(false);
-                    itemPools[entry.itemId].Enqueue(obj);
+                    itemPools[itemId].Enqueue(obj);
                 }
             }
             
@@ -84,7 +99,7 @@ namespace HairRemovalSim.Core
             else
             {
                 // Pool empty - create new instance
-                obj = Instantiate(entry.prefab, poolParent);
+                obj = Instantiate(entry.itemData.prefab, poolParent);
             }
             
             obj.SetActive(true);
@@ -142,7 +157,19 @@ namespace HairRemovalSim.Core
         {
             if (itemLookup.TryGetValue(itemId, out var entry))
             {
-                return entry.prefab;
+                return entry.itemData.prefab;
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// Get the ItemData for an item
+        /// </summary>
+        public ItemData GetItemData(string itemId)
+        {
+            if (itemLookup.TryGetValue(itemId, out var entry))
+            {
+                return entry.itemData;
             }
             return null;
         }

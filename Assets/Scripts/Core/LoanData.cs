@@ -30,7 +30,7 @@ namespace HairRemovalSim.Core
         public int maxAmount = 100000;
         
         [Tooltip("Daily interest rate (e.g., 0.001 = 0.1% per day)")]
-        [Range(0.0001f, 0.01f)]
+        [Range(0.0001f, 0.03f)]
         public float dailyInterestRate = 0.001f;
         
         [Tooltip("Loan term in days")]

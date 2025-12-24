@@ -58,7 +58,7 @@ namespace HairRemovalSim.Store
             if (itemIcon != null)
                 itemIcon.sprite = item.icon;
             if (itemNameText != null)
-                itemNameText.text = item.displayName;
+                itemNameText.text = item.GetLocalizedName();
             if (quantityText != null)
                 quantityText.text = $"x{quantity}";
             if (totalPriceText != null)

@@ -68,10 +68,7 @@ namespace HairRemovalSim.UI
             // Name (localized)
             if (nameText != null)
             {
-                string localizedName = L?.Get(itemData.nameKey);
-                nameText.text = string.IsNullOrEmpty(localizedName) || localizedName.StartsWith("[")
-                    ? itemData.displayName
-                    : localizedName;
+                nameText.text = itemData.GetLocalizedName();
             }
             
             // Quantity

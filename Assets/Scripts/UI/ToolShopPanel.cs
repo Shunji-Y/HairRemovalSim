@@ -27,6 +27,7 @@ namespace HairRemovalSim.UI
         [SerializeField] private Button shaversTab;
         [SerializeField] private Button coolingTab;
         [SerializeField] private Button miscTab;
+        [SerializeField] private Button placementTab;
         
         [Header("Tool Cards")]
         [SerializeField] private Transform cardsContainer;
@@ -62,6 +63,7 @@ namespace HairRemovalSim.UI
         private ItemData pendingSell;
         private TreatmentToolType currentFilter = TreatmentToolType.Laser;
         private bool isSellMode = false;
+        private bool isPlacementMode = false;
         
         public bool IsOpen => panel != null && panel.activeSelf;
         
@@ -81,6 +83,8 @@ namespace HairRemovalSim.UI
                 coolingTab.onClick.AddListener(() => SetFilter(TreatmentToolType.None)); // For cooling items
             if (miscTab != null)
                 miscTab.onClick.AddListener(() => SetFilter(TreatmentToolType.Other));
+            if (placementTab != null)
+                placementTab.onClick.AddListener(ShowPlacementItems);
             
             // Setup purchase dialog buttons
             if (confirmButton != null)
@@ -146,6 +150,14 @@ namespace HairRemovalSim.UI
         private void SetFilter(TreatmentToolType filter)
         {
             currentFilter = filter;
+            isPlacementMode = false;
+            CloseSellMode();
+            RefreshCards();
+        }
+        
+        private void ShowPlacementItems()
+        {
+            isPlacementMode = true;
             CloseSellMode();
             RefreshCards();
         }
@@ -178,11 +190,81 @@ namespace HairRemovalSim.UI
             ClearCards();
             
             int currentGrade = GetCurrentShopGrade();
-            var tools = GetFilteredTools();
             
-            foreach (var tool in tools)
+            if (isPlacementMode)
             {
-                CreateToolCard(tool, currentGrade);
+                RefreshPlacementCards(currentGrade);
+            }
+            else
+            {
+                var tools = GetFilteredTools();
+                foreach (var tool in tools)
+                {
+                    CreateToolCard(tool, currentGrade);
+                }
+            }
+        }
+        
+        private void RefreshPlacementCards(int currentGrade)
+        {
+            if (PlacementManager.Instance == null || ItemDataRegistry.Instance == null) return;
+            
+            var items = PlacementManager.Instance.GetAllPlacementItems();
+            
+            foreach (var item in items)
+            {
+                // Grade filter
+                int gradeDiff = item.requiredShopGrade - currentGrade;
+                if (gradeDiff >= 2) continue;
+                
+                bool isOwned = PlacementManager.Instance.IsOwned(item.itemId);
+                CreatePlacementCard(item, currentGrade, isOwned);
+            }
+        }
+        
+        private void CreatePlacementCard(ItemData item, int currentGrade, bool isOwned)
+        {
+            if (toolCardPrefab == null || cardsContainer == null) return;
+            
+            var cardObj = Instantiate(toolCardPrefab, cardsContainer);
+            toolCards.Add(cardObj);
+            
+            var card = cardObj.GetComponent<ToolShopCardUI>();
+            if (card != null)
+            {
+                if (isOwned)
+                {
+                    // Show as sellable (50% refund)
+                    card.Setup(item, currentGrade, null);
+                    // For now, just don't allow purchase
+                    // TODO: Add sell button support to ToolShopCardUI
+                }
+                else
+                {
+                    // Show as purchasable
+                    card.Setup(item, currentGrade, OnPlacementPurchaseCallback);
+                }
+            }
+        }
+        
+        private void OnPlacementPurchaseCallback(ItemData item)
+        {
+            pendingPurchase = item;
+            ShowConfirmDialog(item);
+        }
+        
+        private void OnPlacementPurchaseRequested(ItemData item)
+        {
+            pendingPurchase = item;
+            ShowConfirmDialog(item);
+        }
+        
+        private void OnSellPlacementItem(ItemData item)
+        {
+            if (PlacementManager.Instance != null)
+            {
+                PlacementManager.Instance.RemoveItem(item.itemId);
+                RefreshCards();
             }
         }
         
@@ -255,6 +337,25 @@ namespace HairRemovalSim.UI
         {
             if (pendingPurchase == null) return;
             
+            // Handle placement items differently
+            if (isPlacementMode)
+            {
+                if (PlacementManager.Instance != null)
+                {
+                    if (PlacementManager.Instance.PlaceItem(pendingPurchase))
+                    {
+                        Debug.Log($"[ToolShopPanel] Placed: {pendingPurchase.name}");
+                    }
+                    else
+                    {
+                        Debug.Log("[ToolShopPanel] Failed to place item (not enough money or already owned)");
+                    }
+                }
+                CloseConfirmDialog();
+                RefreshCards();
+                return;
+            }
+            
             // Check money
             if (EconomyManager.Instance == null || 
                 !EconomyManager.Instance.SpendMoney(pendingPurchase.price))
@@ -267,7 +368,7 @@ namespace HairRemovalSim.UI
             // Schedule delivery for next day
             ScheduleDelivery(pendingPurchase);
             
-            Debug.Log($"[ToolShopPanel] Purchased: {pendingPurchase.displayName} - Delivery scheduled");
+            Debug.Log($"[ToolShopPanel] Purchased: {pendingPurchase.name} - Delivery scheduled");
             
             CloseConfirmDialog();
             RefreshCards();
@@ -279,7 +380,7 @@ namespace HairRemovalSim.UI
             if (HairRemovalSim.Store.InventoryManager.Instance != null)
             {
                 HairRemovalSim.Store.InventoryManager.Instance.AddPendingOrder(item, 1);
-                Debug.Log($"[ToolShopPanel] {item.displayName} ordered - will be delivered tomorrow");
+                Debug.Log($"[ToolShopPanel] {item.name} ordered - will be delivered tomorrow");
             }
             else
             {
@@ -393,7 +494,7 @@ namespace HairRemovalSim.UI
             foreach (var kvp in warehouseItems)
             {
                 var itemData = ItemDataRegistry.Instance?.GetItem(kvp.Key);
-                Debug.Log($"[ToolShopPanel] Checking item: {kvp.Key}, qty: {kvp.Value}, itemData: {itemData?.displayName ?? "null"}, IsTool: {itemData?.IsTreatmentTool}");
+                Debug.Log($"[ToolShopPanel] Checking item: {kvp.Key}, qty: {kvp.Value}, itemData: {itemData?.name ?? "null"}, IsTool: {itemData?.IsTreatmentTool}");
                 
                 if (itemData != null && itemData.cantSell)
                 {
@@ -450,10 +551,7 @@ namespace HairRemovalSim.UI
             
             if (sellConfirmName != null)
             {
-                string localizedName = L?.Get(tool.nameKey);
-                sellConfirmName.text = string.IsNullOrEmpty(localizedName) || localizedName.StartsWith("[")
-                    ? tool.displayName
-                    : localizedName;
+                sellConfirmName.text = tool.GetLocalizedName();
             }
             
             if (sellConfirmPrice != null)
@@ -484,7 +582,7 @@ namespace HairRemovalSim.UI
                     int sellPrice = pendingSell.price / 2;
                     EconomyManager.Instance?.AddMoney(sellPrice);
                     
-                    Debug.Log($"[ToolShopPanel] Sold {pendingSell.displayName} for ${sellPrice}");
+                    Debug.Log($"[ToolShopPanel] Sold {pendingSell.name} for ${sellPrice}");
                     
                     // Update UI
                     UpdateMoneyDisplay();

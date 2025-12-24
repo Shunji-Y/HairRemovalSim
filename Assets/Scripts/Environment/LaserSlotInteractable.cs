@@ -116,7 +116,7 @@ namespace HairRemovalSim.Environment
                 if (tool != null)
                 {
                     interactionController.EquipTool(tool);
-                    Debug.Log($"[LaserSlotInteractable] Equipped {item.displayName} from {slotType} slot");
+                    Debug.Log($"[LaserSlotInteractable] Equipped {item.name} from {slotType} slot");
                 }
             }
             
@@ -133,7 +133,7 @@ namespace HairRemovalSim.Environment
             
             // Place in slot
             laserBody.PlaceItem(slotType, toolData, toolObject);
-            Debug.Log($"[LaserSlotInteractable] Placed {toolData.displayName} in {slotType} slot");
+            Debug.Log($"[LaserSlotInteractable] Placed {toolData.name} in {slotType} slot");
             
             // Clear highlight after placing
             OnHoverExit();
@@ -181,7 +181,7 @@ namespace HairRemovalSim.Environment
                 // Laser -> return to LaserBody
                 ToolTargetArea originalSlot = toolData.targetArea;
                 laserBody.PlaceItem(originalSlot, toolData, toolObject);
-                Debug.Log($"[LaserSlotInteractable] Returned laser {toolData.displayName} to {originalSlot} slot");
+                Debug.Log($"[LaserSlotInteractable] Returned laser {toolData.name} to {originalSlot} slot");
             }
             else
             {
@@ -222,7 +222,7 @@ namespace HairRemovalSim.Environment
                 string itemId = toolData.itemId;
                 if (shelf.PlaceItemDirect(0, 0, itemId, toolObject))
                 {
-                    Debug.Log($"[LaserSlotInteractable] Placed {toolData.displayName} on TreatmentShelf slot [0,0]");
+                    Debug.Log($"[LaserSlotInteractable] Placed {toolData.name} on TreatmentShelf slot [0,0]");
                     return;
                 }
             }
@@ -237,7 +237,7 @@ namespace HairRemovalSim.Environment
             
             if (slotItem != null)
             {
-                return $"Equip {slotItem.displayName}";
+                return $"Equip {slotItem.name}";
             }
             else
             {

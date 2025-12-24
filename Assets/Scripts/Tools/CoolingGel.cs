@@ -1,6 +1,7 @@
 using UnityEngine;
 using HairRemovalSim.Customer;
 using HairRemovalSim.Core;
+using HairRemovalSim.Core.Effects;
 
 namespace HairRemovalSim.Tools
 {
@@ -11,8 +12,8 @@ namespace HairRemovalSim.Tools
     public class CoolingGel : LeftHandTool
     {
         [Header("Cooling Gel Settings")]
-        [Tooltip("Amount of pain to reduce when used")]
-        public float painReduction = 30f;
+        [Tooltip("Fallback pain reduction if no ItemData effects (legacy)")]
+        public float fallbackPainReduction = 30f;
         
         [Header("Effect")]
         [Tooltip("Effect name to play from EffectManager")]
@@ -56,6 +57,20 @@ namespace HairRemovalSim.Tools
         
         private void ApplyCooling(CustomerController customer, Vector3 position)
         {
+            float painReduction = fallbackPainReduction;
+            
+            // Use ItemData effects if available
+            if (itemData != null && itemData.effects != null && itemData.effects.Count > 0)
+            {
+                var ctx = EffectContext.CreateForTreatment(customer, customer.currentPain);
+                EffectHelper.ApplyEffects(itemData, ctx);
+                
+                if (ctx.PainReduction > 0f)
+                {
+                    painReduction = ctx.PainReduction;
+                }
+            }
+            
             // Reduce pain
             customer.ReducePain(painReduction);
             

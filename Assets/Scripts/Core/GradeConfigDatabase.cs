@@ -23,6 +23,9 @@ namespace HairRemovalSim.Core
         
         [Tooltip("Rent cost every 3 days")]
         public int rent = 50;
+        
+        [Tooltip("Required stars to upgrade to this grade")]
+        public int requiredStars = 1;
     }
     
     /// <summary>
@@ -36,13 +39,13 @@ namespace HairRemovalSim.Core
         [Tooltip("Configuration for each grade level (index 0 = Grade 1/★1, etc.)")]
         [SerializeField] private GradeConfig[] gradeConfigs = new GradeConfig[]
         {
-            new GradeConfig { grade = 1, maxCustomers = 18, attractionCap = 100, reviewThreshold = 0, rent = 50 },
-            new GradeConfig { grade = 2, maxCustomers = 36, attractionCap = 250, reviewThreshold = 1200, rent = 150 },
-            new GradeConfig { grade = 3, maxCustomers = 72, attractionCap = 400, reviewThreshold = 4500, rent = 400 },
-            new GradeConfig { grade = 4, maxCustomers = 108, attractionCap = 600, reviewThreshold = 22000, rent = 800 },
-            new GradeConfig { grade = 5, maxCustomers = 144, attractionCap = 800, reviewThreshold = 50000, rent = 1200 },
-            new GradeConfig { grade = 6, maxCustomers = 220, attractionCap = 1200, reviewThreshold = 140000, rent = 1800 },
-            new GradeConfig { grade = 7, maxCustomers = 220, attractionCap = 1200, reviewThreshold = 400000, rent = 2500 },
+            new GradeConfig { grade = 1, maxCustomers = 18, attractionCap = 100, reviewThreshold = 0, rent = 50, requiredStars = 1 },
+            new GradeConfig { grade = 2, maxCustomers = 36, attractionCap = 250, reviewThreshold = 1200, rent = 150, requiredStars = 2 },
+            new GradeConfig { grade = 3, maxCustomers = 72, attractionCap = 400, reviewThreshold = 4500, rent = 400, requiredStars = 3 },
+            new GradeConfig { grade = 4, maxCustomers = 108, attractionCap = 600, reviewThreshold = 22000, rent = 800, requiredStars = 4 },
+            new GradeConfig { grade = 5, maxCustomers = 144, attractionCap = 800, reviewThreshold = 50000, rent = 1200, requiredStars = 5 },
+            new GradeConfig { grade = 6, maxCustomers = 220, attractionCap = 1200, reviewThreshold = 140000, rent = 1800, requiredStars = 6 },
+            new GradeConfig { grade = 7, maxCustomers = 220, attractionCap = 1200, reviewThreshold = 400000, rent = 2500, requiredStars = 7 },
         };
         
         /// <summary>
@@ -80,6 +83,14 @@ namespace HairRemovalSim.Core
         public int GetRent(int grade)
         {
             return GetConfig(grade).rent;
+        }
+        
+        /// <summary>
+        /// Get required stars to upgrade to a grade
+        /// </summary>
+        public int GetRequiredStars(int targetGrade)
+        {
+            return GetConfig(targetGrade).requiredStars;
         }
         
         /// <summary>

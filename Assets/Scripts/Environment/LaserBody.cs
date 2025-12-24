@@ -117,7 +117,7 @@ namespace HairRemovalSim.Environment
             // Only allow Laser type tools on LaserBody
             if (item.toolType != TreatmentToolType.Laser)
             {
-                Debug.Log($"[LaserBody] Only Laser type tools can be placed here. {item.displayName} is {item.toolType}");
+                Debug.Log($"[LaserBody] Only Laser type tools can be placed here. {item.name} is {item.toolType}");
                 return false;
             }
             
@@ -177,7 +177,7 @@ namespace HairRemovalSim.Environment
                 bodyItemInstance = instance;
             }
             
-            Debug.Log($"[LaserBody] Placed {item.displayName} in {slotType} slot");
+            Debug.Log($"[LaserBody] Placed {item.name} in {slotType} slot");
             return true;
         }
         
@@ -218,7 +218,7 @@ namespace HairRemovalSim.Environment
             
             if (item != null)
             {
-                Debug.Log($"[LaserBody] Removed {item.displayName} from {slotType} slot");
+                Debug.Log($"[LaserBody] Removed {item.name} from {slotType} slot");
             }
             
             return (item, instance);
