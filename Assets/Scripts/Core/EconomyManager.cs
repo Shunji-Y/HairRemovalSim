@@ -8,6 +8,9 @@ namespace HairRemovalSim.Core
         public int CurrentMoney { get; private set; } = 1000; // Starting money
         public int CurrentDebt { get; private set; } = 0;
         
+        // Event for daily stats tracking (positive = revenue, negative = expense)
+        public event System.Action<int> OnMoneyChanged;
+        
         [Header("Fixed Costs (Every 3 Days)")]
         public int rent = 50000; // 家賃（3日ごと）
         public int laborCost = 0; // 人件費（スタッフ数に依存、3日ごと）
@@ -23,6 +26,7 @@ namespace HairRemovalSim.Core
             CurrentMoney += amount;
             Debug.Log($"Money Added: {amount}. Total: {CurrentMoney}");
             GameEvents.TriggerMoneyChanged(CurrentMoney);
+            OnMoneyChanged?.Invoke(amount);
         }
 
         public bool SpendMoney(int amount)
@@ -32,6 +36,7 @@ namespace HairRemovalSim.Core
                 CurrentMoney -= amount;
                 Debug.Log($"Money Spent: {amount}. Total: {CurrentMoney}");
                 GameEvents.TriggerMoneyChanged(CurrentMoney);
+                OnMoneyChanged?.Invoke(-amount); // Negative for expenses
                 return true;
             }
             return false;

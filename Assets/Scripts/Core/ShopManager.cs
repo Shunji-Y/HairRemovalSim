@@ -251,7 +251,14 @@ namespace HairRemovalSim.Core
         public void AddReview(int baseReview, int painMaxCount)
         {
             int totalReview = baseReview - (painMaxCount * PAIN_MAX_PENALTY);
-            totalReview = Mathf.Max(totalReview, -baseReview);
+            
+            // Clamp to prevent extreme values, but allow negative reviews
+            // If base is positive, don't go below -baseReview (prevent double penalty)
+            // If base is already negative, allow it to go as low as needed
+            if (baseReview > 0)
+            {
+                totalReview = Mathf.Max(totalReview, -baseReview);
+            }
             
             int previousStars = StarRating;
             reviewScore += totalReview;

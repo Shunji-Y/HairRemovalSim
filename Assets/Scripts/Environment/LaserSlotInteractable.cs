@@ -45,6 +45,14 @@ namespace HairRemovalSim.Environment
             
             // Get player's currently equipped tool
             var currentTool = interactor.CurrentTool;
+            
+            // Cannot interact while vacuum is equipped
+            if (currentTool?.itemData?.toolType == TreatmentToolType.Vacuum)
+            {
+                Debug.Log("[LaserSlotInteractable] Cannot interact while vacuum is equipped");
+                return;
+            }
+            
             ItemData currentToolData = null;
             GameObject currentToolObject = null;
             
@@ -65,16 +73,24 @@ namespace HairRemovalSim.Environment
                 return;
             }
             
-            // Case 2: Slot is empty and player has matching tool -> Place in slot
+            // Case 2: Slot is empty and player has matching laser tool -> Place in slot
             if (slotItem == null && currentToolData != null)
             {
+                // Only allow lasers to be placed in laser slots
+                bool isLaser = currentToolData.toolType == TreatmentToolType.Laser;
+                if (!isLaser)
+                {
+                    Debug.Log($"[LaserSlotInteractable] Cannot place non-laser tool ({currentToolData.toolType}) in laser slot");
+                    return;
+                }
+                
                 if (currentToolData.targetArea == slotType || currentToolData.targetArea == ToolTargetArea.All)
                 {
                     PlaceCurrentToolInSlot(currentToolData, currentToolObject);
                 }
                 else
                 {
-                    Debug.Log($"[LaserSlotInteractable] Cannot place {currentToolData.targetArea} tool in {slotType} slot");
+                    Debug.Log($"[LaserSlotInteractable] Cannot place {currentToolData.targetArea} laser in {slotType} slot");
                 }
                 return;
             }
@@ -247,7 +263,16 @@ namespace HairRemovalSim.Environment
         
         public bool CanInteract(InteractionController interactor)
         {
-            return laserBody != null;
+            if (laserBody == null) return false;
+            
+            // Cannot interact while vacuum is equipped
+            var currentTool = interactor?.CurrentTool;
+            if (currentTool?.itemData?.toolType == TreatmentToolType.Vacuum)
+            {
+                return false;
+            }
+            
+            return true;
         }
         
         public void OnHoverEnter()

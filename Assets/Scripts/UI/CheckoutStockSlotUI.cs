@@ -198,12 +198,28 @@ namespace HairRemovalSim.UI
         {
             if (backgroundImage != null)
                 backgroundImage.color = highlightColor;
+            
+            // Show item detail in panel
+            if (!IsEmpty && WarehousePanel.Instance != null)
+            {
+                var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
+                if (itemData != null)
+                {
+                    WarehousePanel.Instance.ShowItemDetail(itemData);
+                }
+            }
         }
         
         public void OnPointerExit(PointerEventData eventData)
         {
             if (backgroundImage != null)
                 backgroundImage.color = normalColor;
+            
+            // Hide item detail
+            if (WarehousePanel.Instance != null)
+            {
+                WarehousePanel.Instance.HideItemDetail();
+            }
         }
         
         /// <summary>

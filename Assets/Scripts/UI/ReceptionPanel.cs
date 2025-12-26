@@ -43,6 +43,10 @@ namespace HairRemovalSim.UI
         [SerializeField] private TMP_Text priceText;
         [SerializeField] private Button confirmButton;
         
+        [Header("Upsell Display")]
+        [SerializeField] private TMP_Text additionalBudgetText;
+        [SerializeField] private TMP_Text successRateText;
+        
         [Header("References")]
         [SerializeField] private TreatmentPriceTable priceTable;
         
@@ -137,6 +141,18 @@ namespace HairRemovalSim.UI
             // Initial price calculation
             RecalculatePrice();
             
+            // Display total budget (plan price + additional budget)
+            if (additionalBudgetText != null && customer != null)
+            {
+                additionalBudgetText.text = $"${customer.GetTotalBudget()}";
+            }
+            
+            // Hide success rate (no item dropped yet)
+            if (successRateText != null)
+            {
+                successRateText.gameObject.SetActive(false);
+            }
+            
             // Show cursor (don't pause game)
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -148,6 +164,12 @@ namespace HairRemovalSim.UI
         public void Cancel()
         {
             Debug.Log($"[ReceptionPanel] Cancelled for {currentCustomer?.data?.customerName ?? "NULL"}");
+            
+            // Resume waiting timer from current value - reception was cancelled
+            if (currentCustomer != null)
+            {
+                currentCustomer.ResumeWaiting();
+            }
             
             // Don't clear dropTarget - keep item there for next open
             
@@ -235,13 +257,52 @@ namespace HairRemovalSim.UI
         private void OnExtraItemSet(string itemId)
         {
             RecalculatePrice();
+            UpdateSuccessRateDisplay(itemId);
             Debug.Log($"[ReceptionPanel] Extra item set: {itemId}");
         }
         
         private void OnExtraItemCleared()
         {
             RecalculatePrice();
+            
+            // Hide success rate when no item is dropped
+            if (successRateText != null)
+            {
+                successRateText.gameObject.SetActive(false);
+            }
+            
             Debug.Log($"[ReceptionPanel] Extra item cleared, price recalculated");
+        }
+        
+        /// <summary>
+        /// Update success rate display based on dropped item
+        /// </summary>
+        private void UpdateSuccessRateDisplay(string itemId)
+        {
+            if (successRateText == null || currentCustomer == null) return;
+            
+            var itemData = Core.ItemDataRegistry.Instance?.GetItem(itemId);
+            if (itemData == null)
+            {
+                successRateText.gameObject.SetActive(false);
+                return;
+            }
+            
+            // Calculate success rate
+            float successRate = currentCustomer.CalculateUpsellSuccessRate(itemData.upsellPrice);
+            int successPercent = Mathf.RoundToInt(successRate * 100f);
+            
+            // Display success rate
+            successRateText.text = $"{successPercent}%";
+            successRateText.gameObject.SetActive(true);
+            
+            // Color based on success rate
+            if (successRate >= 0.8f)
+                successRateText.color = Color.green;
+            else if (successRate >= 0.5f)
+                successRateText.color = Color.yellow;
+            else
+                successRateText.color = Color.red;
         }
         
         private void RecalculatePrice()
@@ -264,8 +325,19 @@ namespace HairRemovalSim.UI
             
             calculatedPrice = planPrice + extraItemPrice;
             
+            // Display price with upsell increment if applicable
             if (priceText != null)
-                priceText.text = $"${calculatedPrice}";
+            {
+                if (extraItemPrice > 0)
+                {
+                    // Show: "$55 (↑$20)"
+                    priceText.text = $"${calculatedPrice} (<color=green>↑${extraItemPrice})";
+                }
+                else
+                {
+                    priceText.text = $"${calculatedPrice}";
+                }
+            }
             
             // Enable confirm button if at least one part is selected
             if (confirmButton != null)
@@ -276,17 +348,49 @@ namespace HairRemovalSim.UI
         {
             if (currentCustomer == null) return;
             
+            // Stop waiting timer and hide gauge - confirmed
+            currentCustomer.StopWaiting();
+            
             var data = currentCustomer.data;
             bool hasExtraItem = extraItemDropTarget != null && extraItemDropTarget.HasItem;
             string extraItemId = hasExtraItem ? extraItemDropTarget.ItemId : null;
             
-            // Apply effects from extra item
+            // Upsell judgment if extra item is set
+            bool upsellAttempted = false;
+            bool upsellSucceeded = false;
+            int upsellPrice = 0;
+            
             if (hasExtraItem && !string.IsNullOrEmpty(extraItemId))
             {
                 var itemData = ItemDataRegistry.Instance?.GetItem(extraItemId);
-                if (itemData != null)
+                if (itemData != null && itemData.upsellPrice > 0)
                 {
+                    upsellAttempted = true;
+                    upsellPrice = itemData.upsellPrice;
+                    float successRate = currentCustomer.CalculateUpsellSuccessRate(itemData.upsellPrice);
+                    float roll = Random.value;
+                    upsellSucceeded = roll <= successRate;
+                    
+                    Debug.Log($"[ReceptionPanel] Upsell attempt: {extraItemId}, Rate: {successRate:P0}, Roll: {roll:F2}, Success: {upsellSucceeded}");
+                    
+                    if (upsellSucceeded)
+                    {
+                        // Success: apply effects (budget NOT consumed at reception, only at checkout)
+                        currentCustomer.ApplyReceptionEffects(itemData);
+                    }
+                    else
+                    {
+                        // Failure: apply review penalty, but item is still consumed
+                        int penalty = currentCustomer.CalculateUpsellFailurePenalty(successRate);
+                        data.reviewPenalty += penalty;
+                        Debug.Log($"[ReceptionPanel] Upsell failed! Review penalty: {penalty}");
+                    }
+                }
+                else if (itemData != null)
+                {
+                    // Item with no upsell price - auto success, just apply effects
                     currentCustomer.ApplyReceptionEffects(itemData);
+                    upsellSucceeded = true;
                 }
             }
             
@@ -297,12 +401,15 @@ namespace HairRemovalSim.UI
             // Save confirmed selections to customer data
             data.confirmedParts = selectedParts;
             data.confirmedMachine = TreatmentMachine.Shaver; // Default, no toggle now
-            data.confirmedPrice = calculatedPrice;
             
-            Debug.Log($"[ReceptionPanel] Confirmed - Parts: {selectedParts}, Price: ${calculatedPrice}");
+            // Only include upsell price if upsell succeeded
+            int basePlanPrice = CustomerPlanHelper.GetPlanPrice(data.requestPlan);
+            data.confirmedPrice = basePlanPrice + (upsellSucceeded ? upsellPrice : 0);
+            
+            Debug.Log($"[ReceptionPanel] Confirmed - Parts: {selectedParts}, Price: ${data.confirmedPrice} (upsell: {upsellSucceeded})");
             
             // Invoke callback
-            onConfirm?.Invoke(currentCustomer, selectedParts, TreatmentMachine.Shaver, useAnesthesia, calculatedPrice);
+            onConfirm?.Invoke(currentCustomer, selectedParts, TreatmentMachine.Shaver, useAnesthesia, data.confirmedPrice);
             
             Hide();
         }

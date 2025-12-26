@@ -3,7 +3,6 @@ using UnityEngine.InputSystem;
 using HairRemovalSim.Core;
 using HairRemovalSim.Player;
 using HairRemovalSim.Customer;
-using UnityEngine.InputSystem;
 using System.Collections.Generic;
 
 namespace HairRemovalSim.Treatment
@@ -188,17 +187,9 @@ namespace HairRemovalSim.Treatment
                         Debug.Log($"[TreatmentManager] Treatment complete for {session.Customer.data.customerName}! All parts done. Customer will now go to reception.");
                         
                         // Trigger customer to leave bed and go to reception
+                        // Note: Review is submitted in PaymentPanel.OnConfirmPayment, not here
                         if (session.Customer != null)
                         {
-                            // Submit review to ShopManager
-                            if (Core.ShopManager.Instance != null)
-                            {
-                                Core.ShopManager.Instance.AddReview(
-                                    session.Customer.GetBaseReviewValue(),
-                                    session.Customer.GetPainMaxCount()
-                                );
-                            }
-                            
                             session.Customer.CompleteTreatment();
                         }
                         

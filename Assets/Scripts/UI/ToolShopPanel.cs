@@ -232,18 +232,8 @@ namespace HairRemovalSim.UI
             var card = cardObj.GetComponent<ToolShopCardUI>();
             if (card != null)
             {
-                if (isOwned)
-                {
-                    // Show as sellable (50% refund)
-                    card.Setup(item, currentGrade, null);
-                    // For now, just don't allow purchase
-                    // TODO: Add sell button support to ToolShopCardUI
-                }
-                else
-                {
-                    // Show as purchasable
-                    card.Setup(item, currentGrade, OnPlacementPurchaseCallback);
-                }
+                // Always pass callback, card will handle owned state via isOwned flag
+                card.Setup(item, currentGrade, OnPlacementPurchaseCallback, isOwned);
             }
         }
         

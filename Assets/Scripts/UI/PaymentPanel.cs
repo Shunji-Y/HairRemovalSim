@@ -42,6 +42,10 @@ namespace HairRemovalSim.UI
         [Header("Item Drop Target")]
         [SerializeField] private PaymentItemDropTarget itemDropTarget;
         
+        [Header("Upsell Display")]
+        [SerializeField] private TextMeshProUGUI additionalBudgetText;
+        [SerializeField] private TextMeshProUGUI successRateText;
+        
         // Current state
         private CustomerController currentCustomer;
         private int treatmentFee;
@@ -75,7 +79,8 @@ namespace HairRemovalSim.UI
             if (!IsOpen) return;
             
             // Close on ESC (cancel, not complete)
-            if (UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame)
+            if (UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame ||
+                UnityEngine.InputSystem.Mouse.current.rightButton.wasPressedThisFrame)
             {
                 Cancel();
             }
@@ -91,11 +96,26 @@ namespace HairRemovalSim.UI
             currentCustomer = customer;
             var data = customer.data;
             
+            // Pause waiting timer - gauge stays visible until confirm
+            customer.PauseWaiting();
+            
             // Get treatment fee from confirmed price
             treatmentFee = data.confirmedPrice;
             addedItemPrice = 0;
             addedItemReviewBonus = 0;
             addedItemId = null;
+            
+            // Display total budget (plan price + additional budget)
+            if (additionalBudgetText != null)
+            {
+                additionalBudgetText.text = $"${customer.GetTotalBudget()}";
+            }
+            
+            // Hide success rate (no item dropped yet)
+            if (successRateText != null)
+            {
+                successRateText.gameObject.SetActive(false);
+            }
             
             // Update display
             UpdateDisplay();
@@ -117,6 +137,12 @@ namespace HairRemovalSim.UI
         public void Cancel()
         {
             Debug.Log($"[PaymentPanel] Cancelled for {currentCustomer?.data?.customerName ?? "NULL"} - customer still at register");
+            
+            // Resume waiting timer from current value - payment was cancelled
+            if (currentCustomer != null)
+            {
+                currentCustomer.ResumeWaiting();
+            }
             
             // Don't clear dropTarget - keep item there for next open
             
@@ -171,10 +197,20 @@ namespace HairRemovalSim.UI
             if (treatmentFeeText != null)
                 treatmentFeeText.text = $"${treatmentFee}";
             
-            // Total amount
+            // Total amount - show total with upsell increment if item is added
             int total = treatmentFee + addedItemPrice;
             if (totalAmountText != null)
-                totalAmountText.text = $"${total}";
+            {
+                if (addedItemPrice > 0)
+                {
+                    // Show: "$55 (↑$20)"
+                    totalAmountText.text = $"${total} (<color=green>↑${addedItemPrice})";
+                }
+                else
+                {
+                    totalAmountText.text = $"${total}";
+                }
+            }
             
             // Calculate and display mood
             int currentReview = CalculateCurrentReview();
@@ -217,6 +253,13 @@ namespace HairRemovalSim.UI
             // Add item bonus
             totalReview += addedItemReviewBonus;
             
+            // Apply debris penalty (1 debris = -1 point)
+            if (Environment.HairDebrisManager.Instance != null)
+            {
+                int debrisPenalty = Environment.HairDebrisManager.Instance.GetRemainingCount();
+                totalReview -= debrisPenalty;
+            }
+            
             // Apply placement item review percent boost (e.g., 5% boost)
             if (ShopManager.Instance != null && ShopManager.Instance.ReviewPercentBoost > 0f)
             {
@@ -229,7 +272,7 @@ namespace HairRemovalSim.UI
         /// <summary>
         /// Get mood level from review value
         /// </summary>
-        private MoodLevel GetMoodFromReview(int review)
+        public MoodLevel GetMoodFromReview(int review)
         {
             if (review <= -30) return MoodLevel.VeryAngry;      // -49 to -30
             if (review <= -10) return MoodLevel.Angry;          // -29 to -10
@@ -241,7 +284,7 @@ namespace HairRemovalSim.UI
         /// <summary>
         /// Convert mood level to star rating (1-5)
         /// </summary>
-        private int GetStarsFromMood(MoodLevel mood)
+        public int GetStarsFromMood(MoodLevel mood)
         {
             return mood switch
             {
@@ -283,8 +326,61 @@ namespace HairRemovalSim.UI
             addedItemReviewBonus = itemData.reviewBonus;
             
             UpdateDisplay();
+            UpdateCheckoutSuccessRateDisplay(itemId);
             
             Debug.Log($"[PaymentPanel] Added item: {itemId}, price: ${addedItemPrice}, reviewBonus: {addedItemReviewBonus}");
+        }
+        
+        /// <summary>
+        /// Update success rate display based on dropped item (checkout)
+        /// </summary>
+        private void UpdateCheckoutSuccessRateDisplay(string itemId)
+        {
+            if (successRateText == null || currentCustomer == null) return;
+            
+            var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
+            if (itemData == null)
+            {
+                successRateText.gameObject.SetActive(false);
+                return;
+            }
+            
+            // Calculate success rate using remaining budget after treatment fee
+            // Formula: 2 - (UpsellPrice / (TotalBudget - TreatmentFee))
+            float successRate = CalculateCheckoutUpsellRate(itemData.upsellPrice);
+            int successPercent = Mathf.RoundToInt(successRate * 100f);
+            
+            // Display success rate
+            successRateText.text = $"{successPercent}%";
+            successRateText.gameObject.SetActive(true);
+            
+            // Color based on success rate
+            if (successRate >= 0.8f)
+                successRateText.color = Color.green;
+            else if (successRate >= 0.5f)
+                successRateText.color = Color.yellow;
+            else
+                successRateText.color = Color.red;
+        }
+        
+        /// <summary>
+        /// Calculate upsell success rate at checkout
+        /// Formula: Clamp(2 - (UpsellPrice / (TotalBudget - TreatmentFee)), 0, 1)
+        /// </summary>
+        private float CalculateCheckoutUpsellRate(int upsellPrice)
+        {
+            if (currentCustomer == null) return 0f;
+            
+            // Free items always succeed (check this FIRST)
+            if (upsellPrice <= 0) return 1f;
+            
+            int totalBudget = currentCustomer.GetTotalBudget();
+            int remainingBudget = totalBudget - treatmentFee;
+            
+            if (remainingBudget <= 0) return 0f;
+            
+            float rate = 2f - ((float)upsellPrice / remainingBudget);
+            return Mathf.Clamp01(rate);
         }
         
         /// <summary>
@@ -323,6 +419,12 @@ namespace HairRemovalSim.UI
             addedItemPrice = 0;
             addedItemReviewBonus = 0;
             UpdateDisplay();
+            
+            // Hide success rate when item is cleared
+            if (successRateText != null)
+            {
+                successRateText.gameObject.SetActive(false);
+            }
         }
         
         /// <summary>
@@ -332,6 +434,9 @@ namespace HairRemovalSim.UI
         {
             if (currentCustomer == null) return;
             var data = currentCustomer.data;
+            
+            // Stop waiting timer and hide gauge - payment confirmed
+            currentCustomer.StopWaiting();
             
             // Check wrong part penalty - 20% leave chance per wrong part
             int wrongPartCount = CountWrongParts(data.confirmedParts, data.requestPlan);
@@ -357,8 +462,47 @@ namespace HairRemovalSim.UI
                 }
             }
             
+            // Upsell judgment for checkout item - MUST happen before finalReview calculation
+            bool checkoutUpsellSucceeded = false;
+            if (!string.IsNullOrEmpty(addedItemId))
+            {
+                var itemData = ItemDataRegistry.Instance?.GetItem(addedItemId);
+                if (itemData != null && itemData.upsellPrice > 0)
+                {
+                    // Use checkout-specific formula: 2 - (UpsellPrice / (TotalBudget - TreatmentFee))
+                    float successRate = CalculateCheckoutUpsellRate(itemData.upsellPrice);
+                    float roll = Random.value;
+                    checkoutUpsellSucceeded = roll <= successRate;
+                    
+                    Debug.Log($"[PaymentPanel] Checkout upsell attempt: {addedItemId}, Rate: {successRate:P0}, Roll: {roll:F2}, Success: {checkoutUpsellSucceeded}");
+                    
+                    if (checkoutUpsellSucceeded)
+                    {
+                        // Success: consume budget, apply effects
+                        currentCustomer.ConsumeAdditionalBudget(itemData.upsellPrice);
+                        ApplyCheckoutItemEffects(itemData);
+                    }
+                    else
+                    {
+                        // Failure: apply review penalty BEFORE calculating finalReview
+                        int penalty = currentCustomer.CalculateUpsellFailurePenalty(successRate);
+                        data.reviewPenalty += penalty;
+                        Debug.Log($"[PaymentPanel] Checkout upsell failed! Review penalty: {penalty}");
+                    }
+                }
+                else if (itemData != null)
+                {
+                    // Item with no upsell price - auto success
+                    ApplyCheckoutItemEffects(itemData);
+                    checkoutUpsellSucceeded = true;
+                }
+            }
+            
+            // Calculate final review AFTER upsell judgment (includes penalty if failed)
             int finalReview = CalculateCurrentReview();
-            int totalAmount = treatmentFee + addedItemPrice;
+            
+            // Only charge addedItemPrice if upsell succeeded
+            int totalAmount = treatmentFee + (checkoutUpsellSucceeded ? addedItemPrice : 0);
             
             Debug.Log($"[PaymentPanel] Confirming payment - Amount: ${totalAmount}, Review: {finalReview}");
             
@@ -391,16 +535,6 @@ namespace HairRemovalSim.UI
             
             // Process payment
             EconomyManager.Instance.AddMoney(totalAmount);
-            
-            // Apply checkout item effects on successful payment
-            if (!string.IsNullOrEmpty(addedItemId))
-            {
-                var itemData = ItemDataRegistry.Instance?.GetItem(addedItemId);
-                if (itemData != null)
-                {
-                    ApplyCheckoutItemEffects(itemData);
-                }
-            }
             
             // Submit review
             if (ShopManager.Instance != null)

@@ -211,6 +211,14 @@ namespace HairRemovalSim.Core
         {
             return paymentCards.Where(c => !c.isPaid).Sum(c => c.TotalAmount);
         }
+
+        /// <summary>
+        /// Get total remaining principal of all active loans
+        /// </summary>
+        public int GetTotalPrincipal()
+        {
+            return activeLoans.Sum(l => l.remainingPrincipal);
+        }
         
         /// <summary>
         /// Clean up paid cards (optional, for memory)

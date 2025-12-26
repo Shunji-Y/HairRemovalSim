@@ -65,6 +65,9 @@ namespace HairRemovalSim.UI
                 // Send customer to queue position, facing reception desk
                 customer.GoToQueuePosition(queuePositions[queueIndex], transform);
                 
+                // Start waiting timer for reception queue
+                customer.StartWaiting();
+                
                 return queuePositions[queueIndex];
             }
             else
@@ -84,7 +87,7 @@ namespace HairRemovalSim.UI
                 return;
             }
             
-            // Process first customer in queue
+            // Process first customer in queue (if not already processing one)
             if (currentCustomer == null && customerQueue.Count > 0)
             {
                 currentCustomer = customerQueue.Dequeue();
@@ -93,6 +96,8 @@ namespace HairRemovalSim.UI
             
             if (currentCustomer != null)
             {
+                // Always pause waiting when opening UI (handles re-interact after cancel)
+                currentCustomer.PauseWaiting();
                 OpenReceptionUI();
             }
             else
@@ -324,12 +329,14 @@ namespace HairRemovalSim.UI
             if (waitingAreaPositions != null && waitIndex < waitingAreaPositions.Length)
             {
                 customer.GoToWaitingArea(waitingAreaPositions[waitIndex]);
+                customer.StartWaiting(); // Start waiting timer for waiting area
                 Debug.Log($"[ReceptionManager] {customer.data?.customerName} sent to waiting area position {waitIndex}");
             }
             else
             {
                 // Fallback: wait at first queue position or reception
                 customer.GoToWaitingArea(queuePositions.Length > 0 ? queuePositions[0] : transform);
+                customer.StartWaiting(); // Start waiting timer for waiting area
                 Debug.Log($"[ReceptionManager] {customer.data?.customerName} sent to fallback waiting area");
             }
         }

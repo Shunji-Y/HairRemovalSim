@@ -31,6 +31,21 @@ namespace HairRemovalSim.Store
         [SerializeField] private Color normalColor = Color.white;
         [SerializeField] private Color lockedColor = new Color(0.6f, 0.6f, 0.6f);
         
+        [Header("Category Icons & Colors")]
+        [SerializeField] private Image categoryIcon;
+        [Tooltip("Icon for items placeable on treatment shelf")]
+        [SerializeField] private Sprite shelfIcon;
+        [Tooltip("Icon for items placeable at reception desk")]
+        [SerializeField] private Sprite receptionIcon;
+        [Tooltip("Icon for items usable at checkout")]
+        [SerializeField] private Sprite checkoutIcon;
+        [Tooltip("Background color for shelf items")]
+        [SerializeField] private Color shelfColor = new Color(0.3f, 0.7f, 0.3f); // Green
+        [Tooltip("Background color for reception items")]
+        [SerializeField] private Color receptionColor = new Color(0.3f, 0.5f, 0.8f); // Blue
+        [Tooltip("Background color for checkout items")]
+        [SerializeField] private Color checkoutColor = new Color(0.8f, 0.6f, 0.3f); // Orange
+        
         private int selectedQuantity = 1;
         private StorePanel storePanel;
         private bool isLocked;
@@ -94,13 +109,18 @@ namespace HairRemovalSim.Store
             if (quantityText != null)
                 quantityText.text = selectedQuantity.ToString();
             
+            // Category icon and background color based on placement type
+            UpdateCategoryDisplay();
+            
             // Lock state
             if (lockedOverlay != null)
                 lockedOverlay.SetActive(isLocked);
             if (lockedText != null && isLocked)
                 lockedText.text = $"Grade {itemData.requiredShopGrade}";
-            if (cardBackground != null)
-                cardBackground.color = isLocked ? lockedColor : normalColor;
+            
+            // Apply locked color override if locked
+            if (cardBackground != null && isLocked)
+                cardBackground.color = lockedColor;
             
             // Disable buttons when locked
             if (addToCartButton != null)
@@ -109,6 +129,55 @@ namespace HairRemovalSim.Store
                 increaseButton.interactable = !isLocked;
             if (decreaseButton != null)
                 decreaseButton.interactable = !isLocked;
+        }
+        
+        /// <summary>
+        /// Update category icon and background color based on ItemData properties
+        /// Priority: Reception > Checkout > Shelf (default)
+        /// </summary>
+        private void UpdateCategoryDisplay()
+        {
+            if (itemData == null) return;
+            
+            Sprite selectedIcon = null;
+            Color selectedColor = normalColor;
+            
+            // Determine category (priority order: Reception > Checkout > Shelf)
+            if (itemData.canPlaceAtReception)
+            {
+                selectedIcon = receptionIcon;
+                selectedColor = receptionColor;
+            }
+            else if (itemData.canUseAtCheckout)
+            {
+                selectedIcon = checkoutIcon;
+                selectedColor = checkoutColor;
+            }
+            else if (itemData.canPlaceOnShelf)
+            {
+                selectedIcon = shelfIcon;
+                selectedColor = shelfColor;
+            }
+            
+            // Apply icon
+            if (categoryIcon != null)
+            {
+                if (selectedIcon != null)
+                {
+                    categoryIcon.sprite = selectedIcon;
+                    categoryIcon.gameObject.SetActive(true);
+                }
+                else
+                {
+                    categoryIcon.gameObject.SetActive(false);
+                }
+            }
+            
+            // Apply background color (if not locked)
+            if (cardBackground != null && !isLocked)
+            {
+                cardBackground.color = selectedColor;
+            }
         }
         
         public void IncreaseQuantity()
@@ -156,8 +225,7 @@ namespace HairRemovalSim.Store
                 
             if (storePanel != null && itemData != null)
             {
-                string tooltipText = itemData.GetLocalizedDescription();
-                storePanel.ShowTooltip(tooltipText, GetComponent<RectTransform>());
+                storePanel.ShowItemDetail(itemData);
             }
         }
         
@@ -165,7 +233,7 @@ namespace HairRemovalSim.Store
         {
             if (storePanel != null)
             {
-                storePanel.HideTooltip();
+                storePanel.HideItemDetail();
             }
         }
         

@@ -171,6 +171,12 @@ namespace HairRemovalSim.Staff
             finalReview -= data.reviewPenalty; // Subtract any penalties (pain, etc.)
             finalReview += additionalReviewBonus; // Add item bonus
             
+            // Apply debris penalty (1 debris = -1 point)
+            if (Environment.HairDebrisManager.Instance != null)
+            {
+                finalReview -= Environment.HairDebrisManager.Instance.GetRemainingCount();
+            }
+            
             // Submit review
             if (ShopManager.Instance != null)
             {

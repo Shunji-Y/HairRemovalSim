@@ -1,3 +1,4 @@
+using HairRemovalSim.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -7,6 +8,11 @@ namespace HairRemovalSim.Player
     [RequireComponent(typeof(PlayerInput))]
     public class PlayerController : MonoBehaviour
     {
+        public static PlayerController Instance { get; private set; }
+
+    
+
+
         [Header("Movement Settings")]
         public float moveSpeed = 5.0f;
         public float acceleration = 10.0f; // Units per second to reach max speed
@@ -65,6 +71,8 @@ namespace HairRemovalSim.Player
             // Setup Actions
             moveAction = playerInput.actions["Move"];
             lookAction = playerInput.actions["Look"];
+
+            Instance = this;
         }
 
         private void Start()

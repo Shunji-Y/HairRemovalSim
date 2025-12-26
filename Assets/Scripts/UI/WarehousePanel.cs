@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using TMPro;
 using HairRemovalSim.Core;
 using HairRemovalSim.Environment;
 
@@ -30,6 +31,16 @@ namespace HairRemovalSim.UI
         [SerializeField] private Sprite shelfItemIcon;
         [SerializeField] private Sprite receptionItemIcon;
         [SerializeField] private Sprite checkoutItemIcon;
+        [SerializeField] private Sprite placementIcon;
+        
+        [Header("Item Detail Display (Bottom Right)")]
+        [SerializeField] private GameObject detailPanelRoot;
+        [SerializeField] private TMP_Text itemNameText;
+        [SerializeField] private TMP_Text itemDescriptionText;
+        [SerializeField] private TMP_Text categoryText;
+        [SerializeField] private Image categoryIconImage;
+        [SerializeField] private TMP_Text sellingPriceText;
+        [SerializeField] private TMP_Text reviewBonusText;
         
         [Header("UI References")]
         [SerializeField] private GameObject panel;
@@ -95,6 +106,9 @@ namespace HairRemovalSim.UI
             InitializeShelfCarts();
             RefreshAll();
             
+            // Clear item detail to default empty state
+            ClearItemDetail();
+            
             // Pause game / show cursor
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -156,26 +170,7 @@ namespace HairRemovalSim.UI
         /// Adjust RectTransform height based on GridLayoutGroup settings and row count
         /// </summary>
         /// <param name="itemCount">Explicit item count (-1 to use childCount)</param>
-        private void AdjustGridHeight(Transform gridParent, int columns, int itemCount = -1)
-        {
-            var gridLayout = gridParent.GetComponent<GridLayoutGroup>();
-            var rectTransform = gridParent.GetComponent<RectTransform>();
-            
-            if (gridLayout == null || rectTransform == null) return;
-            
-            // Use explicit itemCount if provided, otherwise fallback to childCount
-            int count = itemCount >= 0 ? itemCount : gridParent.childCount;
-            int rows = Mathf.CeilToInt((float)count / columns);
-            
-            float cellHeight = gridLayout.cellSize.y;
-            float spacingY = gridLayout.spacing.y;
-            float paddingTop = gridLayout.padding.top;
-            float paddingBottom = gridLayout.padding.bottom;
-            
-            float totalHeight = paddingTop + paddingBottom + (rows * cellHeight) + (Mathf.Max(0, rows - 1) * spacingY);
-            
-            rectTransform.sizeDelta = new Vector2(rectTransform.sizeDelta.x, totalHeight);
-        }
+
         
         /// <summary>
         /// Initialize/refresh shelf carts from all beds
@@ -273,6 +268,129 @@ namespace HairRemovalSim.UI
             }
         }
         
+        #region Item Detail Display
+        
+        /// <summary>
+        /// Show item details in the bottom panel (called on slot hover)
+        /// </summary>
+        public void ShowItemDetail(ItemData item)
+        {
+            if (item == null) return;
+            
+            // Show detail panel
+            if (detailPanelRoot != null)
+                detailPanelRoot.SetActive(true);
+            
+            // Item name
+            if (itemNameText != null)
+                itemNameText.text = item.GetLocalizedName();
+            
+            // Description
+            if (itemDescriptionText != null)
+                itemDescriptionText.text = item.GetLocalizedDescription();
+            
+            // Category name and icon
+            string categoryName = GetCategoryName(item);
+            Sprite categorySprite = GetCategoryIcon(item);
+            
+            if (categoryText != null)
+                categoryText.text = categoryName;
+            
+            if (categoryIconImage != null)
+            {
+                if (categorySprite != null)
+                {
+                    categoryIconImage.sprite = categorySprite;
+                    categoryIconImage.gameObject.SetActive(true);
+                }
+                else
+                {
+                    categoryIconImage.gameObject.SetActive(false);
+                }
+            }
+            
+            // Selling price (upsellPrice)
+            if (sellingPriceText != null)
+            {
+                if (item.upsellPrice > 0)
+                    sellingPriceText.text = $"${item.upsellPrice}";
+                else
+                    sellingPriceText.text = "-";
+            }
+            
+            // Review bonus
+            if (reviewBonusText != null)
+            {
+                if (item.reviewBonus != 0)
+                    reviewBonusText.text = item.reviewBonus > 0 ? $"+{item.reviewBonus}" : $"{item.reviewBonus}";
+                else
+                    reviewBonusText.text = "-";
+            }
+        }
+        
+        /// <summary>
+        /// Hide item detail panel (called on slot hover exit)
+        /// Clears content but keeps panel visible
+        /// </summary>
+        public void HideItemDetail()
+        {
+            ClearItemDetail();
+        }
+        
+        /// <summary>
+        /// Clear item detail content to default empty state
+        /// </summary>
+        public void ClearItemDetail()
+        {
+            if (itemNameText != null)
+                itemNameText.text = "-";
+            if (itemDescriptionText != null)
+                itemDescriptionText.text = "-";
+            if (categoryText != null)
+                categoryText.text = "-";
+            if (categoryIconImage != null)
+                categoryIconImage.gameObject.SetActive(false);
+            if (sellingPriceText != null)
+                sellingPriceText.text = "-";
+            if (reviewBonusText != null)
+                reviewBonusText.text = "-";
+        }
+        
+        /// <summary>
+        /// Get category name for an item
+        /// </summary>
+        public string GetCategoryName(ItemData itemData)
+        {
+            if (itemData == null) return "";
+            
+            if (itemData.toolType == TreatmentToolType.Laser)
+            {
+                if (itemData.targetArea == ToolTargetArea.Face)
+                    return "Face Laser";
+                else if (itemData.targetArea == ToolTargetArea.Body)
+                    return "Body Laser";
+            }
+            
+            if (itemData.toolType == TreatmentToolType.Shaver)
+                return "Shaver";
+            
+            if (itemData.category == ItemCategory.PlacementItem)
+                return "Placement";
+            
+            if (itemData.canPlaceAtReception)
+                return "Reception";
+            
+            if (itemData.canUseAtCheckout)
+                return "Checkout";
+            
+            if (itemData.canPlaceOnShelf)
+                return "Shelf";
+            
+            return "";
+        }
+        
+        #endregion
+        
         /// <summary>
         /// Get category icon for an item based on its properties
         /// </summary>
@@ -280,7 +398,7 @@ namespace HairRemovalSim.UI
         {
             if (itemData == null) return null;
             
-            // Priority order: Laser > Shaver > Reception > Checkout > Shelf
+            // Priority order: Laser > Shaver > Placement > Reception > Checkout > Shelf
             if (itemData.toolType == TreatmentToolType.Laser)
             {
                 if (itemData.targetArea == ToolTargetArea.Face)
@@ -291,6 +409,9 @@ namespace HairRemovalSim.UI
             
             if (itemData.toolType == TreatmentToolType.Shaver)
                 return shaverIcon;
+            
+            if (itemData.category == ItemCategory.PlacementItem)
+                return placementIcon;
             
             if (itemData.canPlaceAtReception)
                 return receptionItemIcon;

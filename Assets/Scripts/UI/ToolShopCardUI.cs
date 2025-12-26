@@ -40,6 +40,7 @@ namespace HairRemovalSim.UI
         private ItemData itemData;
         private System.Action<ItemData> onPurchaseCallback;
         private bool isLocked;
+        private bool isOwned;
         
         // Localization shorthand
         private LocalizationManager L => LocalizationManager.Instance;
@@ -56,10 +57,11 @@ namespace HairRemovalSim.UI
                 L.OnLocaleChanged -= RefreshDisplay;
         }
         
-        public void Setup(ItemData data, int currentShopGrade, System.Action<ItemData> onPurchase)
+        public void Setup(ItemData data, int currentShopGrade, System.Action<ItemData> onPurchase, bool owned = false)
         {
             itemData = data;
             isLocked = !data.IsUnlockedForGrade(currentShopGrade);
+            isOwned = owned;
             onPurchaseCallback = onPurchase;
             
             if (purchaseButton != null)
@@ -169,7 +171,13 @@ namespace HairRemovalSim.UI
         {
             if (purchaseButton == null) return;
             
-            if (isLocked)
+            if (isOwned)
+            {
+                purchaseButton.interactable = false;
+                if (purchaseButtonText != null)
+                    purchaseButtonText.text = L?.Get("tool.owned") ?? "OWNED";
+            }
+            else if (isLocked)
             {
                 purchaseButton.interactable = false;
                 if (purchaseButtonText != null)

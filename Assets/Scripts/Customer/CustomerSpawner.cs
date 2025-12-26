@@ -207,7 +207,6 @@ namespace HairRemovalSim.Customer
         /// Legacy: Base attraction rate for AdvertisingPanel compatibility
         /// Returns base attraction as percentage of cap
         /// </summary>
-        public float BaseAttractionRate => (_currentAttractionLevel / GetAttractionCap()) * 100f;
         
         /// <summary>
         /// Get current VIP coefficient (0-100)
@@ -352,6 +351,12 @@ namespace HairRemovalSim.Customer
             GameEvents.OnShopOpened -= OnDayStart;
         }
         
+        public float GetDailyAverageReview()
+        {
+            float avgReview = _dailyReviewTotal / _dailyCustomerCount;
+            return avgReview;
+        }
+
         private void OnDayEnd()
         {
             // Calculate average review and update attraction level
@@ -638,6 +643,12 @@ namespace HairRemovalSim.Customer
                     }
                     
                     activeCustomers.Add(customer);
+                    
+                    // Record for daily stats
+                    if (Core.DailyStatsManager.Instance != null)
+                    {
+                        Core.DailyStatsManager.Instance.RecordCustomerSpawned();
+                    }
                     return;
                 }
                 
@@ -660,6 +671,12 @@ namespace HairRemovalSim.Customer
                 }
                 
                 activeCustomers.Add(customer);
+                
+                // Record for daily stats
+                if (Core.DailyStatsManager.Instance != null)
+                {
+                    Core.DailyStatsManager.Instance.RecordCustomerSpawned();
+                }
             }
         }
     }

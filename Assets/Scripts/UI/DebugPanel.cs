@@ -60,6 +60,11 @@ namespace HairRemovalSim.UI
         [SerializeField] private Button selectNextStaffButton;
         [SerializeField] private TMP_Text staffStatusText;
         
+        [Header("Cleaning Debug")]
+        [SerializeField] private Button cleaningModeButton;
+        [Tooltip("Number of debris to spawn for cleaning debug")]
+        [SerializeField] private int debugDebrisCount = 5;
+        
         private float timeScale = 1f;
         private int selectedStaffIndex = 0; // Current staff index for assignment
         
@@ -173,6 +178,10 @@ namespace HairRemovalSim.UI
                 selectPrevStaffButton.onClick.AddListener(SelectPrevStaff);
             if (selectNextStaffButton != null)
                 selectNextStaffButton.onClick.AddListener(SelectNextStaff);
+            
+            // Cleaning
+            if (cleaningModeButton != null)
+                cleaningModeButton.onClick.AddListener(StartCleaningDebugMode);
         }
         
         private void UpdateStatus()
@@ -362,6 +371,44 @@ namespace HairRemovalSim.UI
                 c.LeaveShop();
             }
             Debug.Log($"[DebugPanel] Cleared {customers.Length} customers");
+        }
+        
+        // === CLEANING ===
+        private void StartCleaningDebugMode()
+        {
+            // 1. Set time to 19:00 (end of business hours)
+            var gameManager = GameManager.Instance;
+            if (gameManager != null)
+            {
+                gameManager.SetTimeForDebug(19f);
+                Debug.Log("[DebugPanel] Time set to 19:00 (after hours)");
+            }
+            
+            // 2. Spawn debris around beds
+            var debrisManager = Environment.HairDebrisManager.Instance;
+            if (debrisManager != null)
+            {
+                // Find all beds to spawn debris around
+                var beds = FindObjectsByType<Environment.BedController>(FindObjectsSortMode.None);
+                if (beds.Length > 0)
+                {
+                    for (int i = 0; i < debugDebrisCount; i++)
+                    {
+                        // Pick random bed
+                        var bed = beds[Random.Range(0, beds.Length)];
+                        debrisManager.ForceSpawnDebris(bed.transform.position);
+                    }
+                    Debug.Log($"[DebugPanel] Spawned {debugDebrisCount} debris for cleaning debug");
+                }
+            }
+            
+            // 3. Show cleaning progress UI
+            var cleaningUI = FindFirstObjectByType<CleaningProgressUI>();
+            if (cleaningUI != null)
+            {
+                cleaningUI.Show();
+                Debug.Log("[DebugPanel] Cleaning progress UI shown");
+            }
         }
         
         // === STAFF ===

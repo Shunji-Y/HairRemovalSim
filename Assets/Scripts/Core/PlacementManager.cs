@@ -32,6 +32,22 @@ namespace HairRemovalSim.Core
         // Applied effects tracking
         private Dictionary<string, EffectContext> appliedEffects = new Dictionary<string, EffectContext>();
         
+        // Accumulated wait time boost from all placement items
+        private float totalWaitTimeBoost = 0f;
+        
+        // Roomba auto-clean enabled
+        private bool autoCleanEnabled = false;
+        
+        /// <summary>
+        /// Get the total wait time percentage boost from all placement items
+        /// </summary>
+        public float GetWaitTimeBoost() => totalWaitTimeBoost;
+        
+        /// <summary>
+        /// Check if Roomba auto-clean is enabled
+        /// </summary>
+        public bool IsAutoCleanEnabled() => autoCleanEnabled;
+        
         private void Awake()
         {
             if (Instance == null)
@@ -175,10 +191,22 @@ namespace HairRemovalSim.Core
                 ShopManager.Instance.AddReviewPercentBoost(ctx.ReviewPercentBoost);
             }
             
+            // Apply wait time boost
+            if (ctx.WaitTimePercentBoost > 0f)
+            {
+                totalWaitTimeBoost += ctx.WaitTimePercentBoost;
+            }
+            
+            // Apply auto-clean (Roomba)
+            if (ctx.AutoCleanEnabled)
+            {
+                autoCleanEnabled = true;
+            }
+            
             // Store for later removal
             appliedEffects[item.itemId] = ctx;
             
-            Debug.Log($"[PlacementManager] Applied effects: Attraction+{ctx.AttractionBoost}, Attraction%+{ctx.AttractionPercentBoost:P0}, Review%+{ctx.ReviewPercentBoost:P0}");
+            Debug.Log($"[PlacementManager] Applied effects: Attraction+{ctx.AttractionBoost}, Attraction%+{ctx.AttractionPercentBoost:P0}, Review%+{ctx.ReviewPercentBoost:P0}, WaitTime%+{ctx.WaitTimePercentBoost:P0}, AutoClean={ctx.AutoCleanEnabled}");
         }
         
         /// <summary>
@@ -208,6 +236,27 @@ namespace HairRemovalSim.Core
             if (ShopManager.Instance != null && ctx.ReviewPercentBoost > 0f)
             {
                 ShopManager.Instance.AddReviewPercentBoost(-ctx.ReviewPercentBoost);
+            }
+            
+            // Remove wait time boost
+            if (ctx.WaitTimePercentBoost > 0f)
+            {
+                totalWaitTimeBoost -= ctx.WaitTimePercentBoost;
+            }
+            
+            // Remove auto-clean (Roomba) - need to recheck all items
+            if (ctx.AutoCleanEnabled)
+            {
+                autoCleanEnabled = false;
+                // Check if any other item provides auto-clean
+                foreach (var other in appliedEffects.Values)
+                {
+                    if (other.AutoCleanEnabled)
+                    {
+                        autoCleanEnabled = true;
+                        break;
+                    }
+                }
             }
             
             appliedEffects.Remove(item.itemId);

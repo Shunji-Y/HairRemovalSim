@@ -49,7 +49,7 @@ namespace HairRemovalSim.Core
                     effectPools[entry.id].Enqueue(obj);
                 }
                 
-                Debug.Log($"[EffectManager] Pooled {entry.poolSize} instances of '{entry.id}'");
+            
             }
         }
         

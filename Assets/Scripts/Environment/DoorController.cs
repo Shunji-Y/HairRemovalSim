@@ -49,8 +49,21 @@ namespace HairRemovalSim.Environment
                     return;
                 }
                 
-                GameManager.Instance.StartNextDay();
-                Debug.Log("Door Interacted: Going Home / Next Day");
+                // Show daily summary panel instead of directly going to next day
+                if (UI.DailySummaryPanel.Instance != null)
+                {
+                    // Check if already showing to prevent loop
+                    if (UI.DailySummaryPanel.Instance.IsShowing) return;
+
+                    UI.DailySummaryPanel.Instance.Show();
+                    Debug.Log("Door Interacted: Showing Daily Summary");
+                }
+                else
+                {
+                    // Fallback if panel not found
+                    GameManager.Instance.StartNextDay();
+                    Debug.Log("Door Interacted: Going Home / Next Day (no summary panel)");
+                }
             }
         }
 

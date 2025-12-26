@@ -34,6 +34,18 @@ namespace HairRemovalSim.Customer
         [SerializeField] private float staffReviewCoefficient = 1f; // Applied when staff handles
         [SerializeField] private bool upsellSuccess = false; // True if staff upsell succeeded
         
+        [Header("Additional Budget (Upsell)")]
+        [SerializeField] private int additionalBudget = 0;
+        public int AdditionalBudget => additionalBudget;
+        
+        [Header("Wait Time Gauge")]
+        [Tooltip("Default max wait time for each location (seconds)")]
+        [SerializeField] private float defaultMaxWaitTime = 30f;
+        [SerializeField] private WaitTimeGaugeUI waitTimeGauge;
+        private float waitTimer = 0f;
+        private float maxWaitTime = 30f;
+        private bool isWaiting = false; // True if waiting timer should run
+        
         [Header("Applied Effects")]
         private EffectContext appliedEffects; // Effects applied from reception items
 
@@ -127,6 +139,77 @@ namespace HairRemovalSim.Customer
             
             // Reset all body parts for reuse
             ResetAllBodyParts();
+            
+            // Initialize additional budget based on wealth level
+            InitializeAdditionalBudget();
+        }
+        
+        /// <summary>
+        /// Initialize additional budget based on customer's wealth level
+        /// </summary>
+        private void InitializeAdditionalBudget()
+        {
+            if (data == null)
+            {
+                additionalBudget = 0;
+                return;
+            }
+            
+            // Budget ranges per wealth level
+            (int min, int max) range = data.wealth switch
+            {
+                WealthLevel.Poorest => (15, 45),
+                WealthLevel.Poor => (20, 80),
+                WealthLevel.Normal => (60, 160),
+                WealthLevel.Rich => (150, 350),
+                WealthLevel.Richest => (300, 700),
+                _ => (15, 45)
+            };
+            
+            additionalBudget = Random.Range(range.min, range.max + 1);
+            Debug.Log($"[CustomerController] Initialized additionalBudget: ${additionalBudget} (WealthLevel: {data.wealth})");
+        }
+        
+        /// <summary>
+        /// Consume additional budget (called on successful upsell at checkout only)
+        /// </summary>
+        public void ConsumeAdditionalBudget(int amount)
+        {
+            additionalBudget = Mathf.Max(0, additionalBudget - amount);
+            Debug.Log($"[CustomerController] Consumed ${amount} from budget. Remaining: ${additionalBudget}");
+        }
+        
+        /// <summary>
+        /// Get total budget (plan price + additional budget) for display
+        /// </summary>
+        public int GetTotalBudget()
+        {
+            int planPrice = data != null ? CustomerPlanHelper.GetPlanPrice(data.requestPlan) : 0;
+            return planPrice + additionalBudget;
+        }
+        
+        /// <summary>
+        /// Calculate upsell success rate based on item price and remaining budget
+        /// Formula: Clamp(2 - (price / budget), 0, 1)
+        /// </summary>
+        public float CalculateUpsellSuccessRate(int itemPrice)
+        {
+            if (additionalBudget <= 0) return 0f;
+            if (itemPrice <= 0) return 1f;
+            
+            float rate = 2f - ((float)itemPrice / additionalBudget);
+            return Mathf.Clamp01(rate);
+        }
+        
+        /// <summary>
+        /// Calculate review penalty for failed upsell
+        /// Formula: Min(5 / successRate, 50) - returns POSITIVE value (will be subtracted from review)
+        /// </summary>
+        public int CalculateUpsellFailurePenalty(float successRate)
+        {
+            if (successRate <= 0.01f) return 50; // Avoid division by near-zero
+            float penalty = 5f / successRate;
+            return Mathf.Min(Mathf.RoundToInt(penalty), 50);
         }
         
         /// <summary>
@@ -193,6 +276,17 @@ namespace HairRemovalSim.Customer
             
             // Reset clothing to visible state
             SetClothingForStanding();
+            
+            // Reset wait timer
+            waitTimer = 0f;
+            isWaiting = false;
+            maxWaitTime = defaultMaxWaitTime;
+            
+            // Reset wait time gauge UI
+            if (waitTimeGauge != null)
+            {
+                waitTimeGauge.ResetGauge();
+            }
             
             Debug.Log($"[CustomerController] ===== POOL REUSE RESET =====");
             Debug.Log($"[CustomerController] Reset state for {data?.customerName ?? "NULL"} - confirmedParts: {data?.confirmedParts}, confirmedPrice: {data?.confirmedPrice}, isInitialized: {isInitialized}");
@@ -534,6 +628,12 @@ namespace HairRemovalSim.Customer
             {
                 agent.SetDestination(finalDestination.position);
                 Debug.Log($"[CustomerController] {data.customerName} STEP 3: Final destination set to {finalDestination.name}");
+                
+                // Start waiting timer when heading to cash register
+                if (finalDestination.name.Contains("Cash") || finalDestination.name.Contains("Register"))
+                {
+                    StartWaiting();
+                }
             }
         }
 
@@ -612,6 +712,10 @@ namespace HairRemovalSim.Customer
         {
             Debug.Log($"[CustomerController] {data?.customerName ?? "Customer"} treatment failed, starting departure without payment");
             
+            // Record angry customer
+            if (DailyStatsManager.Instance != null)
+                DailyStatsManager.Instance.RecordAngryCustomer();
+
             // Set clothing back on
             SetClothingVisible(true);
             
@@ -749,6 +853,13 @@ namespace HairRemovalSim.Customer
             {
                 animator.SetBool("TreatmentFinished", true);
                 Debug.Log("[CustomerController] TreatmentFinished = true, waiting for player to leave");
+            }
+            
+            // Spawn hair debris on the floor (for cleaning system)
+            if (Environment.HairDebrisManager.Instance != null && assignedBed != null)
+            {
+                Environment.HairDebrisManager.Instance.OnHairRemoved(assignedBed.transform.position);
+                Debug.Log("[CustomerController] Hair debris spawned at bed position");
             }
             
             // Start checking if player leaves the bed area
@@ -913,6 +1024,9 @@ namespace HairRemovalSim.Customer
         
         private void StandUpAndWalkToReception()
         {
+            // Stop waiting timer - treatment is complete
+            StopWaiting();
+            
             // Re-enable NavMeshAgent and warp to current position
             if (agent != null)
             {
@@ -983,6 +1097,7 @@ namespace HairRemovalSim.Customer
         {
             currentState = CustomerState.Paying;
             paymentTimer = 0f;
+            StartWaiting(); // Start waiting for payment
             Debug.Log($"{data.customerName} arrived at cash register. Ready for payment...");
         }
         
@@ -1220,6 +1335,106 @@ namespace HairRemovalSim.Customer
             currentPain = Mathf.Max(0f, currentPain);
             Debug.Log($"[CustomerController] {data.customerName} pain reduced by {amount}. Current: {currentPain}");
         }
+        
+        #region Wait Time Gauge
+        
+        /// <summary>
+        /// Start waiting timer at a new location (resets timer to 0)
+        /// </summary>
+        public void StartWaiting(float customMaxTime = 0f)
+        {
+            waitTimer = 0f;
+            float baseMaxTime = customMaxTime > 0f ? customMaxTime : defaultMaxWaitTime;
+            
+            // Apply wait time boost from placement items
+            float boostPercent = PlacementManager.Instance != null ? PlacementManager.Instance.GetWaitTimeBoost() : 0f;
+            maxWaitTime = baseMaxTime * (1f + boostPercent);
+            
+            isWaiting = true;
+            Debug.Log($"[CustomerController] {data?.customerName} started waiting (max: {maxWaitTime:F1}s, boost: {boostPercent:P0})");
+        }
+        
+        /// <summary>
+        /// Resume waiting timer from current value (after ESC cancel)
+        /// Does NOT reset waitTimer - continues from where it was
+        /// </summary>
+        public void ResumeWaiting()
+        {
+            isWaiting = true;
+            Debug.Log($"[CustomerController] {data?.customerName} resumed waiting (current: {waitTimer:F1}s / {maxWaitTime}s)");
+        }
+        
+        /// <summary>
+        /// Pause waiting timer - gauge stays visible but stops incrementing
+        /// Use when player interacts but hasn't confirmed yet
+        /// </summary>
+        public void PauseWaiting()
+        {
+            isWaiting = false;
+            // Don't reset waitTimer - keep current progress visible
+            Debug.Log($"[CustomerController] {data?.customerName} waiting paused (gauge visible)");
+        }
+        
+        /// <summary>
+        /// Stop waiting timer and hide gauge (processing confirmed)
+        /// </summary>
+        public void StopWaiting()
+        {
+            isWaiting = false;
+            waitTimer = 0f;
+            Debug.Log($"[CustomerController] {data?.customerName} stopped waiting (gauge hidden)");
+        }
+        
+        /// <summary>
+        /// Get current wait progress (0 to 1)
+        /// </summary>
+        public float GetWaitProgress()
+        {
+            if (maxWaitTime <= 0f) return 0f;
+            return Mathf.Clamp01(waitTimer / maxWaitTime);
+        }
+        
+        /// <summary>
+        /// Check if currently waiting
+        /// </summary>
+        public bool IsWaiting => isWaiting;
+        
+        /// <summary>
+        /// Called when wait time expires - customer leaves angry
+        /// </summary>
+        private void OnWaitTimeExpired()
+        {
+            isWaiting = false;
+            waitTimer = 0f; // Reset timer to hide gauge
+            
+            // Add major review penalty
+            if (data != null)
+            {
+                data.reviewPenalty += 30;
+            }
+            
+            Debug.Log($"[CustomerController] {data?.customerName} waited too long and is leaving angry!");
+            
+            // If at a bed, release it
+            if (assignedBed != null)
+            {
+                assignedBed.ClearCustomer();
+                assignedBed = null;
+            }
+            
+            // Clear from ReceptionManager queue and waiting list
+            if (UI.ReceptionManager.Instance != null)
+            {
+                UI.ReceptionManager.Instance.ClearCurrentCustomer(this);
+                UI.ReceptionManager.Instance.UnregisterCustomer(this);
+                UI.ReceptionManager.Instance.RemoveFromWaitingList(this);
+            }
+            
+            // Leave without paying
+            LeaveShop();
+        }
+        
+        #endregion
         
         /// <summary>
         /// Apply reception item effects to this customer.
@@ -1477,6 +1692,9 @@ namespace HairRemovalSim.Customer
 
             // Disable agent for manual positioning
             if (agent != null) agent.enabled = false;
+            
+            // Start waiting for treatment
+            StartWaiting();
 
             // Smoothly move to lieDownPoint over 0.3 seconds
             StartCoroutine(SmoothMoveToLieDownPosition());
@@ -1596,6 +1814,17 @@ namespace HairRemovalSim.Customer
         {
             // Update pain decay during treatment
             UpdatePainDecay();
+            
+            // Update wait timer
+            if (isWaiting)
+            {
+                waitTimer += Time.deltaTime;
+                if (waitTimer >= maxWaitTime)
+                {
+                    OnWaitTimeExpired();
+                    return; // Exit early since we're leaving
+                }
+            }
             
             // Sync animation speed with NavMeshAgent velocity
             if (animator != null && agent != null && agent.enabled)

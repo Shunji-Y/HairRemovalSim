@@ -376,6 +376,12 @@ namespace HairRemovalSim.Environment
                 if (IsOccupied)
                 {
                     CloseDoors();
+                    
+                    // Pause customer waiting timer - gauge stays visible while player is at bed
+                    if (CurrentCustomer != null)
+                    {
+                        CurrentCustomer.PauseWaiting();
+                    }
                 }
                 
                 OnPlayerEntered?.Invoke(this);
@@ -390,6 +396,12 @@ namespace HairRemovalSim.Environment
             {
                 IsPlayerInside = false;
                 Debug.Log($"[BedController] Player exited bed area: {name}");
+                
+                // Resume customer waiting timer from current value if treatment not complete
+                if (IsOccupied && CurrentCustomer != null && !CurrentCustomer.IsCompleted)
+                {
+                    CurrentCustomer.ResumeWaiting();
+                }
                 
                 // Return equipped laser to LaserBody if player has one
                 ReturnEquippedLaserToBody(other.gameObject);
@@ -423,6 +435,12 @@ namespace HairRemovalSim.Environment
             // Check if it's a laser (has targetArea set)
             var itemData = currentTool.itemData;
             if (itemData == null) return;
+            
+            // Skip vacuum cleaner - it should not be auto-returned
+            if (itemData.toolType == Core.TreatmentToolType.Vacuum)
+            {
+                return;
+            }
             
             // Only return Face/Body lasers
             if (itemData.targetArea != Core.ToolTargetArea.Face && 

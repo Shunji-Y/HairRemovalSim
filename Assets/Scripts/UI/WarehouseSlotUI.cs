@@ -296,6 +296,16 @@ namespace HairRemovalSim.UI
                     backgroundImage.color = highlightColor;
                 }
             }
+            
+            // Show item detail in panel
+            if (!IsEmpty && WarehousePanel.Instance != null)
+            {
+                var itemData = ItemDataRegistry.Instance?.GetItem(currentItemId);
+                if (itemData != null)
+                {
+                    WarehousePanel.Instance.ShowItemDetail(itemData);
+                }
+            }
         }
         
         public void OnPointerExit(PointerEventData eventData)
@@ -303,6 +313,12 @@ namespace HairRemovalSim.UI
             if (backgroundImage != null)
             {
                 backgroundImage.color = normalColor;
+            }
+            
+            // Hide item detail
+            if (WarehousePanel.Instance != null)
+            {
+                WarehousePanel.Instance.HideItemDetail();
             }
         }
         

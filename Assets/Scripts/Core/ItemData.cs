@@ -253,6 +253,7 @@ namespace HairRemovalSim.Core
         None,       // Not a treatment tool
         Shaver,     // シェーバー
         Laser,      // レーザー
+        Vacuum,     // 掃除機
         Other       // その他
     }
     

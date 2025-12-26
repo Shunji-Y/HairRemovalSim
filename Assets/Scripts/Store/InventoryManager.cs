@@ -176,5 +176,13 @@ namespace HairRemovalSim.Store
         {
             return new Dictionary<string, int>(inventory);
         }
+        
+        /// <summary>
+        /// Get all pending orders (for daily summary display)
+        /// </summary>
+        public Dictionary<string, int> GetPendingOrders()
+        {
+            return new Dictionary<string, int>(pendingOrders);
+        }
     }
 }

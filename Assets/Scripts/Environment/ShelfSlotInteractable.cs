@@ -254,6 +254,14 @@ namespace HairRemovalSim.Environment
         {
             if (interactor == null || shelf == null) return;
             
+            // Cannot interact with shelf while vacuum is equipped
+            var currentTool = interactor.CurrentTool;
+            if (currentTool?.itemData?.toolType == TreatmentToolType.Vacuum)
+            {
+                Debug.Log("[ShelfSlotInteractable] Cannot interact while vacuum is equipped");
+                return;
+            }
+            
             // Restore colors before any action
             OnHoverExit();
             

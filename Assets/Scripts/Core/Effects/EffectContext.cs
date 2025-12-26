@@ -64,6 +64,12 @@ namespace HairRemovalSim.Core.Effects
         /// <summary>Review percentage boost (0.05 = 5% boost per customer)</summary>
         public float ReviewPercentBoost { get; set; }
         
+        /// <summary>Wait time percentage boost (0.10 = +10% wait time)</summary>
+        public float WaitTimePercentBoost { get; set; }
+        
+        /// <summary>If true, Roomba auto-cleans debris at day start</summary>
+        public bool AutoCleanEnabled { get; set; }
+        
         // ==========================================
         // Factory Methods
         // ==========================================

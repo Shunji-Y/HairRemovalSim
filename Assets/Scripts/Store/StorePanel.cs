@@ -33,9 +33,18 @@ namespace HairRemovalSim.Store
         [SerializeField] private TextMeshProUGUI totalText;
         [SerializeField] private Button purchaseButton;
         
-        [Header("Shared Tooltip")]
-        [SerializeField] private GameObject tooltipPanel;
-        [SerializeField] private TextMeshProUGUI tooltipText;
+        [Header("Item Detail Display (Bottom Panels)")]
+        [SerializeField] private GameObject detailPanelRoot;
+        [SerializeField] private TextMeshProUGUI descriptionText;
+        [SerializeField] private TextMeshProUGUI categoryText;
+        [SerializeField] private Image categoryIconImage;
+        [SerializeField] private TextMeshProUGUI sellingPriceText;
+        [SerializeField] private TextMeshProUGUI reviewBonusText;
+        
+        [Header("Category Icons (same as StoreItemUI)")]
+        [SerializeField] private Sprite shelfIcon;
+        [SerializeField] private Sprite receptionIcon;
+        [SerializeField] private Sprite checkoutIcon;
         
         private List<StoreItemUI> itemUIs = new List<StoreItemUI>();
         private Dictionary<string, CartEntry> cart = new Dictionary<string, CartEntry>();
@@ -89,7 +98,7 @@ namespace HairRemovalSim.Store
             {
                 // Grade filter: hide if requiredGrade > currentGrade + 1
                 int gradeDiff = itemData.requiredShopGrade - currentGrade;
-                if (gradeDiff >= 2)
+                if (gradeDiff >= 1)//2)
                     continue; // Hide completely
                 
                 bool isLocked = gradeDiff == 1;
@@ -140,36 +149,90 @@ namespace HairRemovalSim.Store
             rectTransform.sizeDelta = new Vector2(rectTransform.sizeDelta.x, totalHeight);
         }
         
-        #region Tooltip
+        #region Item Detail Display
         
         /// <summary>
-        /// Show shared tooltip at item position
+        /// Show item details in the bottom panels (called on hover)
         /// </summary>
-        public void ShowTooltip(string text, RectTransform itemRect)
+        public void ShowItemDetail(ItemData item)
         {
-            if (tooltipPanel == null || itemRect == null) return;
+            if (item == null) return;
             
-            tooltipPanel.SetActive(true);
+            // Show detail panel root
+            if (detailPanelRoot != null)
+                detailPanelRoot.SetActive(true);
             
-            Transform tooltipTransform = tooltipPanel.transform;
-            tooltipTransform.position = itemRect.position;
-            tooltipTransform.rotation = itemRect.rotation;
-
-            if (tooltipText != null)
+            // Left panel: Description
+            if (descriptionText != null)
+                descriptionText.text = item.GetLocalizedDescription();
+            
+            // Right panel: Category
+            string categoryName = "";
+            Sprite categorySprite = null;
+            
+            if (item.canPlaceAtReception)
             {
-                var t = LocalizationSettings.StringDatabase.GetLocalizedString("DescriptionTable", text);
-                tooltipText.text = t;
+                categoryName = "Reception";
+                categorySprite = receptionIcon;
+            }
+            else if (item.canUseAtCheckout)
+            {
+                categoryName = "Checkout";
+                categorySprite = checkoutIcon;
+            }
+            else if (item.canPlaceOnShelf)
+            {
+                categoryName = "Shelf";
+                categorySprite = shelfIcon;
+            }
+            
+            if (categoryText != null)
+                categoryText.text = categoryName;
+            
+            if (categoryIconImage != null)
+            {
+                if (categorySprite != null)
+                {
+                    categoryIconImage.sprite = categorySprite;
+                    categoryIconImage.gameObject.SetActive(true);
+                }
+                else
+                {
+                    categoryIconImage.gameObject.SetActive(false);
+                }
+            }
+            
+            // Selling Price (upsellPrice)
+            if (sellingPriceText != null)
+            {
+                if (item.upsellPrice > 0)
+                    sellingPriceText.text = $"${item.upsellPrice}";
+                else
+                    sellingPriceText.text = "-";
+            }
+            
+            // Review Bonus
+            if (reviewBonusText != null)
+            {
+                if (item.reviewBonus != 0)
+                    reviewBonusText.text = item.reviewBonus > 0 ? $"+{item.reviewBonus}" : $"{item.reviewBonus}";
+                else
+                    reviewBonusText.text = "-";
             }
         }
         
         /// <summary>
-        /// Hide the shared tooltip
+        /// Hide item detail panels (called on hover exit)
         /// </summary>
-        public void HideTooltip()
+        public void HideItemDetail()
         {
-            if (tooltipPanel != null)
-                tooltipPanel.SetActive(false);
+            if (detailPanelRoot != null)
+                detailPanelRoot.SetActive(false);
         }
+        
+        // Backward compatibility aliases
+        public void ShowTooltip(string text, RectTransform itemRect) { }
+        public void HideTooltip() => HideItemDetail();
         
         #endregion
         

@@ -137,5 +137,23 @@ namespace HairRemovalSim.Core
         {
             return Mathf.Clamp01(currentTimeOfDay / dayLengthSeconds);
         }
+        
+        /// <summary>
+        /// Set game time for debug purposes (hours: 10-19)
+        /// </summary>
+        public void SetTimeForDebug(float hourOfDay)
+        {
+            // Convert hour to normalized time (10:00 = 0, 19:00 = 1)
+            float normalizedTime = Mathf.InverseLerp(10f, 19f, hourOfDay);
+            currentTimeOfDay = normalizedTime * dayLengthSeconds;
+            
+            if (hourOfDay >= 19f)
+            {
+                EndDay();
+            }
+            
+            GameEvents.TriggerTimeUpdated(GetNormalizedTime());
+            Debug.Log($"[GameManager] Time set to {hourOfDay}:00 (normalized: {normalizedTime:F2})");
+        }
     }
 }
