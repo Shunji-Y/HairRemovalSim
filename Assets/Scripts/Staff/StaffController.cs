@@ -166,6 +166,8 @@ namespace HairRemovalSim.Staff
             
             Debug.Log($"[StaffController] {staffData.Name} assignment updated to {staffData.GetAssignmentDisplayText()}");
             
+            var previousAssignment = staffData.previousAssignment;
+            
             // If was doing treatment, cancel it so player can take over
             var treatmentHandler = GetComponent<StaffTreatmentHandler>();
             if (treatmentHandler != null && treatmentHandler.IsProcessing)
@@ -173,8 +175,27 @@ namespace HairRemovalSim.Staff
                 treatmentHandler.CancelTreatment();
             }
             
+            // If was doing reception, cancel it and return customer to queue
+            if (previousAssignment == StaffAssignment.Reception)
+            {
+                var receptionHandler = GetComponent<StaffReceptionHandler>();
+                if (receptionHandler != null && receptionHandler.IsProcessing)
+                {
+                    receptionHandler.CancelReception();
+                }
+            }
+            
+            // If was doing cashier, cancel it
+            if (previousAssignment == StaffAssignment.Cashier)
+            {
+                var cashierHandler = GetComponent<StaffCashierHandler>();
+                if (cashierHandler != null && cashierHandler.IsProcessing)
+                {
+                    cashierHandler.CancelCheckout();
+                }
+            }
+            
             // If leaving a bed, handle door exit
-            var previousAssignment = staffData.previousAssignment;
             if (previousAssignment == StaffAssignment.Treatment && staffData.assignment != StaffAssignment.Treatment)
             {
                 StartCoroutine(ExitBedWithDoor());

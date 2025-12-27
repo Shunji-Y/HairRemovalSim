@@ -300,6 +300,33 @@ namespace HairRemovalSim.UI
         }
         
         /// <summary>
+        /// Return customer to front of queue (called when staff cancels reception)
+        /// </summary>
+        public void ReturnCustomerToQueue(CustomerController customer)
+        {
+            if (customer == null) return;
+            
+            // Create new queue with this customer at front
+            var newQueue = new Queue<CustomerController>();
+            newQueue.Enqueue(customer);
+            
+            // Add remaining customers
+            while (customerQueue.Count > 0)
+            {
+                newQueue.Enqueue(customerQueue.Dequeue());
+            }
+            
+            customerQueue = newQueue;
+            
+            // Mark as not processed so player can interact
+            processedCustomers.Remove(customer);
+            
+            UpdateQueuePositions();
+            
+            Debug.Log($"[ReceptionManager] {customer.data?.customerName} returned to front of queue");
+        }
+        
+        /// <summary>
         /// Get current queue count
         /// </summary>
         public int QueueCount => customerQueue.Count;

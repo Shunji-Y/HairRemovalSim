@@ -25,6 +25,9 @@ namespace HairRemovalSim.Core
         [Tooltip("New beds to activate and add to shop")]
         public List<BedController> newBeds = new List<BedController>();
         
+        [Tooltip("New position for CashRegister after upgrade (optional)")]
+        public Transform cashierPosition;
+        
         [Tooltip("Shop model GameObject to activate after upgrade (legacy, optional)")]
         public GameObject shopModel;
         

@@ -506,15 +506,15 @@ namespace HairRemovalSim.UI
             
             // Revenue & Expenses
             if (revenueText != null)
-                revenueText.text = $"¥{stats?.TodayRevenue ?? 0:N0}";
+                revenueText.text = $"${stats?.TodayRevenue ?? 0:N0}";
             
             if (expensesText != null)
-                expensesText.text = $"¥{stats?.TodayExpenses ?? 0:N0}";
+                expensesText.text = $"${stats?.TodayExpenses ?? 0:N0}";
             
             if (profitText != null)
             {
                 int profit = stats?.TodayProfit ?? 0;
-                profitText.text = $"¥{profit:N0}";
+                profitText.text = $"${profit:N0}";
                 profitText.color = profit >= 0 ? profitPositiveColor : profitNegativeColor;
             }
             
@@ -522,7 +522,7 @@ namespace HairRemovalSim.UI
             if (loanText != null)
             {
                 int debt = LoanManager.Instance?.GetTotalPrincipal() ?? 0;
-                loanText.text = $"¥{debt:N0}";
+                loanText.text = $"${debt:N0}";
             }
             
             // Customers
@@ -543,21 +543,22 @@ namespace HairRemovalSim.UI
             if (reviewText != null && ShopManager.Instance != null)
             {
                 int score = ShopManager.Instance.ReviewScore;
-                int stars = 1;
+                int currentGrade = ShopManager.Instance.ShopGrade;
                 
-                // Use PaymentPanel logic if available
-                if (PaymentPanel.Instance != null)
+                // Calculate remaining to next level
+                string remainingText = "";
+                if (ShopManager.Instance.GradeConfig != null && currentGrade < 7)
                 {
-                    PaymentPanel.MoodLevel mood = PaymentPanel.Instance.GetMoodFromReview(score);
-                    stars = PaymentPanel.Instance.GetStarsFromMood(mood);
-                }
-                else
-                {
-                    // Basic fallback
-                    stars = Mathf.Clamp(Mathf.RoundToInt(score / 20f), 1, 5);
+                    int nextThreshold = ShopManager.Instance.GradeConfig.GetReviewThreshold(currentGrade + 1);
+                    int remaining = nextThreshold - score;
+                    if (remaining > 0)
+                    {
+                        remainingText = LocalizationManager.Instance?.Get("dailysummary.review.remaining", remaining.ToString("N0")) 
+                                       ?? $"(あと{remaining:N0})";
+                    }
                 }
                 
-                reviewText.text = $"{score}";
+                reviewText.text = $"{score:N0}{remainingText}";
             }
             
             if (averageReviewText != null)
@@ -613,7 +614,7 @@ namespace HairRemovalSim.UI
             // Graph total
             if (graphTotalText != null && EconomyManager.Instance != null)
             {
-                graphTotalText.text = $"Total: ¥{EconomyManager.Instance.CurrentMoney:N0}";
+                graphTotalText.text = $"Total: ${EconomyManager.Instance.CurrentMoney:N0}";
             }
         }
         

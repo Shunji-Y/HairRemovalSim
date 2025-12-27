@@ -546,7 +546,7 @@ namespace HairRemovalSim.Treatment
         /// shortHairMultiplier: multiplier when all hair is short/stubble (mask ~0.3)
         /// Returns 0 if no hair (mask ~0.0)
         /// </summary>
-        public float CalculatePainMultiplier(float averageMaskValue, float longHairMultiplier = 6.0f, float shortHairMultiplier = 1f)
+        public float CalculatePainMultiplier(float averageMaskValue, float longHairMultiplier = 5.0f, float shortHairMultiplier = 1f)
         {
             // No hair = no pain
             if (averageMaskValue < 0.05f)

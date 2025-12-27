@@ -30,13 +30,11 @@ namespace HairRemovalSim.Core
                 {
                     if (itemLookup.ContainsKey(item.itemId))
                     {
-                        Debug.LogWarning($"[ItemDataRegistry] Duplicate itemId: {item.itemId}");
                         continue;
                     }
                     itemLookup[item.itemId] = item;
                 }
             }
-            Debug.Log($"[ItemDataRegistry] Registered {itemLookup.Count} items");
         }
         
         /// <summary>

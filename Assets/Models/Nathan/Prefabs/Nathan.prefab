@@ -936,7 +936,9 @@ MonoBehaviour:
   baseReviewValue: 30
   staffReviewCoefficient: 1
   upsellSuccess: 0
+  additionalBudget: 0
   defaultMaxWaitTime: 60
+  waitTimeGauge: {fileID: 0}
   assignedBed: {fileID: 0}
   isInitialized: 0
   paymentDelay: 2
@@ -951,11 +953,11 @@ MonoBehaviour:
   playerLeaveDistance: 3
   painReactionProbability: 0.3
   painReactionProbabilityStage2: 0.5
-  painDecayRate: 5
+  painDecayRate: 3
   painRecoveryThreshold: 60
   painHoldDuration: 1
   doorDetectionDistance: 3
-  bedArrivalDistance: 1.3
+  bedArrivalDistance: 1.2
 --- !u!4 &3024892618530802381 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: fe179d60b6e969a46ae904f5c4b816dd, type: 3}

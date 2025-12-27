@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using HairRemovalSim.Customer;
 using HairRemovalSim.Core;
+using HairRemovalSim.Core.Effects;
 
 namespace HairRemovalSim.Staff
 {
@@ -139,24 +140,53 @@ namespace HairRemovalSim.Staff
             int totalPayment = data.confirmedPrice;
             int additionalReviewBonus = 0;
             
-            // Try cashier upsell - consume actual item from CheckoutItemSlot
-            if (rankData != null && rankData.RollItemUsage())
+            // Staff cashier upsell - select item with 80%+ success rate
+            var paymentPanel = UI.PaymentPanel.Instance;
+            if (paymentPanel != null)
             {
-                var paymentPanel = UI.PaymentPanel.Instance;
-                if (paymentPanel != null)
+                var selectedItem = paymentPanel.ConsumeHighSuccessRateCheckoutItem(customer, data.confirmedPrice);
+                if (selectedItem.HasValue)
                 {
-                    var consumedItem = paymentPanel.ConsumeRandomCheckoutItem();
-                    if (consumedItem.HasValue)
+                    // Item selected - roll for success/failure (same as player)
+                    float roll = UnityEngine.Random.value;
+                    bool upsellSucceeded = roll <= selectedItem.Value.successRate;
+                    
+                    Debug.Log($"[StaffCashierHandler] Checkout upsell attempt: {selectedItem.Value.itemId}, Rate: {selectedItem.Value.successRate:P0}, Roll: {roll:F2}, Success: {upsellSucceeded}");
+                    
+                    if (upsellSucceeded)
                     {
-                        totalPayment += consumedItem.Value.price;
-                        additionalReviewBonus = consumedItem.Value.reviewBonus;
-                        Debug.Log($"[StaffCashierHandler] Cashier upsell: {consumedItem.Value.itemId}, +${consumedItem.Value.price}, +{consumedItem.Value.reviewBonus} review");
+                        // Success: add price, get review bonus, apply effects
+                        totalPayment += selectedItem.Value.price;
+                        additionalReviewBonus = selectedItem.Value.reviewBonus;
+                        
+                        // Consume budget
+                        customer.ConsumeAdditionalBudget(selectedItem.Value.price);
+                        
+                        var itemData = ItemDataRegistry.Instance?.GetItem(selectedItem.Value.itemId);
+                        if (itemData != null)
+                        {
+                            // Apply checkout item effects
+                            var ctx = EffectContext.CreateForRegister();
+                            EffectHelper.ApplyEffects(itemData, ctx);
+                            var spawner = FindObjectOfType<CustomerSpawner>();
+                            if (spawner != null)
+                            {
+                                if (ctx.AttractionBoost > 0f) spawner.AddAttractionBoost(ctx.AttractionBoost);
+                                if (ctx.NextDayAttractionBoost > 0f) spawner.AddNextDayAttractionBoost(ctx.NextDayAttractionBoost);
+                            }
+                        }
+                        
+                        Debug.Log($"[StaffCashierHandler] Cashier upsell success: +${selectedItem.Value.price}, +{additionalReviewBonus} review");
                     }
                     else
                     {
-                        Debug.Log("[StaffCashierHandler] Cashier upsell roll succeeded but no items in CheckoutItemSlots");
+                        // Failure: apply review penalty (item already consumed)
+                        int penalty = customer.CalculateUpsellFailurePenalty(selectedItem.Value.successRate);
+                        data.reviewPenalty += penalty;
+                        Debug.Log($"[StaffCashierHandler] Cashier upsell failed! Review penalty: {penalty}");
                     }
                 }
+                // No eligible item = no upsell attempted
             }
             
             // Add money
@@ -204,11 +234,52 @@ namespace HairRemovalSim.Staff
             return 1;
         }
         
+        /// <summary>
+        /// Finish processing - success case, reset customer wait time
+        /// </summary>
         private void FinishProcessing()
         {
+            // Reset customer's wait timer on successful checkout
+            if (currentCustomer != null)
+            {
+                currentCustomer.ResetWaitTimer();
+            }
+            
             currentCustomer = null;
             isProcessing = false;
             processingCoroutine = null;
+        }
+        
+        /// <summary>
+        /// Cancel checkout processing (called when staff is reassigned)
+        /// Returns customer to queue and resumes their wait timer
+        /// </summary>
+        public void CancelCheckout()
+        {
+            if (!isProcessing) return;
+            
+            Debug.Log($"[StaffCashierHandler] Canceling checkout for {currentCustomer?.data?.customerName}");
+            
+            // Stop the processing coroutine
+            if (processingCoroutine != null)
+            {
+                StopCoroutine(processingCoroutine);
+                processingCoroutine = null;
+            }
+            
+            // Return customer to queue so player can interact
+            if (currentCustomer != null)
+            {
+                var cashRegister = UI.CashRegister.Instance;
+                if (cashRegister != null)
+                {
+                    cashRegister.ReturnCustomerToQueue(currentCustomer);
+                }
+                currentCustomer.ResumeWaitTimer();
+            }
+            
+            currentCustomer = null;
+            isProcessing = false;
         }
         
         private void OnDisable()
@@ -216,7 +287,10 @@ namespace HairRemovalSim.Staff
             if (processingCoroutine != null)
             {
                 StopCoroutine(processingCoroutine);
-                FinishProcessing();
+                // Don't call FinishProcessing here as it would reset wait timer
+                currentCustomer = null;
+                isProcessing = false;
+                processingCoroutine = null;
             }
         }
     }

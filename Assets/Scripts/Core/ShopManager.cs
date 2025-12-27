@@ -56,6 +56,11 @@ namespace HairRemovalSim.Core
         public int ShopGrade => shopGrade;
         
         /// <summary>
+        /// Grade configuration database
+        /// </summary>
+        public GradeConfigDatabase GradeConfig => gradeConfigDatabase;
+        
+        /// <summary>
         /// All beds in the shop
         /// </summary>
         public List<Environment.BedController> Beds => beds;
@@ -575,7 +580,7 @@ namespace HairRemovalSim.Core
                 {
                     if (bed != null)
                     {
-                        bed.gameObject.SetActive(true);
+                        bed.transform.parent.gameObject.SetActive(true);
                         AddBed(bed);
                         Debug.Log($"[ShopManager] Activated bed: {bed.name}");
                     }
@@ -586,6 +591,18 @@ namespace HairRemovalSim.Core
             if (config.shopModel != null)
             {
                 ActivateShopModel(shopGrade);
+            }
+            
+            // 5. Move CashRegister to new position if specified
+            if (config.cashierPosition != null)
+            {
+                var cashRegister = UI.CashRegister.Instance;
+                if (cashRegister != null)
+                {
+                    cashRegister.transform.position = config.cashierPosition.position;
+                    cashRegister.transform.rotation = config.cashierPosition.rotation;
+                    Debug.Log($"[ShopManager] Moved CashRegister to {config.cashierPosition.name}");
+                }
             }
             
             // Note: NavMesh is handled via NavMeshObstacle on walls (Carve enabled)

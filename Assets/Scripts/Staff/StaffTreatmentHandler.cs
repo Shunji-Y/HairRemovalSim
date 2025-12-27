@@ -86,6 +86,9 @@ namespace HairRemovalSim.Staff
             currentCustomer = customer;
             isProcessing = true;
             
+            // Stop customer's wait timer - staff is handling them now
+            customer.StopWaiting();
+            
             // Register with bed for UI
             assignedBed.RegisterStaffHandler(this);
             
@@ -448,6 +451,12 @@ namespace HairRemovalSim.Staff
             {
                 StopCoroutine(processingCoroutine);
                 processingCoroutine = null;
+            }
+            
+            // Resume customer's wait timer since staff is no longer handling them
+            if (currentCustomer != null)
+            {
+                currentCustomer.ResumeWaitTimer();
             }
             
             FinishProcessing();

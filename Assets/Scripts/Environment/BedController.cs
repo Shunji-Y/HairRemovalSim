@@ -93,6 +93,12 @@ namespace HairRemovalSim.Environment
                 rightDoor.OnDoorOpened += OnSingleDoorOpened;
             }
             
+            // Link treatment progress UI to this bed
+            if (treatmentProgressUI != null)
+            {
+                treatmentProgressUI.SetLinkedBed(this);
+            }
+            
             // Default state: doors open if no customer
             if (!IsOccupied)
             {

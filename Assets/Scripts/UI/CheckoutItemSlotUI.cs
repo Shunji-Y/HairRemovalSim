@@ -234,12 +234,24 @@ namespace HairRemovalSim.UI
         {
             if (backgroundImage != null)
                 backgroundImage.color = highlightColor;
+            
+            // Show tooltip via PaymentPanel
+            if (!IsEmpty && PaymentPanel.Instance?.Tooltip != null)
+            {
+                PaymentPanel.Instance.Tooltip.Show(itemId);
+            }
         }
         
         public void OnPointerExit(PointerEventData eventData)
         {
             if (backgroundImage != null)
                 backgroundImage.color = normalColor;
+            
+            // Hide tooltip
+            if (PaymentPanel.Instance?.Tooltip != null)
+            {
+                PaymentPanel.Instance.Tooltip.Hide();
+            }
         }
         
         public void OnDrop(PointerEventData eventData)

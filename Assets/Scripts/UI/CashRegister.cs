@@ -100,7 +100,9 @@ namespace HairRemovalSim.UI
             }
             
             Debug.Log($"[CashRegister] OnInteract - currentCustomer: {currentCustomer?.data?.customerName ?? "NULL"}, queue: {customerQueue.Count}");
-            
+
+       
+
             // Clear invalid currentCustomer (destroyed or inactive)
             try
             {
@@ -126,6 +128,12 @@ namespace HairRemovalSim.UI
             // Open payment panel if we have a customer
             if (currentCustomer != null)
             {
+                var dis = Vector3.Distance(currentCustomer.transform.position, transform.position);
+
+                if (dis>detectionRadius)
+                {
+                    return;
+                }
                 ProcessPayment();
             }
             else
@@ -306,8 +314,52 @@ namespace HairRemovalSim.UI
         }
         
         /// <summary>
+        /// Return customer to front of queue (called when staff cancels checkout)
+        /// </summary>
+        public void ReturnCustomerToQueue(CustomerController customer)
+        {
+            if (customer == null) return;
+            
+            // Create new queue with this customer at front
+            var newQueue = new System.Collections.Generic.Queue<CustomerController>();
+            newQueue.Enqueue(customer);
+            
+            // Add remaining customers
+            while (customerQueue.Count > 0)
+            {
+                newQueue.Enqueue(customerQueue.Dequeue());
+            }
+            
+            customerQueue = newQueue;
+            
+            // Mark as not processed so player can interact
+            processedCustomers.Remove(customer);
+            
+            UpdateQueuePositions();
+            
+            Debug.Log($"[CashRegister] {customer.data?.customerName} returned to front of queue");
+        }
+        
+        /// <summary>
         /// Get current queue count
         /// </summary>
         public int QueueCount => customerQueue.Count;
+        
+        /// <summary>
+        /// Singleton instance
+        /// </summary>
+        public static CashRegister Instance { get; private set; }
+        
+        private void Awake()
+        {
+            if (Instance == null)
+            {
+                Instance = this;
+            }
+            else if (Instance != this)
+            {
+                Debug.LogWarning("[CashRegister] Multiple instances found!");
+            }
+        }
     }
 }

@@ -99,30 +99,24 @@ namespace HairRemovalSim.Environment
 
         private void SpawnInitialItems()
         {
-            Debug.Log($"[TreatmentShelf] SpawnInitialItems - count: {initialItems.Count}, ItemDataRegistry: {ItemDataRegistry.Instance != null}");
             
             foreach (var item in initialItems)
             {
                 if (item.itemData == null) 
                 {
-                    Debug.LogWarning("[TreatmentShelf] itemData is null, skipping");
                     continue;
                 }
                 if (item.row < 0 || item.row >= rowCount) 
                 {
-                    Debug.LogWarning($"[TreatmentShelf] row {item.row} out of range (0-{rowCount-1})");
                     continue;
                 }
                 if (item.col < 0 || item.col >= columnCount) 
                 {
-                    Debug.LogWarning($"[TreatmentShelf] col {item.col} out of range (0-{columnCount-1})");
                     continue;
                 }
 
-                Debug.Log($"[TreatmentShelf] Placing {item.itemData.itemId} at [{item.row},{item.col}] x{item.quantity}");
                 int qty = item.quantity > 0 ? item.quantity : 1; // Fallback to 1 if quantity is 0
                 bool success = PlaceItem(item.row, item.col, item.itemData.itemId, qty);
-                Debug.Log($"[TreatmentShelf] PlaceItem result: {success}");
             }
         }
         
@@ -226,7 +220,6 @@ namespace HairRemovalSim.Environment
             // Check if slot is occupied by different item
             if (!string.IsNullOrEmpty(slot.itemId) && slot.itemId != itemId)
             {
-                Debug.LogWarning($"[TreatmentShelf] Slot [{row},{col}] already has {slot.itemId}");
                 return false;
             }
             
@@ -234,19 +227,16 @@ namespace HairRemovalSim.Environment
             var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
             if (itemData == null)
             {
-                Debug.LogWarning($"[TreatmentShelf] Unknown item: {itemId}");
                 return false;
             }
             
             // Slot [0,0] is shaver-only, and shaver can only be at [0,0]
             if (row == 0 && col == 0 && itemData.toolType != TreatmentToolType.Shaver)
             {
-                Debug.Log($"[TreatmentShelf] Slot [0,0] is shaver-only. Cannot place {itemData.toolType}");
                 return false;
             }
             if (itemData.toolType == TreatmentToolType.Shaver && (row != 0 || col != 0))
             {
-                Debug.Log($"[TreatmentShelf] Shaver can only be placed at [0,0], not [{row},{col}]");
                 return false;
             }
             
@@ -254,7 +244,6 @@ namespace HairRemovalSim.Environment
             int newQuantity = slot.quantity + quantity;
             if (newQuantity > itemData.maxStackOnShelf)
             {
-                Debug.LogWarning($"[TreatmentShelf] Cannot place {quantity} more {itemId} (max: {itemData.maxStackOnShelf})");
                 return false;
             }
             

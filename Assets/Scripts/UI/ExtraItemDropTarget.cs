@@ -114,6 +114,7 @@ namespace HairRemovalSim.UI
             if (!HasItem) return;
             
             var itemData = ItemDataRegistry.Instance?.GetItem(currentItemId);
+
             if (itemData == null || itemData.icon == null) return;
             
             if (rootCanvas == null)
@@ -207,12 +208,24 @@ namespace HairRemovalSim.UI
         {
             if (backgroundImage != null)
                 backgroundImage.color = highlightColor;
+            
+            // Show tooltip via ReceptionPanel
+            if (HasItem && ReceptionPanel.Instance?.Tooltip != null)
+            {
+                ReceptionPanel.Instance.Tooltip.Show(currentItemId);
+            }
         }
         
         public void OnPointerExit(PointerEventData eventData)
         {
             if (backgroundImage != null)
                 backgroundImage.color = normalColor;
+            
+            // Hide tooltip
+            if (ReceptionPanel.Instance?.Tooltip != null)
+            {
+                ReceptionPanel.Instance.Tooltip.Hide();
+            }
         }
     }
 }

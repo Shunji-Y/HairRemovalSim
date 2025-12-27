@@ -187,6 +187,12 @@ namespace HairRemovalSim.UI
         
         private DisplayMode GetDisplayMode()
         {
+            // Only show if player owns ARKit placement item
+            if (PlacementManager.Instance == null || !PlacementManager.Instance.IsOwned("ARKit"))
+            {
+                return DisplayMode.Hidden;
+            }
+            
             // Check if staff is processing
             if (treatmentHandler != null && treatmentHandler.IsProcessing && treatmentHandler.CurrentCustomer != null)
             {

@@ -22,6 +22,10 @@ namespace HairRemovalSim.UI
         [SerializeField] private TMP_Text targetText;
         [SerializeField] private TMP_Text toleranceText;
         
+        [Header("Mood Display")]
+        [SerializeField] private Image moodIcon;
+        [SerializeField] private Sprite[] moodSprites; // 5 sprites: VeryAngry, Angry, Neutral, Happy, VeryHappy
+        
         [Header("Body Part Buttons (Legacy 7-toggle)")]
         [SerializeField] private Toggle armsToggle;
         [SerializeField] private Toggle armpitsToggle;
@@ -49,6 +53,10 @@ namespace HairRemovalSim.UI
         
         [Header("References")]
         [SerializeField] private TreatmentPriceTable priceTable;
+        
+        [Header("Tooltip")]
+        [SerializeField] private ItemTooltipUI itemTooltip;
+        public ItemTooltipUI Tooltip => itemTooltip;
         
         // Current state
         private CustomerController currentCustomer;
@@ -134,6 +142,9 @@ namespace HairRemovalSim.UI
             
             // Display customer info
             DisplayCustomerInfo();
+            
+            // Update mood display
+            UpdateMoodDisplay();
             
             // Sync extra item slots with warehouse stock
             SyncExtraItemSlots();
@@ -522,6 +533,53 @@ namespace HairRemovalSim.UI
             return (itemId, price);
         }
         
+        /// <summary>
+        /// Staff upsell: Find and consume item with 80%+ success rate
+        /// Returns item info with success rate, or null if no suitable item
+        /// </summary>
+        public (string itemId, int price, float successRate)? ConsumeHighSuccessRateItem(CustomerController customer)
+        {
+            if (extraItemSlots == null || extraItemSlots.Length == 0 || customer == null) return null;
+            
+            const float MIN_SUCCESS_RATE = 0.8f;
+            
+            // Collect items with 80%+ success rate
+            var eligibleItems = new System.Collections.Generic.List<(ExtraItemSlotUI slot, Core.ItemData itemData, float successRate)>();
+            
+            foreach (var slot in extraItemSlots)
+            {
+                if (slot == null || slot.IsEmpty) continue;
+                
+                var itemData = Core.ItemDataRegistry.Instance?.GetItem(slot.ItemId);
+                if (itemData == null) continue;
+                
+                // Calculate success rate for this item
+                float successRate = customer.CalculateUpsellSuccessRate(itemData.upsellPrice);
+                
+                if (successRate >= MIN_SUCCESS_RATE)
+                {
+                    eligibleItems.Add((slot, itemData, successRate));
+                }
+            }
+            
+            if (eligibleItems.Count == 0)
+            {
+                Debug.Log("[ReceptionPanel] Staff: No items with 80%+ success rate available");
+                return null;
+            }
+            
+            // Pick random from eligible items
+            int randomIndex = UnityEngine.Random.Range(0, eligibleItems.Count);
+            var selected = eligibleItems[randomIndex];
+            
+            // Consume one item
+            selected.slot.UseOne();
+            
+            Debug.Log($"[ReceptionPanel] Staff selected item: {selected.itemData.itemId}, price: ${selected.itemData.upsellPrice}, successRate: {selected.successRate:P0}");
+            
+            return (selected.itemData.itemId, selected.itemData.upsellPrice, selected.successRate);
+        }
+        
         #region New 14-part Toggle System
         
         /// <summary>
@@ -620,6 +678,44 @@ namespace HairRemovalSim.UI
                     return false;
             }
             return requestedDetailedParts.Count > 0;
+        }
+        
+        #endregion
+        
+        #region Mood Display
+        
+        /// <summary>
+        /// Calculate and update mood icon based on customer's base review value
+        /// </summary>
+        private void UpdateMoodDisplay()
+        {
+            if (currentCustomer == null || moodIcon == null || moodSprites == null || moodSprites.Length < 5) return;
+            
+            // Get base review value from customer
+            int baseReview = currentCustomer.GetBaseReviewValue();
+            
+            // Get mood level
+            var mood = GetMoodFromReview(baseReview);
+            
+            // Update icon
+            int index = (int)mood;
+            if (index >= 0 && index < moodSprites.Length && moodSprites[index] != null)
+            {
+                moodIcon.sprite = moodSprites[index];
+                moodIcon.enabled = true;
+            }
+        }
+        
+        /// <summary>
+        /// Get mood level from review value (same as PaymentPanel)
+        /// </summary>
+        private PaymentPanel.MoodLevel GetMoodFromReview(int review)
+        {
+            if (review <= -30) return PaymentPanel.MoodLevel.VeryAngry;
+            if (review <= -10) return PaymentPanel.MoodLevel.Angry;
+            if (review <= 10) return PaymentPanel.MoodLevel.Neutral;
+            if (review <= 30) return PaymentPanel.MoodLevel.Happy;
+            return PaymentPanel.MoodLevel.VeryHappy;
         }
         
         #endregion

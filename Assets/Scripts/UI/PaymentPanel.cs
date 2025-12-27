@@ -46,6 +46,10 @@ namespace HairRemovalSim.UI
         [SerializeField] private TextMeshProUGUI additionalBudgetText;
         [SerializeField] private TextMeshProUGUI successRateText;
         
+        [Header("Tooltip")]
+        [SerializeField] private ItemTooltipUI itemTooltip;
+        public ItemTooltipUI Tooltip => itemTooltip;
+        
         // Current state
         private CustomerController currentCustomer;
         private int treatmentFee;
@@ -653,6 +657,72 @@ namespace HairRemovalSim.UI
             Debug.Log($"[PaymentPanel] Staff consumed checkout item: {itemId}, price: ${price}, review: +{reviewBonus}");
             
             return (itemId, price, reviewBonus);
+        }
+        
+        /// <summary>
+        /// Staff upsell: Find and consume checkout item with 80%+ success rate
+        /// Uses checkout-specific formula: 2 - (price / (totalBudget - treatmentFee))
+        /// </summary>
+        public (string itemId, int price, int reviewBonus, float successRate)? ConsumeHighSuccessRateCheckoutItem(CustomerController customer, int treatmentFee)
+        {
+            if (checkoutItemSlots == null || checkoutItemSlots.Length == 0 || customer == null) return null;
+            
+            const float MIN_SUCCESS_RATE = 0.8f;
+            
+            // Calculate remaining budget for checkout upsell
+            int totalBudget = customer.GetTotalBudget();
+            int remainingBudget = totalBudget - treatmentFee;
+            
+            if (remainingBudget <= 0)
+            {
+                Debug.Log("[PaymentPanel] Staff: No remaining budget for checkout upsell");
+                return null;
+            }
+            
+            // Collect items with 80%+ success rate
+            var eligibleItems = new System.Collections.Generic.List<(CheckoutItemSlotUI slot, Core.ItemData itemData, float successRate)>();
+            
+            foreach (var slot in checkoutItemSlots)
+            {
+                if (slot == null || slot.IsEmpty) continue;
+                
+                var itemData = Core.ItemDataRegistry.Instance?.GetItem(slot.ItemId);
+                if (itemData == null) continue;
+                
+                // Calculate success rate using checkout formula
+                float successRate;
+                if (itemData.upsellPrice <= 0)
+                {
+                    successRate = 1f; // Free items always succeed
+                }
+                else
+                {
+                    successRate = 2f - ((float)itemData.upsellPrice / remainingBudget);
+                    successRate = Mathf.Clamp01(successRate);
+                }
+                
+                if (successRate >= MIN_SUCCESS_RATE)
+                {
+                    eligibleItems.Add((slot, itemData, successRate));
+                }
+            }
+            
+            if (eligibleItems.Count == 0)
+            {
+                Debug.Log("[PaymentPanel] Staff: No checkout items with 80%+ success rate available");
+                return null;
+            }
+            
+            // Pick random from eligible items
+            int randomIndex = UnityEngine.Random.Range(0, eligibleItems.Count);
+            var selected = eligibleItems[randomIndex];
+            
+            // Consume one item
+            selected.slot.RemoveOne();
+            
+            Debug.Log($"[PaymentPanel] Staff selected checkout item: {selected.itemData.itemId}, price: ${selected.itemData.upsellPrice}, successRate: {selected.successRate:P0}");
+            
+            return (selected.itemData.itemId, selected.itemData.upsellPrice, selected.itemData.reviewBonus, selected.successRate);
         }
         
         /// <summary>

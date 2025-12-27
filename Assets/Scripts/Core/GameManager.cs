@@ -74,6 +74,12 @@ namespace HairRemovalSim.Core
                 RentManager.Instance.ProcessDayStart(DayCount);
             }
             
+            // Process ads (cleanup expired)
+            if (AdvertisingManager.Instance != null)
+            {
+                AdvertisingManager.Instance.ProcessDayStart();
+            }
+            
             // Refresh payment panel
             bool hasLoans = LoanManager.Instance != null && LoanManager.Instance.HasPaymentsDue();
             bool hasRent = RentManager.Instance != null && RentManager.Instance.HasPendingPayment(DayCount);

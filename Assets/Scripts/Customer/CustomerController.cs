@@ -107,7 +107,6 @@ namespace HairRemovalSim.Customer
         private System.Collections.IEnumerator InitializeBodyPartsAsync()
         {
             HairRemovalSim.Core.BodyPart[] bodyParts = GetComponentsInChildren<HairRemovalSim.Core.BodyPart>();
-            Debug.Log($"[CustomerController] Initializing {bodyParts.Length} body parts over {bodyParts.Length} frames...");
             
             int count = 0;
             foreach (HairRemovalSim.Core.BodyPart part in bodyParts)
@@ -120,7 +119,6 @@ namespace HairRemovalSim.Customer
             }
             
             isInitialized = true; // Mark as initialized
-            Debug.Log($"[CustomerController] Finished initializing {count} body parts for {(data != null ? data.customerName : "pooled customer")}");
         }
         
 
@@ -167,7 +165,6 @@ namespace HairRemovalSim.Customer
             };
             
             additionalBudget = Random.Range(range.min, range.max + 1);
-            Debug.Log($"[CustomerController] Initialized additionalBudget: ${additionalBudget} (WealthLevel: {data.wealth})");
         }
         
         /// <summary>
@@ -176,7 +173,6 @@ namespace HairRemovalSim.Customer
         public void ConsumeAdditionalBudget(int amount)
         {
             additionalBudget = Mathf.Max(0, additionalBudget - amount);
-            Debug.Log($"[CustomerController] Consumed ${amount} from budget. Remaining: ${additionalBudget}");
         }
         
         /// <summary>
@@ -251,6 +247,9 @@ namespace HairRemovalSim.Customer
             painMaxCount = 0;
             baseReviewValue = Random.Range(10, 51); // 10-50 random
             
+            // Reset applied effects from reception items
+            appliedEffects = null;
+            
             // Reset HairTreatmentControllers for pool reuse
             var treatmentControllers = GetComponentsInChildren<HairTreatmentController>();
             foreach (var controller in treatmentControllers)
@@ -288,8 +287,6 @@ namespace HairRemovalSim.Customer
                 waitTimeGauge.ResetGauge();
             }
             
-            Debug.Log($"[CustomerController] ===== POOL REUSE RESET =====");
-            Debug.Log($"[CustomerController] Reset state for {data?.customerName ?? "NULL"} - confirmedParts: {data?.confirmedParts}, confirmedPrice: {data?.confirmedPrice}, isInitialized: {isInitialized}");
         }
         
         /// <summary>
@@ -302,7 +299,6 @@ namespace HairRemovalSim.Customer
             {
                 part.Reset();
             }
-            Debug.Log($"[CustomerController] Reset {bodyParts.Length} body parts for {data.customerName}");
         }
         
         /// <summary>
@@ -315,7 +311,6 @@ namespace HairRemovalSim.Customer
 
         private void SetupRequestedPartsForHighlighting()
         {
-            Debug.Log($"[Highlight] === SETUP === data={data}, confirmedParts={data?.confirmedParts}");
             
             // Use confirmedParts from reception if available
             string[] targetPartNames;
@@ -324,7 +319,6 @@ namespace HairRemovalSim.Customer
             {
                 // New system: use confirmed parts from reception
                 targetPartNames = CustomerPlanHelper.GetDetailedTreatmentParts(data.confirmedParts);
-                Debug.Log($"[Highlight] Using confirmedParts: {data.confirmedParts} -> {string.Join(", ", targetPartNames)}");
             }
             else if (data != null && data.selectedTreatmentPlan != TreatmentPlan.None && bodyPartsDatabase != null)
             {
@@ -332,7 +326,6 @@ namespace HairRemovalSim.Customer
                 var targetParts = data.selectedTreatmentPlan.GetBodyPartDefinitions(bodyPartsDatabase);
                 if (targetParts == null || targetParts.Count == 0)
                 {
-                    Debug.LogWarning("[Highlight] No target parts found for treatment plan");
                     return;
                 }
                 targetPartNames = new string[targetParts.Count];
@@ -343,7 +336,6 @@ namespace HairRemovalSim.Customer
             }
             else
             {
-                Debug.LogWarning("[Highlight] No treatment plan or confirmed parts selected");
                 return;
             }
             
@@ -351,7 +343,6 @@ namespace HairRemovalSim.Customer
             var bodyPart = GetComponentInChildren<HairRemovalSim.Core.BodyPart>();
             if (bodyPart == null)
             {
-                Debug.LogError("[Highlight] No BodyPart component found!");
                 return;
             }
             
@@ -367,11 +358,9 @@ namespace HairRemovalSim.Customer
             
             if (cachedRenderer == null)
             {
-                Debug.LogError("[Highlight] No SkinnedMeshRenderer found on BodyPart object!");
                 return;
             }
             
-            Debug.Log($"[Highlight] Renderer found: {cachedRenderer.name}");
             
             // Store requested part names for completion tracking
             requestedPartNames.Clear();
@@ -393,7 +382,6 @@ namespace HairRemovalSim.Customer
                 {
                     string propName = $"_Request_{partName}";
                     mat.SetFloat(propName, 1.0f);
-                    Debug.Log($"[Highlight] Set {propName} = 1.0 on {mat.name}");
                 }
                 
                 // Start with highlight OFF - Q key will turn it on
@@ -415,7 +403,6 @@ namespace HairRemovalSim.Customer
                 controller.OnPartCompleted += OnBodyPartCompleted;
             }
             
-            Debug.Log($"[Highlight] === COMPLETE === Setup {targetPartNames.Length} parts for highlighting");
         }
         
         /// <summary>
@@ -450,7 +437,7 @@ namespace HairRemovalSim.Customer
                 if (mat != null && mat.HasProperty(propName))
                 {
                     mat.SetFloat(propName, 1.0f);
-                    Debug.Log($"[Highlight] Set {propName} = 1.0 on {mat.name}");
+
                 }
             }
             
@@ -549,7 +536,7 @@ namespace HairRemovalSim.Customer
                 agent.SetDestination(cashRegisterPoint.position);
                 currentState = CustomerState.WalkingToReception; // Use existing state for going to payment
                 
-                Debug.Log($"[CustomerController] {data.customerName} going directly to cash register");
+
             }
         }
         
@@ -569,12 +556,12 @@ namespace HairRemovalSim.Customer
                 if (waypoint != null)
                 {
                     StartCoroutine(MoveViaWaypoint(waypoint, queuePos));
-                    Debug.Log($"[CustomerController] {data.customerName} moving to queue via waypoint");
+
                 }
                 else
                 {
                     agent.SetDestination(queuePos.position);
-                    Debug.Log($"[CustomerController] {data.customerName} moving directly to queue position");
+
                 }
             }
         }
@@ -591,7 +578,7 @@ namespace HairRemovalSim.Customer
                 agent.updateRotation = true;
                 currentState = CustomerState.Waiting;
                 agent.SetDestination(waitPos.position);
-                Debug.Log($"[CustomerController] {data.customerName} moving to bed waiting area");
+
             }
         }
         
@@ -601,7 +588,7 @@ namespace HairRemovalSim.Customer
             
             // First, go to waypoint
             agent.SetDestination(waypoint.position);
-            Debug.Log($"[CustomerController] {data.customerName} STEP 1: Setting destination to waypoint {waypoint.name}");
+
             
             // Wait until we reach the waypoint using simple distance check
             float waypointReachedDistance = 1.0f;
@@ -613,7 +600,7 @@ namespace HairRemovalSim.Customer
                 
                 if (distance < waypointReachedDistance)
                 {
-                    Debug.Log($"[CustomerController] {data.customerName} STEP 2: Reached waypoint! Distance: {distance:F2}m. Now going to final position {finalDestination.name}");
+
                     break;
                 }
                 
@@ -627,7 +614,7 @@ namespace HairRemovalSim.Customer
             if (agent != null && agent.enabled && finalDestination != null)
             {
                 agent.SetDestination(finalDestination.position);
-                Debug.Log($"[CustomerController] {data.customerName} STEP 3: Final destination set to {finalDestination.name}");
+
                 
                 // Start waiting timer when heading to cash register
                 if (finalDestination.name.Contains("Cash") || finalDestination.name.Contains("Register"))
@@ -656,7 +643,7 @@ namespace HairRemovalSim.Customer
             
             if (exitPoint == null)
             {
-                Debug.LogWarning("[CustomerController] LeaveShop: No exit point, returning to pool");
+
                 ReturnToPool();
                 return;
             }
@@ -678,11 +665,11 @@ namespace HairRemovalSim.Customer
                     {
                         transform.position = hit.position;
                         agent.Warp(hit.position);
-                        Debug.Log($"[CustomerController] LeaveShop: Warped to nearest NavMesh point at {hit.position}");
+
                     }
                     else
                     {
-                        Debug.LogWarning("[CustomerController] LeaveShop: Could not find NavMesh point, returning to pool");
+
                         ReturnToPool();
                         return;
                     }
@@ -692,7 +679,7 @@ namespace HairRemovalSim.Customer
             // Final check - ensure we're on NavMesh before calling NavMesh methods
             if (!agent.isOnNavMesh)
             {
-                Debug.LogWarning("[CustomerController] LeaveShop: Still not on NavMesh after warp attempts, returning to pool");
+
                 ReturnToPool();
                 return;
             }
@@ -702,7 +689,7 @@ namespace HairRemovalSim.Customer
             agent.updateRotation = true;
             agent.SetDestination(exitPoint.position);
             
-            Debug.Log($"[CustomerController] {data?.customerName ?? "Customer"} leaving shop, heading to exit");
+
         }
         
         /// <summary>
@@ -852,14 +839,12 @@ namespace HairRemovalSim.Customer
             if (animator != null && animator.enabled)
             {
                 animator.SetBool("TreatmentFinished", true);
-                Debug.Log("[CustomerController] TreatmentFinished = true, waiting for player to leave");
             }
             
             // Spawn hair debris on the floor (for cleaning system)
             if (Environment.HairDebrisManager.Instance != null && assignedBed != null)
             {
                 Environment.HairDebrisManager.Instance.OnHairRemoved(assignedBed.transform.position);
-                Debug.Log("[CustomerController] Hair debris spawned at bed position");
             }
             
             // Start checking if player leaves the bed area
@@ -1220,7 +1205,7 @@ namespace HairRemovalSim.Customer
             
             // Scale pain by tolerance (0 = no tolerance, 1 = full tolerance)
             float scaledAmount = amount * (1f - data.painTolerance);
-            
+
             // Apply pain rate reduction from effects
             if (appliedEffects != null && appliedEffects.PainRateMultiplier < 1f)
             {
@@ -1400,6 +1385,25 @@ namespace HairRemovalSim.Customer
         public bool IsWaiting => isWaiting;
         
         /// <summary>
+        /// Reset wait timer to 0 (called when reception is complete)
+        /// </summary>
+        public void ResetWaitTimer()
+        {
+            waitTimer = 0f;
+            isWaiting = false;
+            Debug.Log($"[CustomerController] {data?.customerName} wait timer reset");
+        }
+        
+        /// <summary>
+        /// Resume wait timer (called when staff cancels reception processing)
+        /// </summary>
+        public void ResumeWaitTimer()
+        {
+            isWaiting = true;
+            Debug.Log($"[CustomerController] {data?.customerName} wait timer resumed at {waitTimer:F1}s");
+        }
+        
+        /// <summary>
         /// Called when wait time expires - customer leaves angry
         /// </summary>
         private void OnWaitTimeExpired()
@@ -1415,13 +1419,6 @@ namespace HairRemovalSim.Customer
             
             Debug.Log($"[CustomerController] {data?.customerName} waited too long and is leaving angry!");
             
-            // If at a bed, release it
-            if (assignedBed != null)
-            {
-                assignedBed.ClearCustomer();
-                assignedBed = null;
-            }
-            
             // Clear from ReceptionManager queue and waiting list
             if (UI.ReceptionManager.Instance != null)
             {
@@ -1430,8 +1427,30 @@ namespace HairRemovalSim.Customer
                 UI.ReceptionManager.Instance.RemoveFromWaitingList(this);
             }
             
-            // Leave without paying
-            LeaveShop();
+            // If in treatment (on bed), use FailAndLeave to properly get dressed and stand up
+            if (currentState == CustomerState.InTreatment && assignedBed != null)
+            {
+                // Record angry customer and submit negative review
+                if (Core.ShopManager.Instance != null)
+                {
+                    Core.ShopManager.Instance.AddReview(-50, 0);
+                    Core.ShopManager.Instance.AddCustomerReview(1); // 1 star
+                }
+                
+                FailAndLeave();
+            }
+            else
+            {
+                // If at a bed (waiting for treatment), release it
+                if (assignedBed != null)
+                {
+                    assignedBed.ClearCustomer();
+                    assignedBed = null;
+                }
+                
+                // Leave without paying
+                LeaveShop();
+            }
         }
         
         #endregion
@@ -1785,9 +1804,24 @@ namespace HairRemovalSim.Customer
         {
             // Hide clothing when lying down for treatment
             
-        
-            bodyPart.BakeMeshForCollider();
+            Debug.Log($"[CustomerController] OnLieDownComplete called. bodyPart is null: {bodyPart == null}");
             
+            if (bodyPart == null)
+            {
+                Debug.LogError("[CustomerController] bodyPart is null!");
+                return;
+            }
+            
+            try
+            {
+                Debug.Log($"[CustomerController] Calling BakeMeshForCollider on {bodyPart.name}");
+                bodyPart.BakeMeshForCollider();
+                Debug.Log($"[CustomerController] BakeMeshForCollider completed");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[CustomerController] Exception in BakeMeshForCollider: {e.Message}\n{e.StackTrace}");
+            }
             
             Debug.Log($"[CustomerController] OnLieDownComplete: Baked mesh colliders for  ");
         }
@@ -1800,7 +1834,12 @@ namespace HairRemovalSim.Customer
             SetClothingVisible(false);
 
             yield return new WaitForSeconds(delay);
-          //  OnLieDownComplete();
+            
+            // Fallback: Call BakeMesh if Animation Event didn't fire
+            if (bodyPart != null)
+            {
+                OnLieDownComplete();
+            }
         }
 
         public void OnHoverEnter() { }
