@@ -112,10 +112,37 @@ namespace HairRemovalSim.Staff
             {
                 if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.1f)
                 {
+                    // Match rotation to warehouse staff point (smooth)
+                    var warehousePoint = WarehouseManager.Instance?.staffPoint;
+                    if (warehousePoint != null)
+                    {
+                        agent.updateRotation = false;
+                        StartCoroutine(SmoothRotateToTarget(warehousePoint.rotation));
+                    }
+                    
                     currentState = RestockState.Idle;
-                    Debug.Log("[StaffRestockHandler] Returned to warehouse");
                 }
             }
+        }
+        
+        /// <summary>
+        /// Smoothly rotate to target rotation
+        /// </summary>
+        private IEnumerator SmoothRotateToTarget(Quaternion targetRotation)
+        {
+            float rotationSpeed = 180f; // degrees per second
+            
+            while (Quaternion.Angle(transform.rotation, targetRotation) > 0.5f)
+            {
+                transform.rotation = Quaternion.RotateTowards(
+                    transform.rotation, 
+                    targetRotation, 
+                    rotationSpeed * Time.deltaTime
+                );
+                yield return null;
+            }
+            
+            transform.rotation = targetRotation;
         }
         
         /// <summary>
@@ -131,26 +158,155 @@ namespace HairRemovalSim.Staff
             // Calculate how many items we can carry
             int capacity = staffController.StaffData?.profile?.rankData?.itemSlotCount ?? 5;
             
-            // Gather items from warehouse
-            int gatheredCount = GatherItemsFromWarehouse(targets, capacity);
-            if (gatheredCount == 0) return;
+            // Plan items to gather (don't remove from warehouse yet)
+            int plannedCount = PlanItemsToGather(targets, capacity);
+            Debug.Log($"[StaffRestockHandler] Planned to gather {plannedCount} items");
+            if (plannedCount == 0) return;
             
-            // Build restock queue
+            // Start by moving to warehouse pickup point
+            Debug.Log("[StaffRestockHandler] Starting MoveToPickupPointAndGather coroutine");
+            StartCoroutine(MoveToPickupPointAndGather(targets, capacity));
+        }
+        
+        /// <summary>
+        /// Move to warehouse pickup point, gather items with delay, then start restocking
+        /// </summary>
+        private IEnumerator MoveToPickupPointAndGather(List<RestockTarget> targets, int capacity)
+        {
+            // Use pickupPoint if available, otherwise fall back to staffPoint
+            var warehouse = WarehouseManager.Instance;
+            var pickupPoint = warehouse?.pickupPoint ?? warehouse?.staffPoint;
+            if (pickupPoint == null || agent == null)
+            {
+                Debug.LogWarning("[StaffRestockHandler] No pickup point or staff point found on WarehouseManager");
+                currentState = RestockState.Idle;
+                yield break;
+            }
+            
+            Debug.Log($"[StaffRestockHandler] Moving to pickup point at {pickupPoint.position}");
+            
+            // Move to pickup point
+            currentState = RestockState.Gathering;
+            agent.isStopped = false;
+            agent.updateRotation = true;
+            agent.SetDestination(pickupPoint.position);
+            
+            Debug.Log($"[StaffRestockHandler] Agent destination set, remaining distance: {agent.remainingDistance}");
+            
+            // Wait until arrived at pickup point
+            while (agent != null && agent.enabled)
+            {
+                if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.1f)
+                {
+                    Debug.Log("[StaffRestockHandler] Arrived at pickup point");
+                    break;
+                }
+                yield return new WaitForSeconds(0.1f);
+            }
+            
+            // Arrived at pickup - stop and rotate
+            if (agent != null)
+            {
+                agent.isStopped = true;
+                agent.updateRotation = false;
+            }
+            
+            // Smooth rotation to pickup point
+            yield return StartCoroutine(SmoothRotateToTarget(pickupPoint.rotation));
+            
+            // Set animation state - gathering from warehouse
+            staffController?.SetAnimRestockFromWarehouse(true);
+            
+            // Actually gather items from warehouse
+            int gatheredCount = GatherItemsFromWarehouse(targets, capacity);
+            Debug.Log($"[StaffRestockHandler] Gathered {gatheredCount} items from warehouse");
+            if (gatheredCount == 0)
+            {
+                staffController?.SetAnimRestockFromWarehouse(false);
+                currentState = RestockState.Idle;
+                yield break;
+            }
+            
+            // Build restock queue now that items are gathered
             restockQueue.Clear();
             foreach (var target in targets)
             {
                 if (target.itemsToPlace.Count > 0)
                 {
                     restockQueue.Enqueue(target);
+                    Debug.Log($"[StaffRestockHandler] Queued {target.location} with {target.itemsToPlace.Count} item types");
                 }
             }
             
-            if (restockQueue.Count > 0)
+            if (restockQueue.Count == 0)
             {
-                currentState = RestockState.Gathering;
-                Debug.Log($"[StaffRestockHandler] Gathered {gatheredCount} items, heading to {restockQueue.Count} locations");
-                MoveToNextTarget();
+                Debug.LogWarning("[StaffRestockHandler] No targets in queue after gathering");
+                staffController?.SetAnimRestockFromWarehouse(false);
+                currentState = RestockState.Idle;
+                yield break;
             }
+            
+            // Wait time based on items gathered (1 second per item)
+            float gatherTime = gatheredCount * 1f;
+            Debug.Log($"[StaffRestockHandler] Waiting {gatherTime}s for gathering");
+            yield return new WaitForSeconds(gatherTime);
+            
+            // Done gathering, start moving to restock targets
+            staffController?.SetAnimRestockFromWarehouse(false);
+            Debug.Log("[StaffRestockHandler] Gathering complete, moving to next target");
+            MoveToNextTarget();
+        }
+        
+        /// <summary>
+        /// Plan items to gather without removing from warehouse (for validation)
+        /// </summary>
+        private int PlanItemsToGather(List<RestockTarget> targets, int capacity)
+        {
+            int planned = 0;
+            var warehouse = WarehouseManager.Instance;
+            if (warehouse == null) return 0;
+            
+            var warehouseItems = warehouse.GetAllItems();
+            
+            foreach (var target in targets)
+            {
+                if (planned >= capacity) break;
+                
+                foreach (var kvp in warehouseItems)
+                {
+                    if (planned >= capacity) break;
+                    
+                    string itemId = kvp.Key;
+                    int available = kvp.Value;
+                    if (available <= 0) continue;
+                    
+                    var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
+                    if (itemData == null) continue;
+                    
+                    bool canPlace = false;
+                    switch (target.location)
+                    {
+                        case RestockLocation.Reception:
+                            canPlace = itemData.canPlaceAtReception;
+                            break;
+                        case RestockLocation.Checkout:
+                            canPlace = itemData.canUseAtCheckout;
+                            break;
+                        case RestockLocation.TreatmentShelf:
+                            canPlace = itemData.canPlaceOnShelf;
+                            break;
+                    }
+                    
+                    if (canPlace)
+                    {
+                        int maxStack = itemData.maxStackOnShelf;
+                        int toTake = Mathf.Min(available, maxStack, capacity - planned);
+                        planned += toTake;
+                    }
+                }
+            }
+            
+            return planned;
         }
         
         /// <summary>
@@ -332,9 +488,9 @@ namespace HairRemovalSim.Staff
                     
                     if (!canPlace) continue;
                     
-                    // Determine how much to take
-                    int maxStack = itemData.maxStackOnShelf;
-                    int toTake = Mathf.Min(available, maxStack, capacity - gathered);
+                    // Determine how much to take (limited only by capacity, not stack size)
+                    // Stack size limit is applied when placing items, not when carrying
+                    int toTake = Mathf.Min(available, capacity - gathered);
                     
                     if (toTake > 0)
                     {
@@ -363,6 +519,9 @@ namespace HairRemovalSim.Staff
         
         private void MoveToNextTarget()
         {
+            // Clear warehouse gathering animation when moving to target
+            staffController?.SetAnimRestockFromWarehouse(false);
+            
             if (restockQueue.Count == 0)
             {
                 // All done, return to warehouse
@@ -375,7 +534,12 @@ namespace HairRemovalSim.Staff
             if (currentTarget.restockPoint != null && agent != null)
             {
                 currentState = RestockState.MovingToSpot;
+                
+                // Ensure agent is ready to move
+                agent.isStopped = false;
+                agent.updateRotation = true;
                 agent.SetDestination(currentTarget.restockPoint.position);
+                
                 Debug.Log($"[StaffRestockHandler] Moving to {currentTarget.location}");
             }
             else
@@ -394,7 +558,14 @@ namespace HairRemovalSim.Staff
                 return;
             }
             
-            // Start restocking coroutine
+            // Stop and disable agent rotation
+            if (agent != null)
+            {
+                agent.isStopped = true;
+                agent.updateRotation = false;
+            }
+            
+            // Start restocking coroutine (includes rotation)
             if (restockCoroutine != null)
                 StopCoroutine(restockCoroutine);
             
@@ -405,12 +576,22 @@ namespace HairRemovalSim.Staff
         {
             currentState = RestockState.Restocking;
             
+            // Smooth rotation to restock point
+            if (currentTarget.restockPoint != null)
+            {
+                yield return StartCoroutine(SmoothRotateToTarget(currentTarget.restockPoint.rotation));
+            }
+            
+            // Set animation state - restocking
+            staffController?.SetAnimRestockToAnywhere(true);
+            
             int totalItems = currentTarget.TotalItemCount;
             float waitTime = totalItems * restockTimePerItem;
             
-            Debug.Log($"[StaffRestockHandler] Restocking {totalItems} items at {currentTarget.location}, waiting {waitTime}s");
-            
             yield return new WaitForSeconds(waitTime);
+            
+            // Clear animation state
+            staffController?.SetAnimRestockToAnywhere(false);
             
             // Actually place items
             PlaceItemsAtLocation(currentTarget);
@@ -614,6 +795,10 @@ namespace HairRemovalSim.Staff
         
         private void ReturnToWarehouse()
         {
+            // Clear all restock animations
+            staffController?.SetAnimRestockFromWarehouse(false);
+            staffController?.SetAnimRestockToAnywhere(false);
+            
             // Return any remaining items to warehouse
             if (carriedItems.Count > 0)
             {
@@ -638,8 +823,9 @@ namespace HairRemovalSim.Staff
             if (warehousePoint != null && agent != null)
             {
                 currentState = RestockState.Returning;
+                agent.isStopped = false;
+                agent.updateRotation = true;
                 agent.SetDestination(warehousePoint.position);
-                Debug.Log("[StaffRestockHandler] Returning to warehouse");
             }
             else
             {

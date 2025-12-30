@@ -46,15 +46,8 @@ namespace HairRemovalSim.UI
             {
                 Debug.Log($"[CashRegister] {customer.data.customerName} registered to queue position {queueIndex + 1}");
                 
-                // Determine waypoint: if not at the back, use the position behind
-                Transform waypoint = null;
-                if (queueIndex + 1 < queuePositions.Length)
-                {
-                    waypoint = queuePositions[queueIndex + 1]; // Position behind
-                }
-                
-                // Send customer to queue position via waypoint, facing cash register
-                customer.GoToQueuePosition(queuePositions[queueIndex], transform, waypoint);
+                // Send customer to queue position, facing cash register
+                customer.GoToQueuePosition(queuePositions[queueIndex], transform);
                 
                 return queuePositions[queueIndex];
             }

@@ -89,6 +89,9 @@ namespace HairRemovalSim.Staff
             // Stop customer's wait timer - staff is handling them now
             customer.StopWaiting();
             
+            // Set animation state
+            staffController?.SetAnimInTreatment(true);
+            
             // Register with bed for UI
             assignedBed.RegisterStaffHandler(this);
             
@@ -418,6 +421,9 @@ namespace HairRemovalSim.Staff
         
         private void FinishProcessing()
         {
+            // Clear animation state
+            staffController?.SetAnimInTreatment(false);
+            
             // Re-enable player detection
             if (assignedBed != null)
             {

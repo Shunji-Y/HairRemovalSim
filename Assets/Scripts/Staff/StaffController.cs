@@ -16,6 +16,15 @@ namespace HairRemovalSim.Staff
         [Header("References")]
         private HiredStaffData staffData;
         private NavMeshAgent agent;
+        private Animator animator;
+        
+        // Animator parameter hashes for performance
+        private static readonly int SpeedHash = Animator.StringToHash("Speed");
+        private static readonly int InReceRegiHash = Animator.StringToHash("InReceRegi");
+        private static readonly int InTreatmentHash = Animator.StringToHash("InTreatment");
+        private static readonly int RestockFromWarehouseHash = Animator.StringToHash("RestockFromWarehouse");
+        private static readonly int RestockToAnywhereHash = Animator.StringToHash("RestockToAnywhere");
+        private static readonly int BowHash = Animator.StringToHash("Bow");
         
         [Header("Station Points")]
         [Tooltip("Where to stand when assigned to reception")]
@@ -51,6 +60,9 @@ namespace HairRemovalSim.Staff
         private BedController targetBedForDoor = null;
         [SerializeField] private float doorOpenDistance = 2f;
         
+        // Target station for rotation alignment
+        private Transform targetStationPoint = null;
+        
         private void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
@@ -58,6 +70,9 @@ namespace HairRemovalSim.Staff
             {
                 agent = gameObject.AddComponent<NavMeshAgent>();
             }
+            
+            // Get animator (may be on child object)
+            animator = GetComponentInChildren<Animator>();
             
             // Add work handlers if not present
             if (GetComponent<StaffReceptionHandler>() == null)
@@ -106,6 +121,9 @@ namespace HairRemovalSim.Staff
         
         private void Update()
         {
+            // Update animator speed parameter
+            UpdateAnimator();
+            
             switch (currentState)
             {
                 case StaffState.WanderingBeforeOpen:
@@ -122,6 +140,76 @@ namespace HairRemovalSim.Staff
                     break;
             }
         }
+        
+        /// <summary>
+        /// Update animator parameters based on current state
+        /// </summary>
+        private void UpdateAnimator()
+        {
+            if (animator == null) return;
+            
+            // Update speed based on agent velocity
+            float speed = agent != null ? agent.velocity.magnitude : 0f;
+            animator.SetFloat(SpeedHash, speed);
+        }
+        
+        #region Animation Control Methods
+        /// <summary>
+        /// Set InReceRegi animator parameter (for reception/cashier processing)
+        /// </summary>
+        public void SetAnimInReceRegi(bool value)
+        {
+            if (animator != null)
+                animator.SetBool(InReceRegiHash, value);
+        }
+        
+        /// <summary>
+        /// Set InTreatment animator parameter (for treatment processing)
+        /// </summary>
+        public void SetAnimInTreatment(bool value)
+        {
+            if (animator != null)
+                animator.SetBool(InTreatmentHash, value);
+        }
+        
+        /// <summary>
+        /// Set RestockFromWarehouse animator parameter
+        /// </summary>
+        public void SetAnimRestockFromWarehouse(bool value)
+        {
+            if (animator != null)
+                animator.SetBool(RestockFromWarehouseHash, value);
+        }
+        
+        /// <summary>
+        /// Set RestockToAnywhere animator parameter
+        /// </summary>
+        public void SetAnimRestockToAnywhere(bool value)
+        {
+            if (animator != null)
+                animator.SetBool(RestockToAnywhereHash, value);
+        }
+        
+        /// <summary>
+        /// Clear all work animation states
+        /// </summary>
+        public void ClearAllWorkAnimations()
+        {
+            SetAnimInReceRegi(false);
+            SetAnimInTreatment(false);
+            SetAnimRestockFromWarehouse(false);
+            SetAnimRestockToAnywhere(false);
+        }
+        
+        /// <summary>
+        /// Trigger bow animation
+        /// </summary>
+        public void TriggerBow()
+        {
+            if (animator != null)
+                animator.SetTrigger(BowHash);
+        }
+        #endregion
         
         /// <summary>
         /// Initialize with hired staff data
@@ -260,6 +348,7 @@ namespace HairRemovalSim.Staff
             
             if (destination != null)
             {
+                targetStationPoint = destination; // Save for rotation alignment
                 SetDestination(destination.position);
                 SetState(StaffState.WalkingToStation);
                 
@@ -277,6 +366,7 @@ namespace HairRemovalSim.Staff
             }
             else
             {
+                targetStationPoint = null;
                 SetState(StaffState.Idle);
             }
         }
@@ -369,18 +459,46 @@ namespace HairRemovalSim.Staff
             
             if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
             {
+                // Stop agent and disable rotation override
+                agent.isStopped = true;
+                agent.updateRotation = false;
+                
                 SetState(StaffState.AtStation);
-                Debug.Log($"[StaffController] {staffData?.Name} arrived at station");
+                
+                // Smooth rotation to station point
+                if (targetStationPoint != null)
+                {
+                    StartCoroutine(SmoothRotateToTarget(targetStationPoint.rotation));
+                }
                 
                 // Close doors after arriving at treatment station
                 if (targetBedForDoor != null && hasOpenedDoorForEntry)
                 {
                     targetBedForDoor.CloseDoors();
-                    Debug.Log($"[StaffController] Closing doors after arriving at bed");
                     hasOpenedDoorForEntry = false;
                     targetBedForDoor = null;
                 }
             }
+        }
+        
+        /// <summary>
+        /// Smoothly rotate to target rotation
+        /// </summary>
+        private System.Collections.IEnumerator SmoothRotateToTarget(Quaternion targetRotation)
+        {
+            float rotationSpeed = 180f; // degrees per second
+            
+            while (Quaternion.Angle(transform.rotation, targetRotation) > 0.5f)
+            {
+                transform.rotation = Quaternion.RotateTowards(
+                    transform.rotation, 
+                    targetRotation, 
+                    rotationSpeed * Time.deltaTime
+                );
+                yield return null;
+            }
+            
+            transform.rotation = targetRotation;
         }
         
         /// <summary>
@@ -441,6 +559,7 @@ namespace HairRemovalSim.Staff
             if (agent != null && agent.isOnNavMesh)
             {
                 agent.isStopped = false;
+                agent.updateRotation = true; // Re-enable rotation when moving
                 agent.SetDestination(position);
             }
         }

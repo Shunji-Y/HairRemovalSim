@@ -13,6 +13,9 @@ namespace HairRemovalSim.Environment
         // Transform where the customer should lie down
         public Transform lieDownPoint;
         
+        [Tooltip("Position and rotation where customer stands up after treatment. If null, uses bed transform.")]
+        public Transform standUpPoint;
+        
         [Header("Navigation")]
         [Tooltip("Point where customer walks to (should be bed center). If null, uses bed transform.")]
         public Transform arrivalPoint;

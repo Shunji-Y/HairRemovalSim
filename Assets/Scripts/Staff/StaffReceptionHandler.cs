@@ -67,6 +67,9 @@ namespace HairRemovalSim.Staff
             currentCustomer = customer;
             isProcessing = true;
             
+            // Set animation state
+            staffController?.SetAnimInReceRegi(true);
+            
             processingCoroutine = StartCoroutine(ProcessCustomerCoroutine(customer));
         }
         
@@ -220,6 +223,10 @@ namespace HairRemovalSim.Staff
         /// </summary>
         private void FinishProcessing()
         {
+            // Clear animation state and trigger bow
+            staffController?.SetAnimInReceRegi(false);
+            staffController?.TriggerBow();
+            
             // Reset customer's wait timer on successful reception
             if (currentCustomer != null)
             {
@@ -240,6 +247,9 @@ namespace HairRemovalSim.Staff
             if (!isProcessing) return;
             
             Debug.Log($"[StaffReceptionHandler] Canceling reception for {currentCustomer?.data?.customerName}");
+            
+            // Clear animation state
+            staffController?.SetAnimInReceRegi(false);
             
             // Stop the processing coroutine
             if (processingCoroutine != null)

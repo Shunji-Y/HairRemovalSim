@@ -36,8 +36,11 @@ namespace HairRemovalSim.Core
         [SerializeField] private int warehouseLevel = 1;
         
         [Header("Staff")]
-        [Tooltip("Position where staff stands when restocking from warehouse")]
+        [Tooltip("Position where staff stands when idle at warehouse")]
         public Transform staffPoint;
+        
+        [Tooltip("Position where staff picks up items from warehouse")]
+        public Transform pickupPoint;
         
         // Slot data
         private WarehouseSlot[] slots;

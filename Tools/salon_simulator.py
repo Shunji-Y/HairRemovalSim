@@ -947,8 +947,8 @@ def main():
     print("Hair Removal Salon Simulator")
     print("=" * 60)
     
-    # 複数回シミュレーション
-    num_runs = 10
+    # 複数回シミュレーション (ローンなし)
+    num_runs = 1000
     days_to_grade7 = []
     
     for i in range(num_runs):
@@ -965,12 +965,36 @@ def main():
         else:
             days_to_grade7.append(100)  # 未達成
     
-    print(f"\n[Result] Simulation ({num_runs} runs)")
+    print(f"\n[Result] Simulation NO LOANS ({num_runs} runs)")
     print("-" * 40)
     print(f"Days to Grade 7:")
     print(f"  Average: {sum(days_to_grade7) / len(days_to_grade7):.1f} days")
     print(f"  Min: {min(days_to_grade7)} days")
     print(f"  Max: {max(days_to_grade7)} days")
+    
+    # 複数回シミュレーション (ローンあり)
+    days_to_grade7_loans = []
+    
+    for i in range(num_runs):
+        sim = SalonSimulator(config={
+            "operating_time": 600,
+            "avg_treatment_time": 15,
+            "use_loans": True,
+            "verbose": False,
+        })
+        results = sim.run(max_days=100)
+        
+        if sim.state.grade >= 7:
+            days_to_grade7_loans.append(results[-1]["day"])
+        else:
+            days_to_grade7_loans.append(100)  # 未達成
+    
+    print(f"\n[Result] Simulation WITH LOANS ({num_runs} runs)")
+    print("-" * 40)
+    print(f"Days to Grade 7:")
+    print(f"  Average: {sum(days_to_grade7_loans) / len(days_to_grade7_loans):.1f} days")
+    print(f"  Min: {min(days_to_grade7_loans)} days")
+    print(f"  Max: {max(days_to_grade7_loans)} days")
     
     # 詳細シミュレーション (ローンなし)
     print("\n" + "=" * 60)

@@ -112,7 +112,7 @@ MonoBehaviour:
   isUnbreakable: 1
   maxDurability: 3
   currentDurability: 3
-  painMultiplier: 0.1
+  painMultiplier: 0.3
   decalShape: 0
   decalWidth: 0.07
   decalHeight: 0.01

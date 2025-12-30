@@ -419,6 +419,12 @@ namespace HairRemovalSim.UI
             
             Debug.Log($"[ReceptionPanel] Confirmed - Parts: {selectedParts}, Price: ${data.confirmedPrice} (upsell: {upsellSucceeded})");
             
+            // Show popup notification for upsell result (only if there was an upsell item)
+            if (!string.IsNullOrEmpty(extraItemId) && PopupNotificationManager.Instance != null)
+            {
+                PopupNotificationManager.Instance.ShowItemResult(upsellSucceeded);
+            }
+            
             // Invoke callback
             onConfirm?.Invoke(currentCustomer, selectedParts, TreatmentMachine.Shaver, useAnesthesia, data.confirmedPrice);
             

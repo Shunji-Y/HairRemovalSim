@@ -555,6 +555,22 @@ namespace HairRemovalSim.UI
             
             Debug.Log($"[PaymentPanel] {data.customerName} paid ${totalAmount}, review: {finalReview}");
             
+            // Show popup notifications
+            if (PopupNotificationManager.Instance != null)
+            {
+                PopupNotificationManager.Instance.ShowMoney(totalAmount);
+                
+                // Show review popup with mood icon
+                int moodIndex = (int)GetMoodFromReview(finalReview);
+                PopupNotificationManager.Instance.ShowReview(finalReview, moodIndex);
+                
+                // Show item result only if there was an upsell item
+                if (!string.IsNullOrEmpty(addedItemId))
+                {
+                    PopupNotificationManager.Instance.ShowItemResult(checkoutUpsellSucceeded);
+                }
+            }
+            
             // NOTE: Item is already consumed when dropped onto PaymentItemDropTarget
             // No need to consume here again
             

@@ -61,6 +61,7 @@ namespace HairRemovalSim.Customer
         
         [Header("Initialization")]
         public bool isInitialized = false; // Track if BodyParts are initialized
+        private bool isFailedTreatment = false; // Track if leaving due to failed treatment (skip payment)
         
         [Header("Payment Settings")]
         public float paymentDelay = 2.0f;
@@ -272,6 +273,7 @@ namespace HairRemovalSim.Customer
             
             // Reset initialization flag so Bake will be called again
             isInitialized = false;
+            isFailedTreatment = false;
             
             // Reset clothing to visible state
             SetClothingForStanding();
@@ -541,9 +543,9 @@ namespace HairRemovalSim.Customer
         }
         
         /// <summary>
-        /// Navigate to a queue position while waiting, optionally via a waypoint
+        /// Navigate to a queue position while waiting
         /// </summary>
-        public void GoToQueuePosition(Transform queuePos, Transform faceTarget = null, Transform waypoint = null)
+        public void GoToQueuePosition(Transform queuePos, Transform faceTarget = null)
         {
             if (agent != null && queuePos != null)
             {
@@ -551,19 +553,52 @@ namespace HairRemovalSim.Customer
                 agent.isStopped = false;
                 agent.updateRotation = true;
                 currentState = CustomerState.Waiting;
+                agent.SetDestination(queuePos.position);
                 
-                // If waypoint specified, go there first, then to queue position
-                if (waypoint != null)
-                {
-                    StartCoroutine(MoveViaWaypoint(waypoint, queuePos));
-
-                }
-                else
-                {
-                    agent.SetDestination(queuePos.position);
-
-                }
+                // Start coroutine to check arrival and rotate
+                StartCoroutine(WaitForQueueArrivalAndRotate(queuePos));
             }
+        }
+        
+        /// <summary>
+        /// Wait for arrival at queue position and smoothly rotate to match
+        /// </summary>
+        private System.Collections.IEnumerator WaitForQueueArrivalAndRotate(Transform queuePos)
+        {
+            if (agent == null || queuePos == null) yield break;
+            
+            // Wait until arrived
+            while (agent != null && agent.enabled)
+            {
+                if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.1f)
+                {
+                    break;
+                }
+                yield return new WaitForSeconds(0.1f);
+            }
+            
+            // Arrived - stop and rotate smoothly
+            if (agent != null)
+            {
+                agent.isStopped = true;
+                agent.updateRotation = false;
+            }
+            
+            // Smooth rotation to queue position rotation
+            float rotationSpeed = 180f;
+            Quaternion targetRotation = queuePos.rotation;
+            
+            while (Quaternion.Angle(transform.rotation, targetRotation) > 0.5f)
+            {
+                transform.rotation = Quaternion.RotateTowards(
+                    transform.rotation, 
+                    targetRotation, 
+                    rotationSpeed * Time.deltaTime
+                );
+                yield return null;
+            }
+            
+            transform.rotation = targetRotation;
         }
         
         /// <summary>
@@ -578,49 +613,6 @@ namespace HairRemovalSim.Customer
                 agent.updateRotation = true;
                 currentState = CustomerState.Waiting;
                 agent.SetDestination(waitPos.position);
-
-            }
-        }
-        
-        private System.Collections.IEnumerator MoveViaWaypoint(Transform waypoint, Transform finalDestination)
-        {
-            if (agent == null) yield break;
-            
-            // First, go to waypoint
-            agent.SetDestination(waypoint.position);
-
-            
-            // Wait until we reach the waypoint using simple distance check
-            float waypointReachedDistance = 1.0f;
-            while (true)
-            {
-                if (agent == null || !agent.enabled) yield break;
-                
-                float distance = Vector3.Distance(transform.position, waypoint.position);
-                
-                if (distance < waypointReachedDistance)
-                {
-
-                    break;
-                }
-                
-                yield return new WaitForSeconds(0.1f);
-            }
-            
-            // Small delay before changing destination
-            yield return new WaitForSeconds(0.1f);
-            
-            // Then go to final destination
-            if (agent != null && agent.enabled && finalDestination != null)
-            {
-                agent.SetDestination(finalDestination.position);
-
-                
-                // Start waiting timer when heading to cash register
-                if (finalDestination.name.Contains("Cash") || finalDestination.name.Contains("Register"))
-                {
-                    StartWaiting();
-                }
             }
         }
 
@@ -693,7 +685,7 @@ namespace HairRemovalSim.Customer
         }
         
         /// <summary>
-        /// Called when staff treatment fails - customer gets dressed, stands up, then leaves without paying
+        /// Called when treatment fails (pain max 3x, wait timeout) - uses same departure flow as normal completion
         /// </summary>
         public void FailAndLeave()
         {
@@ -702,39 +694,19 @@ namespace HairRemovalSim.Customer
             // Record angry customer
             if (DailyStatsManager.Instance != null)
                 DailyStatsManager.Instance.RecordAngryCustomer();
-
-            // Set clothing back on
-            SetClothingVisible(true);
             
-            // Set animator state
+            // Mark as failed (not completed, but departure should happen)
+            isFailedTreatment = true;
+            currentState = CustomerState.Completed; // Use same state for departure flow
+            
+            // Set TreatmentFinished = true (same as normal completion - wait for player to leave)
             if (animator != null && animator.enabled)
             {
-                animator.SetBool("TreatmentFinished", false);
-                animator.SetBool("IsLyingDown", false);
-                animator.SetBool("IsLieDownFaceDown", false);
+                animator.SetBool("TreatmentFinished", true);
             }
             
-            // Start coroutine to wait for stand up animation then leave
-            StartCoroutine(FailAndLeaveSequence());
-        }
-        
-        private System.Collections.IEnumerator FailAndLeaveSequence()
-        {
-            // Wait for stand up animation
-            yield return new WaitForSeconds(1.5f);
-            
-            // Open doors if needed
-            if (assignedBed != null)
-            {
-                assignedBed.OpenDoors();
-                yield return new WaitForSeconds(1.0f);
-                
-                // Clear bed reference
-                assignedBed = null;
-            }
-            
-            // Now leave shop
-            LeaveShop();
+            // Start the same departure flow as normal completion
+            StartCoroutine(WaitForPlayerToLeave());
         }
         
         /// <summary>
@@ -919,6 +891,13 @@ namespace HairRemovalSim.Customer
             // Show clothing when standing up after treatment
             SetClothingVisible(true);
             
+            // Adjust position and rotation if standUpPoint is available
+            if (assignedBed != null && assignedBed.standUpPoint != null)
+            {
+                transform.position = assignedBed.standUpPoint.position;
+                transform.rotation = assignedBed.standUpPoint.rotation;
+            }
+            
             // Set TreatmentFinished = false (stand up animation)
             if (animator != null && animator.enabled)
             {
@@ -961,7 +940,17 @@ namespace HairRemovalSim.Customer
                 assignedBed = null;
                 Debug.Log("Bed released after departure.");
             }
-            WalkToReception();
+            
+            // If failed treatment, go directly to exit (skip payment)
+            if (isFailedTreatment)
+            {
+                isFailedTreatment = false; // Reset for pool reuse
+                LeaveShop();
+            }
+            else
+            {
+                WalkToReception();
+            }
         }
         
         private void WalkToReception()
@@ -1162,6 +1151,13 @@ namespace HairRemovalSim.Customer
                 if (currentPain <= painRecoveryThreshold)
                 {
                     isInPainStage3 = false;
+                    
+                    // Clear animator pain cooldown state
+                    if (animator != null && animator.enabled)
+                    {
+                        animator.SetBool("IsPainCooldown", false);
+                    }
+                    
                     Debug.Log($"[CustomerController] {data.customerName} recovered from pain! Can receive treatment again.");
                 }
                 else
@@ -1264,6 +1260,12 @@ namespace HairRemovalSim.Customer
                 painHoldTimer = painHoldDuration; // Hold at 100% before decay starts
                 painMaxCount++; // Track for review penalty
                 
+                // Set animator bool for pain cooldown state
+                if (animator != null && animator.enabled)
+                {
+                    animator.SetBool("IsPainCooldown", true);
+                }
+                
                 // Check if customer should leave due to too much pain (3 times max)
                 if (painMaxCount >= 3)
                 {
@@ -1274,6 +1276,12 @@ namespace HairRemovalSim.Customer
                     {
                         Core.ShopManager.Instance.AddReview(-50, painMaxCount);
                         Core.ShopManager.Instance.AddCustomerReview(1); // 1 star
+                    }
+                    
+                    // Show angry leave popup
+                    if (UI.PopupNotificationManager.Instance != null)
+                    {
+                        UI.PopupNotificationManager.Instance.ShowAngryLeave(50);
                     }
                     
                     // Release bed first
@@ -1437,10 +1445,29 @@ namespace HairRemovalSim.Customer
                     Core.ShopManager.Instance.AddCustomerReview(1); // 1 star
                 }
                 
+                // Show angry leave popup
+                if (UI.PopupNotificationManager.Instance != null)
+                {
+                    UI.PopupNotificationManager.Instance.ShowAngryLeave(50);
+                }
+                
                 FailAndLeave();
             }
             else
             {
+                // Record angry customer and submit negative review (same as treatment timeout)
+                if (Core.ShopManager.Instance != null)
+                {
+                    Core.ShopManager.Instance.AddReview(-50, 0);
+                    Core.ShopManager.Instance.AddCustomerReview(1); // 1 star
+                }
+                
+                // Show angry leave popup
+                if (UI.PopupNotificationManager.Instance != null)
+                {
+                    UI.PopupNotificationManager.Instance.ShowAngryLeave(50);
+                }
+                
                 // If at a bed (waiting for treatment), release it
                 if (assignedBed != null)
                 {
@@ -1633,6 +1660,9 @@ namespace HairRemovalSim.Customer
                 agent.updateRotation = true;
                 agent.SetDestination(destination);
             }
+            
+            // Stop waiting timer - no more wait timeout while heading to bed
+            StopWaiting();
             
             currentState = CustomerState.WalkingToBed;
             Debug.Log("[CustomerController] Walking to bed");
