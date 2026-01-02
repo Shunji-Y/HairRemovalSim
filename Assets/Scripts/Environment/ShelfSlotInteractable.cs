@@ -282,14 +282,28 @@ namespace HairRemovalSim.Environment
             }
             else
             {
-                // Empty slot - place held item (prioritize right hand)
-                if (interactor.currentTool != null)
+                // Empty slot - place held item
+                // For slot [0,0] (shaver slot): prioritize right hand
+                // For other slots: prioritize left hand (to avoid laser placement issues)
+                if (row == 0 && col == 0)
                 {
-                    PlaceItem(interactor, interactor.currentTool);
+                    // Shaver slot - right hand first
+                    if (interactor.currentTool != null)
+                    {
+                        PlaceItem(interactor, interactor.currentTool);
+                    }
                 }
-                else if (interactor.leftHandTool != null)
+                else
                 {
-                    PlaceItem(interactor, interactor.leftHandTool);
+                    // Other slots - left hand first
+                    if (interactor.leftHandTool != null)
+                    {
+                        PlaceItem(interactor, interactor.leftHandTool);
+                    }
+                    else if (interactor.currentTool != null)
+                    {
+                        PlaceItem(interactor, interactor.currentTool);
+                    }
                 }
             }
         }
@@ -333,9 +347,107 @@ namespace HairRemovalSim.Environment
             }
             else
             {
-                // Left hand full with different item - swap
-                SwapItems(player, player.leftHandTool);
+                // Left hand full with different item - auto-place held item and pickup new one
+                if (AutoPlaceLeftHandItem(player, player.leftHandTool))
+                {
+                    // Successfully placed held item, now pickup the new one
+                    PickupItem(player);
+                }
+                // If auto-place failed, do nothing (no swap that would drop items)
             }
+        }
+        
+        /// <summary>
+        /// Auto-place left hand item on shelf following priority:
+        /// 1. Find slot with same item type that has room for more
+        /// 2. Find empty slot
+        /// Returns true if successfully placed
+        /// </summary>
+        private bool AutoPlaceLeftHandItem(InteractionController player, ToolBase heldTool)
+        {
+            if (shelf == null || heldTool == null) return false;
+            
+            string heldItemId = !string.IsNullOrEmpty(heldTool.itemId) 
+                ? heldTool.itemId 
+                : heldTool.toolName.Replace(" ", "");
+            
+            var itemData = ItemDataRegistry.Instance?.GetItem(heldItemId);
+            if (itemData == null) return false;
+            
+            int maxStack = itemData.maxStackOnShelf;
+            
+            // Priority 1: Find slot with same item that has room
+            for (int r = 0; r < shelf.RowCount; r++)
+            {
+                for (int c = 0; c < shelf.ColumnCount; c++)
+                {
+                    // Skip shaver slot [0,0]
+                    if (r == 0 && c == 0) continue;
+                    
+                    // Skip the slot we're trying to pick up from
+                    if (r == row && c == col) continue;
+                    
+                    var slotData = shelf.GetSlotData(r, c);
+                    if (slotData != null && slotData.itemId == heldItemId && slotData.quantity < maxStack)
+                    {
+                        // Found matching slot with room - place here
+                        return PlaceItemAtSlot(player, heldTool, r, c);
+                    }
+                }
+            }
+            
+            // Priority 2: Find empty slot
+            for (int r = 0; r < shelf.RowCount; r++)
+            {
+                for (int c = 0; c < shelf.ColumnCount; c++)
+                {
+                    // Skip shaver slot [0,0]
+                    if (r == 0 && c == 0) continue;
+                    
+                    // Skip the slot we're trying to pick up from
+                    if (r == row && c == col) continue;
+                    
+                    var slotData = shelf.GetSlotData(r, c);
+                    if (slotData == null || string.IsNullOrEmpty(slotData.itemId) || slotData.quantity <= 0)
+                    {
+                        // Found empty slot - place here
+                        return PlaceItemAtSlot(player, heldTool, r, c);
+                    }
+                }
+            }
+            
+            Debug.LogWarning($"[ShelfSlotInteractable] No available slot to auto-place {heldItemId}");
+            return false;
+        }
+        
+        /// <summary>
+        /// Place item at specific slot (helper for auto-place)
+        /// </summary>
+        private bool PlaceItemAtSlot(InteractionController player, ToolBase tool, int targetRow, int targetCol)
+        {
+            string itemId = !string.IsNullOrEmpty(tool.itemId) ? tool.itemId : tool.toolName.Replace(" ", "");
+            
+            // Unequip left hand tool
+            var leftHandTool = tool as LeftHandTool;
+            if (leftHandTool != null) leftHandTool.Unequip();
+            
+            // Unparent
+            tool.transform.SetParent(null);
+            
+            // Place on shelf
+            if (!shelf.PlaceItemDirect(targetRow, targetCol, itemId, tool.gameObject))
+            {
+                Debug.LogWarning($"[ShelfSlotInteractable] Failed to auto-place {itemId} at [{targetRow},{targetCol}]");
+                return false;
+            }
+            
+            // Clear player's left hand reference
+            player.leftHandTool = null;
+            if (UI.EquippedToolUI.Instance != null)
+                UI.EquippedToolUI.Instance.SetLeftHandUI(null);
+            
+            Debug.Log($"[ShelfSlotInteractable] Auto-placed {itemId} at [{targetRow},{targetCol}]");
+            return true;
         }
         
         private ToolBase.HandType GetToolHandType(ToolBase tool)
@@ -375,9 +487,12 @@ namespace HairRemovalSim.Environment
             
             string heldItemId = !string.IsNullOrEmpty(heldTool.itemId) ? heldTool.itemId : heldTool.toolName.Replace(" ", "");
             
-            // Unequip held tool
+            // Unequip held tool (handle both hand types)
             var rightHandTool = heldTool as RightHandTool;
             if (rightHandTool != null) rightHandTool.Unequip();
+            
+            var leftHandTool = heldTool as LeftHandTool;
+            if (leftHandTool != null) leftHandTool.Unequip();
             
             // Remove shelf item from data FIRST
             shelf.RemoveItemDirect(row, col, shelfItemObj);
@@ -511,19 +626,12 @@ namespace HairRemovalSim.Environment
             
             string itemId = !string.IsNullOrEmpty(tool.itemId) ? tool.itemId : tool.toolName.Replace(" ", "");
             
-            // Unequip
-            var rightHandTool = tool as RightHandTool;
-            if (rightHandTool != null) rightHandTool.Unequip();
-            
-            var leftHandTool = tool as LeftHandTool;
-            if (leftHandTool != null) leftHandTool.Unequip();
-            
             // Save for recovery
             Transform originalParent = tool.transform.parent;
             Vector3 originalPosition = tool.transform.position;
             Quaternion originalRotation = tool.transform.rotation;
             
-            // Unparent
+            // Unparent first (required for PlaceItemDirect)
             tool.transform.SetParent(null);
             
             // Place on shelf
@@ -535,6 +643,13 @@ namespace HairRemovalSim.Environment
                 tool.transform.rotation = originalRotation;
                 return;
             }
+            
+            // Unequip AFTER successful placement (no need to re-equip on failure)
+            var rightHandTool = tool as RightHandTool;
+            if (rightHandTool != null) rightHandTool.Unequip();
+            
+            var leftHandTool = tool as LeftHandTool;
+            if (leftHandTool != null) leftHandTool.Unequip();
             
             // Clear player's reference
             if (tool == player.currentTool)

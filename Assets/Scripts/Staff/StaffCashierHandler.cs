@@ -67,6 +67,9 @@ namespace HairRemovalSim.Staff
             currentCustomer = customer;
             isProcessing = true;
             
+            // Pause waiting timer - customer is being processed, gauge stays visible
+            customer.PauseWaiting();
+            
             // Set animation state
             staffController?.SetAnimInReceRegi(true);
             
@@ -97,6 +100,8 @@ namespace HairRemovalSim.Staff
                 // FAILED - customer leaves without paying, bad review
                 HandleFailure(customer);
                 FinishProcessing();
+                // Advance queue on failure
+                cashRegister?.AdvanceQueue();
                 yield break;
             }
             
@@ -109,6 +114,9 @@ namespace HairRemovalSim.Staff
             Debug.Log($"[StaffCashierHandler] {customer.data?.customerName} payment processed by {staffController.StaffData?.Name}");
             
             FinishProcessing();
+            
+            // Advance the cashier queue to bring next customer to counter
+            cashRegister?.AdvanceQueue();
         }
         
         /// <summary>
@@ -125,6 +133,12 @@ namespace HairRemovalSim.Staff
             {
                 ShopManager.Instance.AddReview(-50, customer.GetPainMaxCount());
                 ShopManager.Instance.AddCustomerReview(1); // 1 star
+            }
+            
+            // Show angry leave popup
+            if (UI.PopupNotificationManager.Instance != null)
+            {
+                UI.PopupNotificationManager.Instance.ShowAngryLeave(50);
             }
             
             customer.LeaveShop();
@@ -180,6 +194,12 @@ namespace HairRemovalSim.Staff
                         }
                         
                         Debug.Log($"[StaffCashierHandler] Cashier upsell success: +${selectedItem.Value.price}, +{additionalReviewBonus} review");
+                        
+                        // Show item success popup
+                        if (UI.PopupNotificationManager.Instance != null)
+                        {
+                            UI.PopupNotificationManager.Instance.ShowItemResult(true);
+                        }
                     }
                     else
                     {
@@ -187,6 +207,12 @@ namespace HairRemovalSim.Staff
                         int penalty = customer.CalculateUpsellFailurePenalty(selectedItem.Value.successRate);
                         data.reviewPenalty += penalty;
                         Debug.Log($"[StaffCashierHandler] Cashier upsell failed! Review penalty: {penalty}");
+                        
+                        // Show item failure popup
+                        if (UI.PopupNotificationManager.Instance != null)
+                        {
+                            UI.PopupNotificationManager.Instance.ShowItemResult(false);
+                        }
                     }
                 }
                 // No eligible item = no upsell attempted
@@ -223,6 +249,15 @@ namespace HairRemovalSim.Staff
             }
             
             Debug.Log($"[StaffCashierHandler] Payment: ${totalPayment}, Review: {finalReview} (base: {baseReview} × coef: {coefficient} - penalty: {data.reviewPenalty} + bonus: {additionalReviewBonus})");
+            
+            // Show popup notifications
+            if (UI.PopupNotificationManager.Instance != null)
+            {
+                UI.PopupNotificationManager.Instance.ShowMoney(totalPayment);
+                
+                int moodIndex = finalReview >= 25 ? 3 : (finalReview >= 0 ? 2 : 1);
+                UI.PopupNotificationManager.Instance.ShowReview(finalReview, moodIndex);
+            }
         }
         
         /// <summary>

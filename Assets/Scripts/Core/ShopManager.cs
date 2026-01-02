@@ -459,6 +459,16 @@ namespace HairRemovalSim.Core
         }
         
         /// <summary>
+        /// Get max simultaneous customers for current grade
+        /// </summary>
+        public int GetCurrentMaxSimultaneous()
+        {
+            if (gradeConfigDatabase != null)
+                return gradeConfigDatabase.GetMaxSimultaneous(shopGrade);
+            return 3; // Default fallback
+        }
+        
+        /// <summary>
         /// Get rent cost for current grade
         /// </summary>
         public int GetCurrentRent()
@@ -607,6 +617,15 @@ namespace HairRemovalSim.Core
             
             // Note: NavMesh is handled via NavMeshObstacle on walls (Carve enabled)
             // No runtime NavMesh rebuild needed
+            
+            // Update CustomerSpawner maxCustomers
+            var customerSpawner = Customer.CustomerSpawner.FindObjectOfType<Customer.CustomerSpawner>();
+            if (customerSpawner != null)
+            {
+                int newMax = GetCurrentMaxSimultaneous();
+                customerSpawner.maxCustomers = newMax;
+                Debug.Log($"[ShopManager] Updated CustomerSpawner.maxCustomers to {newMax}");
+            }
             
             Debug.Log($"[ShopManager] Shop upgraded: Grade {oldGrade} → Grade {shopGrade}");
             OnShopUpgraded?.Invoke(shopGrade);

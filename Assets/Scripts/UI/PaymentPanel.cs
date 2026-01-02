@@ -30,8 +30,8 @@ namespace HairRemovalSim.UI
         [SerializeField] private TextMeshProUGUI treatmentFeeText;
         [SerializeField] private TextMeshProUGUI totalAmountText;
         
-        [Header("Added Item")]
-        [SerializeField] private Image addedItemIcon;
+        [Header("Added Item Icons (5 slots)")]
+        [SerializeField] private Image[] addedItemIcons;
         
         [Header("Buttons")]
         [SerializeField] private Button confirmButton;
@@ -39,8 +39,8 @@ namespace HairRemovalSim.UI
         [Header("Checkout Item Slots (synced from CheckoutStockSlotUI)")]
         [SerializeField] private CheckoutItemSlotUI[] checkoutItemSlots;
         
-        [Header("Item Drop Target")]
-        [SerializeField] private PaymentItemDropTarget itemDropTarget;
+        [Header("Item Drop Targets (5 slots, activated by wealth)")]
+        [SerializeField] private PaymentItemDropTarget[] itemDropTargets;
         
         [Header("Upsell Display")]
         [SerializeField] private TextMeshProUGUI additionalBudgetText;
@@ -53,9 +53,13 @@ namespace HairRemovalSim.UI
         // Current state
         private CustomerController currentCustomer;
         private int treatmentFee;
-        private int addedItemPrice;
-        private int addedItemReviewBonus;
-        private string addedItemId;
+        
+        // Multiple upsell slot tracking (up to 5)
+        private const int MAX_UPSELL_SLOTS = 5;
+        private string[] addedItemIds = new string[MAX_UPSELL_SLOTS];
+        private int[] addedItemPrices = new int[MAX_UPSELL_SLOTS];
+        private int[] addedItemReviewBonuses = new int[MAX_UPSELL_SLOTS];
+        private int activeSlotCount = 1;
         
         // Mood levels and review ranges
         public enum MoodLevel
@@ -105,9 +109,44 @@ namespace HairRemovalSim.UI
             
             // Get treatment fee from confirmed price
             treatmentFee = data.confirmedPrice;
-            addedItemPrice = 0;
-            addedItemReviewBonus = 0;
-            addedItemId = null;
+            
+            // Clear all upsell slot data
+            for (int i = 0; i < MAX_UPSELL_SLOTS; i++)
+            {
+                addedItemIds[i] = null;
+                addedItemPrices[i] = 0;
+                addedItemReviewBonuses[i] = 0;
+            }
+            
+            // Set active slot count based on customer wealth (Poorest=1, Richest=5)
+            activeSlotCount = GetSlotCountByWealth(data.wealth);
+            
+            // Activate/deactivate drop targets based on wealth
+            if (itemDropTargets != null)
+            {
+                for (int i = 0; i < itemDropTargets.Length; i++)
+                {
+                    if (itemDropTargets[i] != null)
+                    {
+                        itemDropTargets[i].gameObject.SetActive(i < activeSlotCount);
+                        itemDropTargets[i].ClearSlot();
+                    }
+                }
+            }
+            
+            // Clear added item icons
+            if (addedItemIcons != null)
+            {
+                for (int i = 0; i < addedItemIcons.Length; i++)
+                {
+                    if (addedItemIcons[i] != null)
+                    {
+                        addedItemIcons[i].gameObject.SetActive(i < activeSlotCount);
+                        addedItemIcons[i].sprite = null;
+                        addedItemIcons[i].color = new Color(1, 1, 1, 0);
+                    }
+                }
+            }
             
             // Display total budget (plan price + additional budget)
             if (additionalBudgetText != null)
@@ -132,7 +171,23 @@ namespace HairRemovalSim.UI
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             
-            Debug.Log($"[PaymentPanel] Opened for {data.customerName}, fee: ${treatmentFee}");
+            Debug.Log($"[PaymentPanel] Opened for {data.customerName}, fee: ${treatmentFee}, slots: {activeSlotCount}");
+        }
+        
+        /// <summary>
+        /// Get number of upsell slots based on customer wealth
+        /// </summary>
+        private int GetSlotCountByWealth(WealthLevel wealth)
+        {
+            return wealth switch
+            {
+                WealthLevel.Poorest => 1,
+                WealthLevel.Poor => 2,
+                WealthLevel.Normal => 3,
+                WealthLevel.Rich => 4,
+                WealthLevel.Richest => 5,
+                _ => 1
+            };
         }
         
         /// <summary>
@@ -201,14 +256,21 @@ namespace HairRemovalSim.UI
             if (treatmentFeeText != null)
                 treatmentFeeText.text = $"${treatmentFee}";
             
-            // Total amount - show total with upsell increment if item is added
-            int total = treatmentFee + addedItemPrice;
+            // Calculate total added item price from all slots
+            int totalAddedPrice = 0;
+            for (int i = 0; i < activeSlotCount; i++)
+            {
+                totalAddedPrice += addedItemPrices[i];
+            }
+            
+            // Total amount - show total with upsell increment if items are added
+            int total = treatmentFee + totalAddedPrice;
             if (totalAmountText != null)
             {
-                if (addedItemPrice > 0)
+                if (totalAddedPrice > 0)
                 {
                     // Show: "$55 (↑$20)"
-                    totalAmountText.text = $"${total} (<color=green>↑${addedItemPrice})";
+                    totalAmountText.text = $"${total} (<color=green>↑${totalAddedPrice})";
                 }
                 else
                 {
@@ -220,24 +282,6 @@ namespace HairRemovalSim.UI
             int currentReview = CalculateCurrentReview();
             MoodLevel mood = GetMoodFromReview(currentReview);
             UpdateMoodIcon(mood);
-            
-            // Added item display
-            if (addedItemIcon != null)
-            {
-                if (!string.IsNullOrEmpty(addedItemId))
-                {
-                    var itemData = ItemDataRegistry.Instance?.GetItem(addedItemId);
-                    if (itemData != null && itemData.icon != null)
-                    {
-                        addedItemIcon.sprite = itemData.icon;
-                        addedItemIcon.enabled = true;
-                    }
-                }
-                else
-                {
-                    addedItemIcon.enabled = false;
-                }
-            }
         }
         
         /// <summary>
@@ -251,9 +295,9 @@ namespace HairRemovalSim.UI
             // Base review from customer controller
             int baseReview = currentCustomer.GetBaseReviewValue(); // 10-50
             
-            // Subtract accumulated penalties (pain, treatment issues)
-            int totalReview = baseReview - data.reviewPenalty;
-            
+            // Subtract accumulated penalties and add bonuses
+            int totalReview = baseReview - data.reviewPenalty + data.reviewBonus;
+            Debug.Log(data.reviewBonus);
             // Add item bonus
             totalReview += addedItemReviewBonus;
             
@@ -316,31 +360,63 @@ namespace HairRemovalSim.UI
         }
         
         /// <summary>
-        /// Called when an item is dropped onto the added item slot
+        /// Called when an item is dropped onto an added item slot
         /// </summary>
-        public void OnItemAdded(string itemId)
+        public void OnItemAdded(int slotIndex, string itemId)
         {
+            if (slotIndex < 0 || slotIndex >= activeSlotCount) return;
             if (string.IsNullOrEmpty(itemId)) return;
             
             var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
             if (itemData == null || !itemData.canUseAtCheckout) return;
             
-            addedItemId = itemId;
-            addedItemPrice = itemData.upsellPrice;
-            addedItemReviewBonus = itemData.reviewBonus;
+            addedItemIds[slotIndex] = itemId;
+            addedItemPrices[slotIndex] = itemData.upsellPrice;
+            addedItemReviewBonuses[slotIndex] = itemData.reviewBonus;
+            
+            // Update icon for this slot
+            if (addedItemIcons != null && slotIndex < addedItemIcons.Length && addedItemIcons[slotIndex] != null)
+            {
+                addedItemIcons[slotIndex].sprite = itemData.icon;
+                addedItemIcons[slotIndex].color = Color.white;
+            }
             
             UpdateDisplay();
-            UpdateCheckoutSuccessRateDisplay(itemId);
+            UpdateCheckoutSuccessRateDisplay(slotIndex);
             
-            Debug.Log($"[PaymentPanel] Added item: {itemId}, price: ${addedItemPrice}, reviewBonus: {addedItemReviewBonus}");
+            Debug.Log($"[PaymentPanel] Added item to slot {slotIndex}: {itemId}, price: ${itemData.upsellPrice}, reviewBonus: {itemData.reviewBonus}");
+        }
+        
+        /// <summary>
+        /// Backward compatible - adds to first available slot
+        /// </summary>
+        public void OnItemAdded(string itemId)
+        {
+            // Find first empty slot
+            for (int i = 0; i < activeSlotCount; i++)
+            {
+                if (string.IsNullOrEmpty(addedItemIds[i]))
+                {
+                    OnItemAdded(i, itemId);
+                    return;
+                }
+            }
         }
         
         /// <summary>
         /// Update success rate display based on dropped item (checkout)
         /// </summary>
-        private void UpdateCheckoutSuccessRateDisplay(string itemId)
+        private void UpdateCheckoutSuccessRateDisplay(int slotIndex)
         {
             if (successRateText == null || currentCustomer == null) return;
+            if (slotIndex < 0 || slotIndex >= MAX_UPSELL_SLOTS) return;
+            
+            string itemId = addedItemIds[slotIndex];
+            if (string.IsNullOrEmpty(itemId))
+            {
+                successRateText.gameObject.SetActive(false);
+                return;
+            }
             
             var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
             if (itemData == null)
@@ -349,9 +425,8 @@ namespace HairRemovalSim.UI
                 return;
             }
             
-            // Calculate success rate using remaining budget after treatment fee
-            // Formula: 2 - (UpsellPrice / (TotalBudget - TreatmentFee))
-            float successRate = CalculateCheckoutUpsellRate(itemData.upsellPrice);
+            // Calculate success rate for this item
+            float successRate = currentCustomer.CalculateUpsellSuccessRate(itemData.upsellPrice);
             int successPercent = Mathf.RoundToInt(successRate * 100f);
             
             // Display success rate
@@ -415,20 +490,57 @@ namespace HairRemovalSim.UI
         }
         
         /// <summary>
-        /// Clear added item
+        /// Clear all added items
         /// </summary>
         public void ClearAddedItem()
         {
-            addedItemId = null;
-            addedItemPrice = 0;
-            addedItemReviewBonus = 0;
+            for (int i = 0; i < MAX_UPSELL_SLOTS; i++)
+            {
+                addedItemIds[i] = null;
+                addedItemPrices[i] = 0;
+                addedItemReviewBonuses[i] = 0;
+            }
+            
+            // Clear icons
+            if (addedItemIcons != null)
+            {
+                foreach (var icon in addedItemIcons)
+                {
+                    if (icon != null)
+                    {
+                        icon.sprite = null;
+                        icon.color = new Color(1, 1, 1, 0);
+                    }
+                }
+            }
+            
             UpdateDisplay();
             
-            // Hide success rate when item is cleared
+            // Hide success rate when items are cleared
             if (successRateText != null)
             {
                 successRateText.gameObject.SetActive(false);
             }
+        }
+        
+        /// <summary>
+        /// Clear added item from specific slot
+        /// </summary>
+        public void ClearAddedItem(int slotIndex)
+        {
+            if (slotIndex < 0 || slotIndex >= MAX_UPSELL_SLOTS) return;
+            
+            addedItemIds[slotIndex] = null;
+            addedItemPrices[slotIndex] = 0;
+            addedItemReviewBonuses[slotIndex] = 0;
+            
+            if (addedItemIcons != null && slotIndex < addedItemIcons.Length && addedItemIcons[slotIndex] != null)
+            {
+                addedItemIcons[slotIndex].sprite = null;
+                addedItemIcons[slotIndex].color = new Color(1, 1, 1, 0);
+            }
+            
+            UpdateDisplay();
         }
         
         /// <summary>
@@ -466,49 +578,63 @@ namespace HairRemovalSim.UI
                 }
             }
             
-            // Upsell judgment for checkout item - MUST happen before finalReview calculation
-            bool checkoutUpsellSucceeded = false;
-            if (!string.IsNullOrEmpty(addedItemId))
+            // Upsell judgment for ALL checkout items - process each slot
+            int totalUpsellPrice = 0;
+            int totalReviewBonus = 0;
+            int successCount = 0;
+            int failCount = 0;
+            
+            for (int slotIndex = 0; slotIndex < activeSlotCount; slotIndex++)
             {
-                var itemData = ItemDataRegistry.Instance?.GetItem(addedItemId);
-                if (itemData != null && itemData.upsellPrice > 0)
+                if (string.IsNullOrEmpty(addedItemIds[slotIndex])) continue;
+                
+                var itemData = ItemDataRegistry.Instance?.GetItem(addedItemIds[slotIndex]);
+                if (itemData == null) continue;
+                
+                if (itemData.upsellPrice > 0)
                 {
-                    // Use checkout-specific formula: 2 - (UpsellPrice / (TotalBudget - TreatmentFee))
-                    float successRate = CalculateCheckoutUpsellRate(itemData.upsellPrice);
+                    // Roll for success
+                    float successRate = currentCustomer.CalculateUpsellSuccessRate(itemData.upsellPrice);
                     float roll = Random.value;
-                    checkoutUpsellSucceeded = roll <= successRate;
+                    bool succeeded = roll <= successRate;
                     
-                    Debug.Log($"[PaymentPanel] Checkout upsell attempt: {addedItemId}, Rate: {successRate:P0}, Roll: {roll:F2}, Success: {checkoutUpsellSucceeded}");
+                    Debug.Log($"[PaymentPanel] Slot {slotIndex} upsell: {addedItemIds[slotIndex]}, Rate: {successRate:P0}, Roll: {roll:F2}, Success: {succeeded}");
                     
-                    if (checkoutUpsellSucceeded)
+                    if (succeeded)
                     {
-                        // Success: consume budget, apply effects
+                        // Success: add price, apply effects
+                        totalUpsellPrice += itemData.upsellPrice;
+                        totalReviewBonus += itemData.reviewBonus;
                         currentCustomer.ConsumeAdditionalBudget(itemData.upsellPrice);
                         ApplyCheckoutItemEffects(itemData);
+                        successCount++;
                     }
                     else
                     {
-                        // Failure: apply review penalty BEFORE calculating finalReview
+                        // Failure: apply review penalty
                         int penalty = currentCustomer.CalculateUpsellFailurePenalty(successRate);
                         data.reviewPenalty += penalty;
-                        Debug.Log($"[PaymentPanel] Checkout upsell failed! Review penalty: {penalty}");
+                        failCount++;
+                        Debug.Log($"[PaymentPanel] Slot {slotIndex} upsell failed! Penalty: {penalty}");
                     }
                 }
-                else if (itemData != null)
+                else
                 {
-                    // Item with no upsell price - auto success
+                    // Free item - auto success
                     ApplyCheckoutItemEffects(itemData);
-                    checkoutUpsellSucceeded = true;
+                    totalReviewBonus += itemData.reviewBonus;
+                    successCount++;
                 }
             }
             
-            // Calculate final review AFTER upsell judgment (includes penalty if failed)
+            // Calculate final review AFTER all upsell judgments
             int finalReview = CalculateCurrentReview();
+            finalReview += totalReviewBonus; // Add cumulative review bonus
             
-            // Only charge addedItemPrice if upsell succeeded
-            int totalAmount = treatmentFee + (checkoutUpsellSucceeded ? addedItemPrice : 0);
+            // Total amount = treatment fee + successfully upsold items
+            int totalAmount = treatmentFee + totalUpsellPrice;
             
-            Debug.Log($"[PaymentPanel] Confirming payment - Amount: ${totalAmount}, Review: {finalReview}");
+            Debug.Log($"[PaymentPanel] Confirming payment - Amount: ${totalAmount}, Review: {finalReview}, Success: {successCount}, Fail: {failCount}");
             
             // Save customer reference before Hide() clears it
             var customerToProcess = currentCustomer;
@@ -526,8 +652,6 @@ namespace HairRemovalSim.UI
                     int stars = GetStarsFromMood(GetMoodFromReview(finalReview));
                     ShopManager.Instance.AddCustomerReview(stars);
                 }
-                
-                // Don't clear dropTarget - keep item there
                 
                 // Notify CashRegister FIRST (before Hide clears currentCustomer)
                 OnPaymentComplete(customerToProcess, false);
@@ -564,15 +688,16 @@ namespace HairRemovalSim.UI
                 int moodIndex = (int)GetMoodFromReview(finalReview);
                 PopupNotificationManager.Instance.ShowReview(finalReview, moodIndex);
                 
-                // Show item result only if there was an upsell item
-                if (!string.IsNullOrEmpty(addedItemId))
+                // Show item result popups for each attempted upsell
+                for (int i = 0; i < successCount; i++)
                 {
-                    PopupNotificationManager.Instance.ShowItemResult(checkoutUpsellSucceeded);
+                    PopupNotificationManager.Instance.ShowItemResult(true);
+                }
+                for (int i = 0; i < failCount; i++)
+                {
+                    PopupNotificationManager.Instance.ShowItemResult(false);
                 }
             }
-            
-            // NOTE: Item is already consumed when dropped onto PaymentItemDropTarget
-            // No need to consume here again
             
             // Notify CashRegister FIRST (before Hide clears currentCustomer)
             OnPaymentComplete(customerToProcess, true);

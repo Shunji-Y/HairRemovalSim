@@ -2,6 +2,7 @@ using UnityEngine;
 using HairRemovalSim.Customer;
 using HairRemovalSim.Interaction;
 using HairRemovalSim.Core;
+using HairRemovalSim.Environment;
 using HairRemovalSim.Player;
 
 namespace HairRemovalSim.UI
@@ -18,8 +19,8 @@ namespace HairRemovalSim.UI
         [Tooltip("Position where restock staff stands to refill items")]
         public Transform restockPoint;
         
-        [Header("Queue Management")]
-        public Transform[] queuePositions; // 待機位置の配列
+        [Tooltip("Position where customer stands when being served")]
+        public Transform cashierPoint;
         
         private System.Collections.Generic.Queue<CustomerController> customerQueue = new System.Collections.Generic.Queue<CustomerController>();
         private CustomerController currentCustomer = null;
@@ -37,24 +38,36 @@ namespace HairRemovalSim.UI
                 return null;
             }
             
+            // Check if this is the first customer (queue is empty before adding)
+            bool isFirstCustomer = customerQueue.Count == 0;
+            
             customerQueue.Enqueue(customer);
             processedCustomers.Add(customer);
             
-            int queueIndex = customerQueue.Count - 1; // 0-based index
+            // Start waiting timer for cashier queue
+            customer.StartWaiting();
             
-            if (queueIndex < queuePositions.Length)
+            // First customer goes directly to cashier counter
+            if (isFirstCustomer && cashierPoint != null)
             {
-                Debug.Log($"[CashRegister] {customer.data.customerName} registered to queue position {queueIndex + 1}");
-                
-                // Send customer to queue position, facing cash register
-                customer.GoToQueuePosition(queuePositions[queueIndex], transform);
-                
-                return queuePositions[queueIndex];
+                Debug.Log($"[CashRegister] {customer.data.customerName} going directly to cashier counter");
+                customer.GoToCounterPoint(cashierPoint);
+                return cashierPoint;
+            }
+            
+            // Others find an empty chair (prioritize Cashier category)
+            var chair = Core.ChairManager.Instance?.FindClosestEmptyChair(customer.transform.position, Environment.ChairCategory.Cashier);
+            if (chair != null)
+            {
+                Debug.Log($"[CashRegister] {customer.data.customerName} going to chair {chair.name}");
+                customer.GoToChair(chair);
+                return chair.SeatPosition;
             }
             else
             {
-                Debug.LogWarning($"[CashRegister] {customer.data.customerName} registered but no queue position available (queue full)");
-                return transform; // Fallback to register point
+                Debug.LogWarning($"[CashRegister] {customer.data.customerName} no chair available, standing at register");
+                customer.GoToCounterPoint(transform);
+                return transform;
             }
         }
         
@@ -244,15 +257,32 @@ namespace HairRemovalSim.UI
         
         private void UpdateQueuePositions()
         {
-            if (queuePositions == null || queuePositions.Length == 0) return;
-            
             int index = 0;
             foreach (var customer in customerQueue)
             {
-                if (index < queuePositions.Length)
+                if (index == 0)
                 {
-                    customer.GoToQueuePosition(queuePositions[index], transform);
-                    Debug.Log($"[CashRegister] {customer.data.customerName} moving to queue position {index + 1}");
+                    // First customer goes to cashier counter
+                    if (cashierPoint != null)
+                    {
+                        // Release the chair before moving to counter so it's available for others
+                        customer.ReleaseChair();
+                        customer.GoToCounterPoint(cashierPoint);
+                        Debug.Log($"[CashRegister] {customer.data.customerName} moving to cashier counter");
+                    }
+                }
+                else
+                {
+                    // If customer doesn't have a chair, find one
+                    if (customer.CurrentChair == null)
+                    {
+                        var chair = Core.ChairManager.Instance?.FindClosestEmptyChair(customer.transform.position, Environment.ChairCategory.Cashier);
+                        if (chair != null)
+                        {
+                            customer.GoToChair(chair);
+                            Debug.Log($"[CashRegister] {customer.data.customerName} moving to chair {chair.name}");
+                        }
+                    }
                 }
                 index++;
             }
@@ -287,6 +317,7 @@ namespace HairRemovalSim.UI
         
         /// <summary>
         /// Dequeue customer for staff processing
+        /// Customer is already at cashier counter
         /// </summary>
         public CustomerController DequeueCustomerForStaff()
         {
@@ -298,12 +329,22 @@ namespace HairRemovalSim.UI
             var customer = customerQueue.Dequeue();
             processedCustomers.Remove(customer);
             
-            // Update remaining customers' positions
-            UpdateQueuePositions();
+            // Customer is already at counter, no need to move them
+            
+            // NOTE: Do NOT update remaining customers' positions here.
+            // Queue should only advance after staff finishes processing the current customer.
             
             Debug.Log($"[CashRegister] Staff dequeued {customer?.data?.customerName}, remaining: {customerQueue.Count}");
             
             return customer;
+        }
+
+        /// <summary>
+        /// Advance the queue - move next customer to counter and others forward
+        /// </summary>
+        public void AdvanceQueue()
+        {
+            UpdateQueuePositions();
         }
         
         /// <summary>

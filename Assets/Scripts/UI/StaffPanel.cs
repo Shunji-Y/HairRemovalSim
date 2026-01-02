@@ -193,7 +193,7 @@ namespace HairRemovalSim.UI
                 var card = cardObj.GetComponent<StaffManageCardUI>();
                 if (card != null)
                 {
-                    card.Setup(staffData, OnFireClicked);
+                    card.Setup(staffData, OnFireClicked, OnReassignClicked);
                     hiredCards.Add(card);
                 }
             }
@@ -216,14 +216,15 @@ namespace HairRemovalSim.UI
         /// </summary>
         private void OnHireConfirmed(StaffProfile candidate, StaffAssignment assignment, int bedIndex)
         {
-            // Find matching profile in availableProfiles or create from candidate
-            // For now, use candidate directly to create hire
-            
             if (StaffManager.Instance == null) return;
             
-            // Get or create StaffProfileData from candidate
-            var profileData = CreateProfileDataFromCandidate(candidate);
-            if (profileData == null) return;
+            // Use the sourceProfileData from the candidate (linked to the original ScriptableObject)
+            var profileData = candidate.sourceProfileData;
+            if (profileData == null)
+            {
+                Debug.LogError($"[StaffPanel] Candidate {candidate.displayName} has no sourceProfileData!");
+                return;
+            }
             
             bool success = StaffManager.Instance.HireStaff(profileData, assignment, bedIndex);
             
@@ -238,19 +239,6 @@ namespace HairRemovalSim.UI
         private void OnHireCancelled()
         {
             // Nothing to do
-        }
-        
-        /// <summary>
-        /// Create StaffProfileData from StaffProfile candidate
-        /// </summary>
-        private StaffProfileData CreateProfileDataFromCandidate(StaffProfile candidate)
-        {
-            // Create a new ScriptableObject instance (runtime only)
-            var profileData = ScriptableObject.CreateInstance<StaffProfileData>();
-            profileData.staffName = candidate.displayName;
-            profileData.portrait = candidate.photo;
-            profileData.rankData = candidate.rankData;
-            return profileData;
         }
         
         /// <summary>
@@ -274,6 +262,34 @@ namespace HairRemovalSim.UI
                 StaffManager.Instance.FireStaff(staffData);
                 RefreshAll();
             }
+        }
+        
+        /// <summary>
+        /// Called when reassign button on hired card is clicked
+        /// </summary>
+        private void OnReassignClicked(HiredStaffData staffData)
+        {
+            if (hireDialog != null)
+            {
+                hireDialog.ShowForReassignment(staffData, OnReassignConfirmed, OnReassignCancelled);
+            }
+        }
+        
+        /// <summary>
+        /// Called when reassignment is confirmed
+        /// </summary>
+        private void OnReassignConfirmed(HiredStaffData staffData, StaffAssignment newAssignment, int bedIndex)
+        {
+            if (StaffManager.Instance != null)
+            {
+                StaffManager.Instance.SetStaffAssignment(staffData, newAssignment, bedIndex);
+                RefreshAll();
+            }
+        }
+        
+        private void OnReassignCancelled()
+        {
+            // Nothing to do
         }
         
 #if UNITY_EDITOR

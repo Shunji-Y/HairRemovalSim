@@ -32,10 +32,13 @@ namespace HairRemovalSim.UI
         [SerializeField] private Color disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
         
         private StaffProfile currentCandidate;
+        private HiredStaffData currentStaffData; // For reassignment mode
         private StaffAssignment selectedAssignment = StaffAssignment.None;
         private int selectedBedIndex = -1;
+        private bool isReassignMode = false;
         
         private System.Action<StaffProfile, StaffAssignment, int> onConfirm;
+        private System.Action<HiredStaffData, StaffAssignment, int> onReassignConfirm;
         private System.Action onCancel;
         
         // Shorthand for localization
@@ -71,8 +74,11 @@ namespace HairRemovalSim.UI
         {
             Debug.Log($"[StaffHireDialog] Show called for {candidate?.displayName}, gameObject.activeSelf={gameObject.activeSelf}");
             currentCandidate = candidate;
+            currentStaffData = null;
             onConfirm = confirmCallback;
+            onReassignConfirm = null;
             onCancel = cancelCallback;
+            isReassignMode = false;
             selectedAssignment = StaffAssignment.None;
             selectedBedIndex = -1;
             
@@ -92,27 +98,64 @@ namespace HairRemovalSim.UI
         }
         
         /// <summary>
+        /// Show the dialog for reassigning an existing staff member
+        /// </summary>
+        public void ShowForReassignment(HiredStaffData staffData,
+                                        System.Action<HiredStaffData, StaffAssignment, int> confirmCallback,
+                                        System.Action cancelCallback)
+        {
+            Debug.Log($"[StaffHireDialog] ShowForReassignment called for {staffData?.Name}");
+            currentStaffData = staffData;
+            currentCandidate = null; // Not used in reassignment mode
+            onReassignConfirm = confirmCallback;
+            onConfirm = null;
+            onCancel = cancelCallback;
+            isReassignMode = true;
+            
+            // Pre-select current assignment
+            selectedAssignment = staffData.assignment;
+            selectedBedIndex = staffData.assignedBedIndex;
+            
+            // Set info text
+            if (titleText != null)
+                titleText.text = L?.Get("ui.change_assignment") ?? "Change Assignment";
+            
+            if (candidateInfoText != null)
+                candidateInfoText.text = $"{staffData.Name}\n{staffData.profile?.rankData?.GetDisplayName() ?? "Unknown"}";
+            
+            // Update button states (excluding current staff's position from occupied check)
+            UpdateAssignmentButtons();
+            UpdateButtonVisuals(); // Show current assignment as selected
+            UpdateConfirmButton();
+            
+            gameObject.SetActive(true);
+        }
+        
+        /// <summary>
         /// Update button interactability based on position availability
         /// </summary>
         private void UpdateAssignmentButtons()
         {
             if (StaffManager.Instance == null) return;
             
+            // When reassigning, exclude current staff's position from occupied check
+            HiredStaffData excludeStaff = isReassignMode ? currentStaffData : null;
+            
             // Reception - only one allowed
-            bool receptionAvailable = !StaffManager.Instance.IsPositionOccupied(StaffAssignment.Reception, -1);
+            bool receptionAvailable = !StaffManager.Instance.IsPositionOccupied(StaffAssignment.Reception, -1, excludeStaff);
             SetButtonState(receptionButton, receptionAvailable);
             
             // Cashier - only one allowed
-            bool cashierAvailable = !StaffManager.Instance.IsPositionOccupied(StaffAssignment.Cashier, -1);
+            bool cashierAvailable = !StaffManager.Instance.IsPositionOccupied(StaffAssignment.Cashier, -1, excludeStaff);
             SetButtonState(cashierButton, cashierAvailable);
             
-            // Treatment - auto-select first available bed
-            int availableBed = StaffManager.Instance.GetFirstAvailableBedIndex();
+            // Treatment - check for available bed
+            int availableBed = StaffManager.Instance.GetFirstAvailableBedIndex(excludeStaff);
             bool treatmentAvailable = availableBed >= 0;
             SetButtonState(treatmentButton, treatmentAvailable);
             
             // Restock - only one allowed
-            bool restockAvailable = !StaffManager.Instance.IsPositionOccupied(StaffAssignment.Restock, -1);
+            bool restockAvailable = !StaffManager.Instance.IsPositionOccupied(StaffAssignment.Restock, -1, excludeStaff);
             SetButtonState(restockButton, restockAvailable);
         }
         
@@ -183,7 +226,15 @@ namespace HairRemovalSim.UI
             if (selectedAssignment == StaffAssignment.None) return;
             
             gameObject.SetActive(false);
-            onConfirm?.Invoke(currentCandidate, selectedAssignment, selectedBedIndex);
+            
+            if (isReassignMode)
+            {
+                onReassignConfirm?.Invoke(currentStaffData, selectedAssignment, selectedBedIndex);
+            }
+            else
+            {
+                onConfirm?.Invoke(currentCandidate, selectedAssignment, selectedBedIndex);
+            }
         }
         
         private void OnCancelClicked()

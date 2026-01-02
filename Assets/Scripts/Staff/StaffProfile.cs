@@ -18,6 +18,10 @@ namespace HairRemovalSim.Staff
         [Header("Rank")]
         public StaffRankData rankData;
         
+        [Header("Source Data")]
+        [Tooltip("Reference to the original StaffProfileData (ScriptableObject) that this candidate was created from")]
+        public StaffProfileData sourceProfileData;
+        
         [Header("Employment")]
         public bool isHired = false;
         public StaffAssignment assignment = StaffAssignment.None;

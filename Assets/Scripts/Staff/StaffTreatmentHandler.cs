@@ -409,6 +409,12 @@ namespace HairRemovalSim.Staff
                 ShopManager.Instance.AddCustomerReview(1); // 1 star
             }
             
+            // Show angry leave popup
+            if (UI.PopupNotificationManager.Instance != null)
+            {
+                UI.PopupNotificationManager.Instance.ShowAngryLeave(50);
+            }
+            
             // Release bed first
             if (assignedBed != null)
             {

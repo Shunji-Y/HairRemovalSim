@@ -75,6 +75,12 @@ namespace HairRemovalSim.Store
             
             Debug.Log($"[InventoryManager] Processed {delivered}/{totalOrders} orders - items delivered!");
             pendingOrders.Clear();
+            
+            // Show "New!!" indicator on warehouse if items were delivered
+            if (delivered > 0 && WarehouseManager.Instance != null)
+            {
+                WarehouseManager.Instance.ShowNewIndicator();
+            }
         }
         
         /// <summary>

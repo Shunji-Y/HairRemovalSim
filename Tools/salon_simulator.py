@@ -147,12 +147,12 @@ PLAN_PRICES = {
 # 基礎処理能力: 1ベッドあたり18人/日 (低めに設定してローンなしを遅くする)
 GRADE_CONFIG = {
     1: {"upgrade_cost": 0, "beds": 1, "staff_slots": 4, "rent": 50, "required_stars": 1, "attraction_cap": 100, "max_customers": 18},
-    2: {"upgrade_cost": 6000, "beds": 2, "staff_slots": 5, "rent": 150, "required_stars": 2, "attraction_cap": 250, "max_customers": 36},
-    3: {"upgrade_cost": 12000, "beds": 4, "staff_slots": 7, "rent": 400, "required_stars": 3, "attraction_cap": 400, "max_customers": 72},
-    4: {"upgrade_cost": 80000, "beds": 6, "staff_slots": 9, "rent": 800, "required_stars": 4, "attraction_cap": 600, "max_customers": 108},
-    5: {"upgrade_cost": 350000, "beds": 8, "staff_slots": 11, "rent": 1200, "required_stars": 5, "attraction_cap": 800, "max_customers": 144},
-    6: {"upgrade_cost": 1000000, "beds": 10, "staff_slots": 13, "rent": 1800, "required_stars": 6, "attraction_cap": 1200, "max_customers": 220},
-    7: {"upgrade_cost": 4500000, "beds": 10, "staff_slots": 13, "rent": 2500, "required_stars": 7, "attraction_cap": 1200, "max_customers": 220},
+    2: {"upgrade_cost": 2000, "beds": 2, "staff_slots": 5, "rent": 150, "required_stars": 2, "attraction_cap": 250, "max_customers": 36},
+    3: {"upgrade_cost": 8000, "beds": 4, "staff_slots": 7, "rent": 400, "required_stars": 3, "attraction_cap": 400, "max_customers": 72},
+    4: {"upgrade_cost": 35000, "beds": 6, "staff_slots": 9, "rent": 800, "required_stars": 4, "attraction_cap": 600, "max_customers": 108},
+    5: {"upgrade_cost": 120000, "beds": 8, "staff_slots": 11, "rent": 1200, "required_stars": 5, "attraction_cap": 800, "max_customers": 144},
+    6: {"upgrade_cost": 450000, "beds": 10, "staff_slots": 13, "rent": 1800, "required_stars": 6, "attraction_cap": 1200, "max_customers": 220},
+    7: {"upgrade_cost": 900000, "beds": 10, "staff_slots": 13, "rent": 2500, "required_stars": 7, "attraction_cap": 1200, "max_customers": 220},
 }
 MAX_GRADE = 7
 
@@ -160,12 +160,12 @@ MAX_GRADE = 7
 # 目標滞在日数に合わせて調整: お金が貯まるタイミングで★がギリギリ足りる
 REVIEW_THRESHOLDS = {
     1: 0,
-    2: 1200,    # G1滞在短縮
-    3: 4500,    # G2滞在短縮
-    4: 22000,   # G3滞在短縮
-    5: 50000,   # G4滞在短縮
-    6: 140000,  # G5滞在短縮
-    7: 400000,  # G6滞在短縮
+    2: 1000,    # G1: 3日
+    3: 4500,    # G2: 4日
+    4: 15000,   # G3: 5日
+    5: 45000,   # G4: 6日
+    6: 110000,  # G5: 8日
+    7: 300000,  # G6: 9日 (最長)
 }
 
 
@@ -203,34 +203,34 @@ AD_CONFIG = {
 # type: ツール種類 (face/body/shaver), cost: 購入コスト(1台), time_reduction: 施術時間短縮率, review_bonus: レビューボーナス
 TOOL_CONFIG = {
     1: {
-        "face": {"name": "スムースレイフェイス", "cost": 500, "time_reduction": 0.0, "review_bonus": 0},
-        "body": {"name": "スムースレイボディ", "cost": 500, "time_reduction": 0.0, "review_bonus": 0},
-        "shaver": {"name": "おんぼろシェーバー", "cost": 250, "time_reduction": 0.0, "review_bonus": 0},
+        "face": {"name": "SmoothRayFace", "cost": 500, "time_reduction": 0.0, "review_bonus": 0},
+        "body": {"name": "SmoothRayBody", "cost": 500, "time_reduction": 0.0, "review_bonus": 0},
+        "shaver": {"name": "RustyShaver", "cost": 250, "time_reduction": 0.0, "review_bonus": 0},
     },
     2: {
-        "face": {"name": "スムースレイフェイスプロ", "cost": 1000, "time_reduction": 0.10, "review_bonus": 2},
-        "body": {"name": "スムースレイボディプロ", "cost": 1000, "time_reduction": 0.10, "review_bonus": 2},
-        "shaver": {"name": "ザ・シェーバー", "cost": 500, "time_reduction": 0.05, "review_bonus": 1},
+        "face": {"name": "SmoothRayFacePro", "cost": 500, "time_reduction": 0.10, "review_bonus": 0},
+        "body": {"name": "SmoothRayBodyPro", "cost": 500, "time_reduction": 0.10, "review_bonus": 0},
+        "shaver": {"name": "TheShaver", "cost": 250, "time_reduction": 0.05, "review_bonus": 0},
     },
     3: {
-        "face": {"name": "スムースレイフェイスプロマックス", "cost": 3000, "time_reduction": 0.20, "review_bonus": 3},
-        "body": {"name": "スムースレイボディプロマックス", "cost": 3000, "time_reduction": 0.20, "review_bonus": 3},
-        "shaver": {"name": "高級シェーバー", "cost": 1500, "time_reduction": 0.10, "review_bonus": 2},
+        "face": {"name": "SmoothRayFaceProMax", "cost": 1500, "time_reduction": 0.20, "review_bonus": 0},
+        "body": {"name": "SmoothRayBodyProMax", "cost": 1500, "time_reduction": 0.20, "review_bonus": 0},
+        "shaver": {"name": "PremiumShaver", "cost": 500, "time_reduction": 0.10, "review_bonus": 0},
     },
     4: {
-        "face": {"name": "スムースレイフェイスウルトラ", "cost": 10000, "time_reduction": 0.30, "review_bonus": 5},
-        "body": {"name": "スムースレイボディウルトラ", "cost": 10000, "time_reduction": 0.30, "review_bonus": 5},
-        "shaver": {"name": "プレミアムシェーバー", "cost": 5000, "time_reduction": 0.15, "review_bonus": 3},
+        "face": {"name": "SmoothRayFaceUltra", "cost": 3000, "time_reduction": 0.30, "review_bonus": 0},
+        "body": {"name": "SmoothRayBodyUltra", "cost": 3000, "time_reduction": 0.30, "review_bonus": 0},
+        "shaver": {"name": "PremiumShaver", "cost": 0, "time_reduction": 0.10, "review_bonus": 0},
     },
     5: {
-        "face": {"name": "ニュースムースレイフェイス", "cost": 25000, "time_reduction": 0.45, "review_bonus": 8},
-        "body": {"name": "ニュースムースレイボディ", "cost": 25000, "time_reduction": 0.45, "review_bonus": 8},
-        "shaver": {"name": "エリートシェーバー", "cost": 12000, "time_reduction": 0.20, "review_bonus": 5},
+        "face": {"name": "νSmoothRay", "cost": 8000, "time_reduction": 0.45, "review_bonus": 0},
+        "body": {"name": "νSmoothRay", "cost": 0, "time_reduction": 0.45, "review_bonus": 0},
+        "shaver": {"name": "PremiumShaver", "cost": 0, "time_reduction": 0.10, "review_bonus": 0},
     },
     6: {
-        "face": {"name": "スムースレイオメガフェイス", "cost": 60000, "time_reduction": 0.60, "review_bonus": 10},
-        "body": {"name": "スムースレイオメガボディ", "cost": 60000, "time_reduction": 0.60, "review_bonus": 10},
-        "shaver": {"name": "オメガシェーバー", "cost": 30000, "time_reduction": 0.30, "review_bonus": 7},
+        "face": {"name": "SmoothRayω", "cost": 15000, "time_reduction": 0.60, "review_bonus": 0},
+        "body": {"name": "SmoothRayω", "cost": 0, "time_reduction": 0.60, "review_bonus": 0},
+        "shaver": {"name": "PremiumShaver", "cost": 0, "time_reduction": 0.10, "review_bonus": 0},
     },
 }
 
@@ -241,81 +241,97 @@ TOOL_CONFIG = {
 ITEM_CONFIG = {
     1: {
         "reception": [
-            {"name": "冷却ジェル(低)", "cost": 20, "price": 30, "review_bonus": 1, "time_reduction": 0.02},
-            {"name": "麻酔クリーム(低)", "cost": 40, "price": 60, "review_bonus": 1, "time_reduction": 0.03},
-            {"name": "アメちゃん", "cost": 5, "price": 0, "review_bonus": 2, "time_reduction": 0.0},
-            {"name": "ウォーターサーバー", "cost": 10, "price": 0, "review_bonus": 2, "time_reduction": 0.0},
+            {"name": "NumbingCreamC", "cost": 10, "price": 15, "review_bonus": 0, "type": "upsell"},
+            {"name": "ServiceTicket", "cost": 10, "price": 0, "review_bonus": 5, "type": "review"},
         ],
         "register": [
-            {"name": "アフターケアセット", "cost": 50, "price": 75, "review_bonus": 2, "time_reduction": 0.0},
-            {"name": "粗品タオル", "cost": 20, "price": 0, "review_bonus": 1, "time_reduction": 0.0},
-            {"name": "氷嚢", "cost": 15, "price": 0, "review_bonus": 1, "time_reduction": 0.01},
-            {"name": "会員スタンプ", "cost": 5, "price": 0, "review_bonus": 2, "time_reduction": 0.0},
+            {"name": "AfterCareSet", "cost": 10, "price": 25, "review_bonus": 0, "type": "upsell"},
+            {"name": "MoistureLotion", "cost": 15, "price": 35, "review_bonus": 0, "type": "upsell"},
+            {"name": "MoistureCream", "cost": 20, "price": 45, "review_bonus": 0, "type": "upsell"},
+            {"name": "StampCard", "cost": 10, "price": 0, "review_bonus": 2, "type": "review"}, # plus attraction
+            {"name": "Candy", "cost": 5, "price": 0, "review_bonus": 2, "type": "review"},
         ],
     },
     2: {
         "reception": [
-            {"name": "冷却ジェル(普通)", "cost": 40, "price": 100, "review_bonus": 2, "time_reduction": 0.03},
-            {"name": "麻酔クリーム(普通)", "cost": 60, "price": 140, "review_bonus": 2, "time_reduction": 0.04},
-            {"name": "ストレスボール", "cost": 30, "price": 0, "review_bonus": 3, "time_reduction": 0.0},
+            {"name": "NumbingCreamC", "cost": 10, "price": 15, "review_bonus": 0, "type": "upsell"},
+            {"name": "ServiceTicket", "cost": 10, "price": 0, "review_bonus": 5, "type": "review"},
+            # G2 additions
+            {"name": "NumbingCreamB", "cost": 20, "price": 35, "review_bonus": 0, "type": "upsell"},
+            {"name": "NumbingCreamA", "cost": 25, "price": 45, "review_bonus": 0, "type": "upsell"},
+            {"name": "StressBall", "cost": 30, "price": 0, "review_bonus": 3, "type": "review"},
         ],
         "register": [
-            {"name": "保湿マスク", "cost": 50, "price": 120, "review_bonus": 3, "time_reduction": 0.0},
-            {"name": "美容液", "cost": 80, "price": 200, "review_bonus": 3, "time_reduction": 0.0},
-            {"name": "クーポン券", "cost": 5, "price": 0, "review_bonus": 2, "time_reduction": 0.0},
-            {"name": "ARキット", "cost": 150, "price": 300, "review_bonus": 5, "time_reduction": 0.0},
+            {"name": "AfterCareSet", "cost": 10, "price": 25, "review_bonus": 0, "type": "upsell"},
+            {"name": "MoistureLotion", "cost": 15, "price": 35, "review_bonus": 0, "type": "upsell"},
+            {"name": "MoistureCream", "cost": 20, "price": 45, "review_bonus": 0, "type": "upsell"},
+            {"name": "StampCard", "cost": 10, "price": 0, "review_bonus": 2, "type": "review"},
+            {"name": "Candy", "cost": 5, "price": 0, "review_bonus": 2, "type": "review"},
+            # G2 additions
+            {"name": "Coupon", "cost": 10, "price": 0, "review_bonus": 2, "type": "review"},
+            {"name": "Serum", "cost": 25, "price": 60, "review_bonus": 0, "type": "upsell"},
+            {"name": "MoistureMask", "cost": 35, "price": 75, "review_bonus": 0, "type": "upsell"},
+            {"name": "BronzeGift", "cost": 40, "price": 0, "review_bonus": 10, "type": "review"},
+            {"name": "Towel", "cost": 15, "price": 0, "review_bonus": 3, "type": "review"},
         ],
     },
     3: {
         "reception": [
-            {"name": "冷却ジェル(高)", "cost": 100, "price": 160, "review_bonus": 3, "time_reduction": 0.05},
-            {"name": "麻酔クリーム(高)", "cost": 150, "price": 240, "review_bonus": 3, "time_reduction": 0.05},
-            {"name": "笑気麻酔", "cost": 250, "price": 400, "review_bonus": 7, "time_reduction": 0.08},
-            {"name": "敏感肌用保護ジェル", "cost": 120, "price": 180, "review_bonus": 4, "time_reduction": 0.05},
+            # Accumulating previous items simplified for brevity, prioritizing new/higher items?
+            # Simulator randomly picks, so better to have full list if we want variety.
+            # For simplicity, I'll include higher tier items + some low tier.
+            {"name": "NumbingCreamA", "cost": 25, "price": 45, "review_bonus": 0, "type": "upsell"},
+            {"name": "VIPServiceTicket", "cost": 100, "price": 0, "review_bonus": 10, "type": "review"},
         ],
         "register": [
-            {"name": "高級ローション", "cost": 120, "price": 200, "review_bonus": 4, "time_reduction": 0.0},
-            {"name": "ルンバ", "cost": 400, "price": 600, "review_bonus": 8, "time_reduction": 0.0},
-            {"name": "空気清浄機", "cost": 300, "price": 500, "review_bonus": 5, "time_reduction": 0.0},
+            {"name": "PremiumLotion", "cost": 40, "price": 120, "review_bonus": 0, "type": "upsell"},
+            {"name": "PremiumCream", "cost": 50, "price": 140, "review_bonus": 0, "type": "upsell"},
+            {"name": "VIPStamp", "cost": 30, "price": 0, "review_bonus": 4, "type": "review"},
         ],
     },
     4: {
         "reception": [
-            {"name": "リラックスアロマ", "cost": 200, "price": 350, "review_bonus": 4, "time_reduction": 0.03},
+            {"name": "SensitiveGel", "cost": 60, "price": 120, "review_bonus": 0, "type": "upsell"},
+            {"name": "LaughingGas", "cost": 140, "price": 200, "review_bonus": 0, "type": "upsell"},
         ],
         "register": [
-            {"name": "高級乳液", "cost": 250, "price": 400, "review_bonus": 5, "time_reduction": 0.0},
-            {"name": "ギフトカード", "cost": 300, "price": 450, "review_bonus": 6, "time_reduction": 0.0},
-            {"name": "アロマディフューザー", "cost": 400, "price": 650, "review_bonus": 10, "time_reduction": 0.0},
-            {"name": "ホームケアキット", "cost": 500, "price": 800, "review_bonus": 12, "time_reduction": 0.0},
+            {"name": "SilverGift", "cost": 200, "price": 0, "review_bonus": 20, "type": "review"},
         ],
     },
     5: {
-        "reception": [],
+        "reception": [
+            {"name": "RelaxAroma", "cost": 150, "price": 300, "review_bonus": 0, "type": "upsell"},
+            {"name": "PlatinumServiceTicket", "cost": 300, "price": 0, "review_bonus": 20, "type": "review"},
+        ],
         "register": [
-            {"name": "VIPパック", "cost": 700, "price": 1200, "review_bonus": 15, "time_reduction": 0.0},
-            {"name": "高級ギフトカード", "cost": 800, "price": 1300, "review_bonus": 18, "time_reduction": 0.0},
+            {"name": "PlatinumSet", "cost": 250, "price": 400, "review_bonus": 0, "type": "upsell"},
+            {"name": "PlatinumStamp", "cost": 100, "price": 0, "review_bonus": 6, "type": "review"},
         ],
     },
-    6: { # G5と同じアイテムプールを使用するか、無しにする (G6用の新アイテムは画像にないためG5のを流用orなし)
-        "reception": [{"name": "VIPアロマ", "cost": 300, "price": 500, "review_bonus": 5, "time_reduction": 0.05}], 
+    6: {
+        "reception": [
+            {"name": "RelaxAroma", "cost": 150, "price": 300, "review_bonus": 0, "type": "upsell"},
+            {"name": "PlatinumServiceTicket", "cost": 300, "price": 0, "review_bonus": 20, "type": "review"},
+        ],
         "register": [
-            {"name": "プラチナ会員権", "cost": 1000, "price": 1800, "review_bonus": 35, "time_reduction": 0.0},
-            {"name": "プラチナパック", "cost": 1200, "price": 1600, "review_bonus": 20, "time_reduction": 0.0},
-            {"name": "プラチナギフトカード", "cost": 1500, "price": 2000, "review_bonus": 25, "time_reduction": 0.0},
-        ]
-    }, 
+            {"name": "LuxurySet", "cost": 300, "price": 500, "review_bonus": 0, "type": "upsell"},
+            {"name": "GoldGift", "cost": 300, "price": 0, "review_bonus": 30, "type": "review"},
+        ],
+    },
 }
 
 # ローン設定 (グレード別) - ローン使用時35日達成目標
 # max_amount: 最大借入額, daily_rate: 日利(単利), term_days: 返済日数, grade_req: 必要グレード
 LOAN_CONFIG = {
-    "starter": {"max_amount": 8000, "daily_rate": 0.005, "term_days": 5, "grade_req": 1},
-    "business": {"max_amount": 40000, "daily_rate": 0.005, "term_days": 10, "grade_req": 2}, # G2救済: 金利下げ期間延長
-    "expert": {"max_amount": 300000, "daily_rate": 0.01, "term_days": 6, "grade_req": 3},
-    "premium": {"max_amount": 1200000, "daily_rate": 0.012, "term_days": 7, "grade_req": 4},
-    "elite": {"max_amount": 6000000, "daily_rate": 0.015, "term_days": 7, "grade_req": 5},
+    "starter": {"max_amount": 6000, "daily_rate": 0.005, "term_days": 5, "grade_req": 1},
+    "business": {"max_amount": 30000, "daily_rate": 0.005, "term_days": 10, "grade_req": 2},
+    "expert": {"max_amount": 50000, "daily_rate": 0.01, "term_days": 6, "grade_req": 3},
+    "premium": {"max_amount": 200000, "daily_rate": 0.012, "term_days": 7, "grade_req": 4},
+    "elite": {"max_amount": 1000000, "daily_rate": 0.015, "term_days": 7, "grade_req": 5},
 }
+
+# ローンは最大3種類まで同時借入可能（同じ種類は重複不可）
+MAX_ACTIVE_LOANS = 3
 
 
 # ============================================
@@ -526,6 +542,10 @@ class SalonSimulator:
         self.avg_treatment_time = self.config.get("avg_treatment_time", 15)  # 平均施術時間
         self.use_loans = self.config.get("use_loans", False)
         self.verbose = self.config.get("verbose", False)
+        
+        # 初期スタッフを追加 (これがいないとキャパ0で全員帰る)
+        if not self.state.staff:
+            self.state.staff.append(Staff(rank=StaffRank.REGULAR))
     
     def _select_best_ad(self, exclude_types: list = None) -> str:
         """現在のグレードで使用可能な最適な広告を選択"""
@@ -648,27 +668,40 @@ class SalonSimulator:
         # 施術シミュレーション
         beds = self.state.get_beds()
         available_staff = len(self.state.staff)
-        player_beds = 1  # VIP用
-        staff_beds = min(beds - player_beds, available_staff)
+        staff_beds = min(beds, available_staff) # プレイヤーベッド概念を一旦削除してスタッフ総力戦
+        
+        # 処理能力の計算 (Wait Timeout シミュレーション)
+        # 1日の稼働時間(秒) / 平均施術時間(アイテム短縮後) * ベッド数
+        tool_reduction = self.state.get_total_time_reduction()
+        # 施術短縮系はツールのみになったため、ITEM_CONFIGのtime_reductionは削除されました
+        
+        # 平均施術時間はツールの性能に依存すべきだが、ここでは簡易的にreductionを使用
+        effective_treatment_time = self.avg_treatment_time * (1.0 - tool_reduction)
+        effective_treatment_time = max(1.0, effective_treatment_time)
+        
+        # 1日あたりの最大処理可能人数
+        daily_capacity = int((self.operating_time / effective_treatment_time) * staff_beds)
+        
+        processed_count = 0
+        angry_leaves_count = 0
         
         for _ in range(expected_customers):
+            # 60秒ルール（キャパオーバー）チェック
+            if processed_count >= daily_capacity:
+                # 待ち時間切れで退店
+                daily_reviews.append(-50)
+                angry_leaves_count += 1
+                continue
+                
+            processed_count += 1
+            
             customer = Customer.generate(self.state.star_rating, self.state.cumulative_review % 100)
             daily_customers += 1
             
-            # ベッド割り当て（ランダム）
-            is_vip_treatment = random.random() < (player_beds / beds) if beds > 0 else True
-            
-            if is_vip_treatment:
-                success = True
-                review_multiplier = 1.0
-            else:
-                if self.state.staff:
-                    staff = random.choice(self.state.staff)
-                    success = random.random() < staff.get_success_rate(customer.wealth)
-                    review_multiplier = staff.get_review_multiplier()
-                else:
-                    success = True
-                    review_multiplier = 1.0
+            # スタッフ割り当て（ランダム）
+            staff = random.choice(self.state.staff)
+            success = random.random() < staff.get_success_rate(customer.wealth)
+            review_multiplier = staff.get_review_multiplier()
             
             if success:
                 daily_revenue += customer.plan_price
@@ -676,12 +709,16 @@ class SalonSimulator:
                 # アイテム適用 (受付1つ + レジ1つ)
                 if self.state.grade in ITEM_CONFIG:
                     items = ITEM_CONFIG[self.state.grade]
-                    # 受付アイテム
+                    
+                    # 受付アイテム: Upsell狙いか、ReviewUp狙いか
+                    # 戦略: 評価が低い(<40)ならReviewUp、高いならUpsellを狙う
+                    # 簡易ロジック: ランダムに選択
                     if items.get("reception"):
                         reception_item = random.choice(items["reception"])
                         expense_items += reception_item["cost"]
                         daily_revenue += reception_item["price"]
                         daily_reviews.append(int(reception_item["review_bonus"] * review_multiplier))
+                        
                     # レジアイテム
                     if items.get("register"):
                         register_item = random.choice(items["register"])
@@ -689,23 +726,22 @@ class SalonSimulator:
                         daily_revenue += register_item["price"]
                         daily_reviews.append(int(register_item["review_bonus"] * review_multiplier))
                 
-                # ツールレビューボーナス
+                # ツールレビューボーナスは廃止(TOOL_CONFIGで0に設定済み)だがコードは残す
                 tool_review_bonus = self.state.get_tool_review_bonus()
                 if tool_review_bonus > 0:
                     daily_reviews.append(int(tool_review_bonus * review_multiplier))
                 
-                # 基本レビュー (-50 ~ +50, 成功時は通常50、稀に下がる。平均約40)
-                # 80%で+50, 15%で+30~+49, 5%で-10~+29
+                # 基本レビュー
                 roll = random.random()
                 if roll < 0.80:
-                    base_review = 50  # 完璧な施術
+                    base_review = 50
                 elif roll < 0.95:
-                    base_review = random.randint(30, 49)  # 良い施術
+                    base_review = random.randint(30, 49)
                 else:
-                    base_review = random.randint(-10, 29)  # 普通～微妙
+                    base_review = random.randint(-10, 29)
                 daily_reviews.append(int(base_review * review_multiplier))
             else:
-                # 失敗時: -50 ~ 0
+                # 失敗時
                 base_review = random.randint(-50, 0)
                 daily_reviews.append(int(base_review * review_multiplier))
         
@@ -798,54 +834,47 @@ class SalonSimulator:
             # 現在の未返済ローン種類を取得（同種類は完済まで借りられない）
             active_loan_types = [loan.loan_type for loan in self.state.loans if not loan.is_paid_off()]
             
-            # 使用可能な最適なローンを選択（同種類チェック）
+            # 最大3種類までのローン制限
+            if len(active_loan_types) >= MAX_ACTIVE_LOANS:
+                return False, None
+            
+            # 使用可能なローンを満額借りる戦略
             needed = total_cost - self.state.money
-            best_loan = None
+            loans_taken = []
+            total_borrowed = 0
             
-            for loan_name, loan_cfg in LOAN_CONFIG.items():
+            # 利用可能なローンを金額順（大きい順）でソートして借りる
+            for loan_name, loan_cfg in sorted(LOAN_CONFIG.items(), key=lambda x: -x[1]["max_amount"]):
+                # 同種類のローンが既にあるか確認
                 if loan_name in active_loan_types:
-                    continue  # 同種類のローンは借りられない
-                if loan_cfg["grade_req"] <= self.state.grade:
-                    if loan_cfg["max_amount"] >= needed:
-                        if best_loan is None or loan_cfg["daily_rate"] < LOAN_CONFIG[best_loan]["daily_rate"]:
-                            best_loan = loan_name
-            
-            if best_loan is None:
-                # 複数ローンを組む (同種類は不可)
-                remaining_needed = needed
-                loans_taken = []
-                for loan_name, loan_cfg in sorted(LOAN_CONFIG.items(), key=lambda x: -x[1]["max_amount"]):
-                    # 同種類のローンが既にあるか確認
-                    if loan_name in active_loan_types:
-                        continue
-                    if loan_cfg["grade_req"] <= self.state.grade and remaining_needed > 0:
-                        borrow_amount = min(loan_cfg["max_amount"], remaining_needed)
-                        loan = Loan(
-                            loan_type=loan_name,
-                            principal=borrow_amount,
-                            daily_rate=loan_cfg["daily_rate"],
-                            term_days=loan_cfg["term_days"]
-                        )
-                        self.state.loans.append(loan)
-                        self.state.money += borrow_amount
-                        remaining_needed -= borrow_amount
-                        loans_taken.append({"type": loan_name, "amount": borrow_amount, "term": loan_cfg["term_days"]})
+                    continue
+                # グレード要件チェック
+                if loan_cfg["grade_req"] > self.state.grade:
+                    continue
+                # 既に十分借りているか（必要額を超えたら終了）
+                if self.state.money + total_borrowed >= total_cost:
+                    break
+                # ローン枠チェック（最大3種類）
+                if len(active_loan_types) + len(loans_taken) >= MAX_ACTIVE_LOANS:
+                    break
                 
-                if remaining_needed > 0:
-                    return False, None
-                loan_info = {"loans": loans_taken, "total": needed}
-            else:
-                # 単一ローンで借りる
-                loan_cfg = LOAN_CONFIG[best_loan]
+                # 満額借りる（必要分ではなく上限まで）
+                borrow_amount = loan_cfg["max_amount"]
                 loan = Loan(
-                    loan_type=best_loan,
-                    principal=needed,
+                    loan_type=loan_name,
+                    principal=borrow_amount,
                     daily_rate=loan_cfg["daily_rate"],
                     term_days=loan_cfg["term_days"]
                 )
                 self.state.loans.append(loan)
-                self.state.money += needed
-                loan_info = {"type": best_loan, "principal": needed, "term": loan_cfg["term_days"], "rate": loan_cfg["daily_rate"]}
+                self.state.money += borrow_amount
+                total_borrowed += borrow_amount
+                loans_taken.append({"type": loan_name, "amount": borrow_amount, "term": loan_cfg["term_days"]})
+            
+            # 必要額が揃わなかった場合
+            if self.state.money < total_cost:
+                return False, None
+            loan_info = {"loans": loans_taken, "total": total_borrowed}
         
         
         # アップグレード実行
@@ -948,7 +977,7 @@ def main():
     print("=" * 60)
     
     # 複数回シミュレーション (ローンなし)
-    num_runs = 1000
+    num_runs = 100
     days_to_grade7 = []
     
     for i in range(num_runs):
@@ -1050,23 +1079,23 @@ def main():
     
     # CSV出力
     import csv
-    csv_path = "simulation_results.csv"
+    csv_path = "Tools/simulation_results.csv"
     with open(csv_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow([
-            "Day", "Grade", "Stars", "Money", "Customers", "MaxCustomers", 
+            "LoanMode", "Day", "Grade", "Stars", "Money", "Customers", "MaxCustomers", 
             "基本集客度", "広告ブースト", "集客度上限", "Revenue", "Rent", "StaffCount", "StaffCost", "LoanRepayment", "Ad", "Items",
             "TotalExpenses", "NetProfit", "TodayReview", "CumulativeReview",
             "UpgradeCost", "Upgraded", "Borrowed"
         ])
         
+        # ローンありの結果
         for r in results_loan:
-            # 次のグレードのアップグレードコストを取得
             next_grade = r['grade'] + 1 if r['grade'] < MAX_GRADE else r['grade']
             upgrade_cost = GRADE_CONFIG[next_grade]["upgrade_cost"] if next_grade <= MAX_GRADE else 0
             borrowed = r.get('borrowed_amount', 0)
             writer.writerow([
-                r['day'], r['grade'], r['stars'], r['money'],
+                "WithLoan", r['day'], r['grade'], r['stars'], r['money'],
                 r['customers'], r['max_customers'], 
                 r['attraction_level'], int(r['ad_boost']), r['attraction_cap'],
                 r['revenue'], r['expense_rent'], r['staff_count'], r['expense_staff'], 
@@ -1075,6 +1104,22 @@ def main():
                 r['today_review'], r['review_total'],
                 upgrade_cost, "Yes" if r.get('upgraded') else "",
                 borrowed if borrowed > 0 else ""
+            ])
+        
+        # ローンなしの結果
+        for r in results_no_loan:
+            next_grade = r['grade'] + 1 if r['grade'] < MAX_GRADE else r['grade']
+            upgrade_cost = GRADE_CONFIG[next_grade]["upgrade_cost"] if next_grade <= MAX_GRADE else 0
+            writer.writerow([
+                "NoLoan", r['day'], r['grade'], r['stars'], r['money'],
+                r['customers'], r['max_customers'], 
+                r['attraction_level'], int(r['ad_boost']), r['attraction_cap'],
+                r['revenue'], r['expense_rent'], r['staff_count'], r['expense_staff'], 
+                r['expense_loan'], r['expense_ad'], r['expense_items'],
+                r['expenses'], r['revenue'] - r['expenses'],
+                r['today_review'], r['review_total'],
+                upgrade_cost, "Yes" if r.get('upgraded') else "",
+                ""
             ])
     
     print(f"\n[CSV] Detailed results exported to: {csv_path}")

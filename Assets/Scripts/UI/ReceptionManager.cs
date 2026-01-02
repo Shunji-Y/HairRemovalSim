@@ -17,6 +17,34 @@ namespace HairRemovalSim.UI
             Instance = this;
         }
         
+        private void OnEnable()
+        {
+            // Reset queues when shop OPENS (new day), not when it closes
+            // This allows remaining customers to be processed after closing time
+            GameEvents.OnShopOpened += ResetQueues;
+        }
+        
+        private void OnDisable()
+        {
+            GameEvents.OnShopOpened -= ResetQueues;
+        }
+        
+        /// <summary>
+        /// Reset all queues and state when shop closes (new day)
+        /// </summary>
+        private void ResetQueues()
+        {
+            Debug.Log($"[ReceptionManager] Resetting queues. Queue: {customerQueue.Count}, Processed: {processedCustomers.Count}, Waiting: {waitingForBedList.Count}");
+            
+            customerQueue.Clear();
+            processedCustomers.Clear();
+            waitingForBedList.Clear();
+            currentCustomer = null;
+            currentCustomerAtReception = null;
+            
+            Debug.Log("[ReceptionManager] All queues reset for new day");
+        }
+        
         [Header("Settings")]
         // Beds are now referenced from ShopManager.Instance.Beds
         public IReadOnlyList<BedController> beds => ShopManager.Instance?.Beds;
@@ -29,12 +57,8 @@ namespace HairRemovalSim.UI
         [Tooltip("Position where restock staff stands to refill items")]
         public Transform restockPoint;
         
-        [Header("Queue Management")]
-        public Transform[] queuePositions; // 待機位置の配列
-        
-        [Header("Bed Waiting Area")]
-        [Tooltip("Positions where customers wait for an available bed")]
-        public Transform[] waitingAreaPositions;
+        [Tooltip("Position where customer stands when being served")]
+        public Transform receptionPoint;
         
         private System.Collections.Generic.Queue<CustomerController> customerQueue = new System.Collections.Generic.Queue<CustomerController>();
         private System.Collections.Generic.List<CustomerController> waitingForBedList = new System.Collections.Generic.List<CustomerController>();
@@ -53,27 +77,36 @@ namespace HairRemovalSim.UI
                 return null;
             }
             
+            // Check if this is the first customer (queue empty AND no one being processed)
+            bool isFirstCustomer = customerQueue.Count == 0 && currentCustomer == null;
+            
             customerQueue.Enqueue(customer);
             processedCustomers.Add(customer);
             
-            int queueIndex = customerQueue.Count - 1; // 0-based index
+            // Start waiting timer for reception queue
+            customer.StartWaiting();
             
-            if (queueIndex < queuePositions.Length)
+            // First customer goes directly to reception counter (if receptionPoint exists)
+            if (isFirstCustomer && receptionPoint != null)
             {
-                Debug.Log($"[ReceptionManager] {customer.data.customerName} registered to queue position {queueIndex + 1}");
-                
-                // Send customer to queue position, facing reception desk
-                customer.GoToQueuePosition(queuePositions[queueIndex], transform);
-                
-                // Start waiting timer for reception queue
-                customer.StartWaiting();
-                
-                return queuePositions[queueIndex];
+                Debug.Log($"[ReceptionManager] {customer.data.customerName} going directly to reception counter");
+                customer.GoToCounterPoint(receptionPoint);
+                return receptionPoint;
+            }
+            
+            // Others find an empty chair (prioritize Reception category)
+            var chair = ChairManager.Instance?.FindClosestEmptyChair(customer.transform.position, Environment.ChairCategory.Reception);
+            if (chair != null)
+            {
+                Debug.Log($"[ReceptionManager] {customer.data.customerName} going to chair {chair.name}");
+                customer.GoToChair(chair);
+                return chair.SeatPosition;
             }
             else
             {
-                Debug.LogWarning($"[ReceptionManager] {customer.data.customerName} registered but no queue position available (queue full)");
-                return transform; // Fallback to reception point
+                Debug.LogWarning($"[ReceptionManager] {customer.data.customerName} no chair available, standing at reception");
+                customer.GoToCounterPoint(transform);
+                return transform;
             }
         }
 
@@ -157,23 +190,31 @@ namespace HairRemovalSim.UI
         {
             if (currentCustomer == null) return;
             
-            // Find first available bed
+            // Collect all available beds
+            var availableBeds = new System.Collections.Generic.List<BedController>();
             foreach (var bed in beds)
             {
                 if (bed != null && !bed.IsOccupied)
                 {
-                    currentCustomer.GoToBed(bed);
-                    Debug.Log($"[ReceptionManager] {currentCustomer.data.customerName} sent to {bed.name}");
-                    
-                    // Remove from processed set so they can be processed again if needed
-                    processedCustomers.Remove(currentCustomer);
-                    currentCustomer = null;
-                    
-                    // NOW advance the queue since customer is heading to bed
-                    UpdateQueuePositions();
-                    ProcessNextCustomer();
-                    return;
+                    availableBeds.Add(bed);
                 }
+            }
+            
+            // Pick a random available bed
+            if (availableBeds.Count > 0)
+            {
+                var randomBed = availableBeds[UnityEngine.Random.Range(0, availableBeds.Count)];
+                currentCustomer.GoToBed(randomBed);
+                Debug.Log($"[ReceptionManager] {currentCustomer.data.customerName} sent to {randomBed.name} (random)");
+                
+                // Remove from processed set so they can be processed again if needed
+                processedCustomers.Remove(currentCustomer);
+                currentCustomer = null;
+                
+                // NOW advance the queue since customer is heading to bed
+                UpdateQueuePositions();
+                ProcessNextCustomer();
+                return;
             }
             
             // No available beds - send customer to waiting area
@@ -189,15 +230,31 @@ namespace HairRemovalSim.UI
         
         private void UpdateQueuePositions()
         {
-            if (queuePositions == null || queuePositions.Length == 0) return;
-            
             int index = 0;
             foreach (var customer in customerQueue)
             {
-                if (index < queuePositions.Length)
+                if (index == 0)
                 {
-                    customer.GoToQueuePosition(queuePositions[index], transform);
-                    Debug.Log($"[ReceptionManager] {customer.data.customerName} moving to queue position {index + 1}");
+                    // First customer goes to reception counter
+                    if (receptionPoint != null)
+                    {
+                        customer.GoToCounterPoint(receptionPoint);
+                        Debug.Log($"[ReceptionManager] {customer.data.customerName} moving to reception counter");
+                    }
+                }
+                else
+                {
+                    // If customer doesn't have a chair, find one
+                    if (customer.CurrentChair == null)
+                    {
+                        var chair = ChairManager.Instance?.FindClosestEmptyChair(customer.transform.position, Environment.ChairCategory.Reception);
+                        if (chair != null)
+                        {
+                            customer.GoToChair(chair);
+                            Debug.Log($"[ReceptionManager] {customer.data.customerName} moving to chair {chair.name}");
+                        }
+                    }
+                    // If already has chair, stay there
                 }
                 index++;
             }
@@ -281,6 +338,7 @@ namespace HairRemovalSim.UI
         
         /// <summary>
         /// Dequeue customer for staff processing (called by StaffReceptionHandler)
+        /// Customer is already at reception counter
         /// </summary>
         public CustomerController DequeueCustomerForStaff()
         {
@@ -288,15 +346,23 @@ namespace HairRemovalSim.UI
             
             var customer = customerQueue.Dequeue();
             
-            // Remove from processed set - customer is now leaving reception
+            // Remove from processed set - customer is now being served
             processedCustomers.Remove(customer);
             
-            // Update remaining customers' positions
-            UpdateQueuePositions();
+            // NOTE: Do NOT update remaining customers' positions here.
+            // Queue should only advance after staff finishes processing the current customer.
             
             Debug.Log($"[ReceptionManager] Staff dequeued {customer?.data?.customerName}, remaining: {customerQueue.Count}");
             
             return customer;
+        }
+        
+        /// <summary>
+        /// Advance the queue - move next customer to counter and others forward
+        /// </summary>
+        public void AdvanceQueue()
+        {
+            UpdateQueuePositions();
         }
         
         /// <summary>
@@ -351,19 +417,27 @@ namespace HairRemovalSim.UI
             
             waitingForBedList.Add(customer);
             
-            // Send customer to waiting area position
-            int waitIndex = waitingForBedList.Count - 1;
-            if (waitingAreaPositions != null && waitIndex < waitingAreaPositions.Length)
+            // Find a Waiting category chair for the customer
+            var chair = ChairManager.Instance?.FindClosestEmptyChair(customer.transform.position, Environment.ChairCategory.Waiting);
+            if (chair != null)
             {
-                customer.GoToWaitingArea(waitingAreaPositions[waitIndex]);
-                customer.StartWaiting(); // Start waiting timer for waiting area
-                Debug.Log($"[ReceptionManager] {customer.data?.customerName} sent to waiting area position {waitIndex}");
+                customer.GoToChair(chair);
+                customer.StartWaiting();
+                Debug.Log($"[ReceptionManager] {customer.data?.customerName} sent to waiting chair {chair.name}");
             }
             else
             {
-                // Fallback: wait at first queue position or reception
-                customer.GoToWaitingArea(queuePositions.Length > 0 ? queuePositions[0] : transform);
-                customer.StartWaiting(); // Start waiting timer for waiting area
+                // Fallback: try any empty chair
+                chair = ChairManager.Instance?.FindClosestEmptyChair(customer.transform.position, Environment.ChairCategory.Reception);
+                if (chair != null)
+                {
+                    customer.GoToChair(chair);
+                }
+                else
+                {
+                    customer.GoToCounterPoint(transform);
+                }
+                customer.StartWaiting();
                 Debug.Log($"[ReceptionManager] {customer.data?.customerName} sent to fallback waiting area");
             }
         }
@@ -373,21 +447,22 @@ namespace HairRemovalSim.UI
         /// </summary>
         private void TrySendWaitingCustomerToBed()
         {
-            // Find available bed
-            Environment.BedController availableBed = null;
+            // Collect all available beds and pick random
+            var availableBeds = new System.Collections.Generic.List<Environment.BedController>();
             if (beds != null)
             {
                 foreach (var bed in beds)
                 {
                     if (bed != null && !bed.IsOccupied)
                     {
-                        availableBed = bed;
-                        break;
+                        availableBeds.Add(bed);
                     }
                 }
             }
             
-            if (availableBed == null) return;
+            if (availableBeds.Count == 0) return;
+            
+            var availableBed = availableBeds[UnityEngine.Random.Range(0, availableBeds.Count)];
             
             // Get first waiting customer
             var customer = waitingForBedList[0];
@@ -409,17 +484,12 @@ namespace HairRemovalSim.UI
         
         /// <summary>
         /// Update waiting customer positions after one leaves
+        /// Customers stay on their chairs, no repositioning needed
         /// </summary>
         private void UpdateWaitingPositions()
         {
-            for (int i = 0; i < waitingForBedList.Count; i++)
-            {
-                var customer = waitingForBedList[i];
-                if (customer != null && waitingAreaPositions != null && i < waitingAreaPositions.Length)
-                {
-                    customer.GoToWaitingArea(waitingAreaPositions[i]);
-                }
-            }
+            // With ChairManager, customers stay on their chairs until called to bed
+            // No repositioning needed
         }
         
         /// <summary>

@@ -102,6 +102,12 @@ namespace HairRemovalSim.UI
         {
             if (panel != null) panel.SetActive(true);
             
+            // Hide "New!!" indicator when player opens warehouse
+            if (WarehouseManager.Instance != null)
+            {
+                WarehouseManager.Instance.HideNewIndicator();
+            }
+            
             // Re-initialize shelf carts to sync with current TreatmentShelf state
             InitializeShelfCarts();
             RefreshAll();

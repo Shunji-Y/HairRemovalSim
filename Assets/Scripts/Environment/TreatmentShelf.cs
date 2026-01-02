@@ -311,10 +311,13 @@ namespace HairRemovalSim.Environment
             
             var slot = slots[row, col];
             
+            // Determine if slot is truly empty
+            bool isSlotEmpty = string.IsNullOrEmpty(slot.itemId) || slot.quantity <= 0;
+            
             // Check if slot is occupied by different item
-            if (!string.IsNullOrEmpty(slot.itemId) && slot.itemId != itemId)
+            if (!isSlotEmpty && slot.itemId != itemId)
             {
-                Debug.LogWarning($"[TreatmentShelf] Slot [{row},{col}] already has {slot.itemId}");
+                Debug.LogWarning($"[TreatmentShelf] Slot [{row},{col}] already has {slot.itemId}, cannot place {itemId}");
                 return false;
             }
             
@@ -338,15 +341,16 @@ namespace HairRemovalSim.Environment
                 return false;
             }
             
-            // Check max stack
-            int newQuantity = slot.quantity + 1;
+            // Check max stack (only if not empty - empty slots start at 0)
+            int currentQty = isSlotEmpty ? 0 : slot.quantity;
+            int newQuantity = currentQty + 1;
             if (newQuantity > itemData.maxStackOnShelf)
             {
-                Debug.LogWarning($"[TreatmentShelf] Cannot place more {itemId} (max: {itemData.maxStackOnShelf})");
+                Debug.LogWarning($"[TreatmentShelf] Cannot place more {itemId} (current: {currentQty}, max: {itemData.maxStackOnShelf})");
                 return false;
             }
             
-            // Update slot data
+            // Update slot data (reset itemId if was empty)
             slot.itemId = itemId;
             slot.quantity = newQuantity;
             

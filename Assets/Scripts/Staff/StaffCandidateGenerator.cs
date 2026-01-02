@@ -90,24 +90,80 @@ namespace HairRemovalSim.Staff
             
             int shopGrade = ShopManager.Instance?.ShopGrade ?? 1;
             
-            // Get candidate count based on grade
-            int count = GetCandidateCountForGrade(shopGrade);
-            
-            // Get available ranks for current grade
-            var availableRanks = GetAvailableRanks(shopGrade);
-            if (availableRanks.Count == 0)
+            if (StaffManager.Instance == null || StaffManager.Instance.availableProfiles == null)
             {
-                Debug.Log("[StaffCandidateGenerator] No ranks available at current grade");
+                Debug.LogWarning("[StaffCandidateGenerator] StaffManager or availableProfiles not found");
                 return;
             }
             
-            for (int i = 0; i < count; i++)
+            // Get candidate count based on grade
+            int count = GetCandidateCountForGrade(shopGrade);
+            
+            // Get available profiles that match current grade restrictions
+            var availableProfiles = GetAvailableProfilesForGrade(shopGrade);
+            if (availableProfiles.Count == 0)
             {
-                var candidate = GenerateCandidate(availableRanks);
+                Debug.Log("[StaffCandidateGenerator] No profiles available at current grade");
+                return;
+            }
+            
+            // Shuffle profiles and take up to 'count' candidates
+            ShuffleList(availableProfiles);
+            
+            for (int i = 0; i < Mathf.Min(count, availableProfiles.Count); i++)
+            {
+                var profileData = availableProfiles[i];
+                var candidate = CreateCandidateFromProfileData(profileData);
                 currentCandidates.Add(candidate);
             }
             
-            Debug.Log($"[StaffCandidateGenerator] Generated {count} candidates for grade {shopGrade}");
+            Debug.Log($"[StaffCandidateGenerator] Generated {currentCandidates.Count} candidates for grade {shopGrade}");
+        }
+        
+        /// <summary>
+        /// Get profiles available at current shop grade
+        /// </summary>
+        private List<StaffProfileData> GetAvailableProfilesForGrade(int shopGrade)
+        {
+            var available = new List<StaffProfileData>();
+            StaffRank maxRank = GetMaxRankForGrade(shopGrade);
+            
+            foreach (var profile in StaffManager.Instance.availableProfiles)
+            {
+                if (profile == null) continue;
+                if (profile.Rank <= maxRank)
+                {
+                    available.Add(profile);
+                }
+            }
+            
+            return available;
+        }
+        
+        /// <summary>
+        /// Create a StaffProfile candidate from StaffProfileData
+        /// </summary>
+        private StaffProfile CreateCandidateFromProfileData(StaffProfileData profileData)
+        {
+            return new StaffProfile
+            {
+                staffId = profileData.staffId,
+                displayName = profileData.staffName,
+                photo = profileData.portrait,
+                rankData = profileData.rankData,
+                sourceProfileData = profileData,  // KEY: Link back to the ScriptableObject
+                isHired = false,
+                assignment = StaffAssignment.None
+            };
+        }
+        
+        private void ShuffleList<T>(List<T> list)
+        {
+            for (int i = list.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                (list[i], list[j]) = (list[j], list[i]);
+            }
         }
         
         /// <summary>

@@ -12,13 +12,16 @@ namespace HairRemovalSim.Staff
     {
         public static StaffManager Instance { get; private set; }
         
-        [Header("Staff Pool")]
+        [Header("Staff Data")]
         [Tooltip("Available staff profiles that can be hired")]
         public List<StaffProfileData> availableProfiles = new List<StaffProfileData>();
         
-        [Header("Staff Prefab")]
-        [Tooltip("Prefab for spawning staff (capsule placeholder)")]
-        public GameObject staffPrefab;
+        [Header("Pool Settings")]
+        [Tooltip("Number of instances to pre-instantiate for each profile")]
+        public int initialPoolSize = 3;
+        
+        // Pool storage
+        private Dictionary<StaffProfileData, Stack<GameObject>> staffPool = new Dictionary<StaffProfileData, Stack<GameObject>>();
         
         [Header("Spawn Settings")]
         [Tooltip("Where staff spawn at start of day")]
@@ -43,10 +46,50 @@ namespace HairRemovalSim.Staff
         
         private void Start()
         {
-            // Beds are now referenced from ShopManager.Instance.Beds
+            InitializeStaffPool();
             
             // Subscribe to day change event via GameEvents
             Core.GameEvents.OnDayChanged += OnDayChanged;
+        }
+
+        private void InitializeStaffPool()
+        {
+            if (availableProfiles == null) return;
+
+            foreach (var profile in availableProfiles)
+            {
+                if (profile == null || profile.prefab == null) continue;
+
+                if (!staffPool.ContainsKey(profile))
+                {
+                    staffPool[profile] = new Stack<GameObject>();
+                }
+
+                for (int i = 0; i < initialPoolSize; i++)
+                {
+                    var obj = CreateNewStaffObject(profile);
+                    if (obj != null)
+                    {
+                        staffPool[profile].Push(obj);
+                    }
+                }
+            }
+        }
+        
+        private GameObject CreateNewStaffObject(StaffProfileData profile)
+        {
+            if (profile == null || profile.prefab == null) return null;
+
+            GameObject obj = Instantiate(profile.prefab, Vector3.zero, Quaternion.identity);
+            obj.name = $"Staff_{profile.staffName}";
+            obj.SetActive(false);
+            
+            if (obj.GetComponent<StaffController>() == null)
+            {
+                obj.AddComponent<StaffController>();
+            }
+            
+            return obj;
         }
         
         private void OnDestroy()
@@ -100,10 +143,11 @@ namespace HairRemovalSim.Staff
                 return false;
             }
             
-            // Destroy spawned controller if exists
+            // Return to pool if exists
             if (staffData.controller != null)
             {
-                Destroy(staffData.controller.gameObject);
+                ReturnStaffToPool(staffData.controller, staffData.profile);
+                staffData.controller = null;
             }
             
             hiredStaff.Remove(staffData);
@@ -174,7 +218,7 @@ namespace HairRemovalSim.Staff
         /// Get first available bed index for treatment assignment
         /// Returns -1 if no beds available
         /// </summary>
-        public int GetFirstAvailableBedIndex()
+        public int GetFirstAvailableBedIndex(HiredStaffData excludeStaff = null)
         {
             Debug.Log($"[StaffManager] GetFirstAvailableBedIndex: beds={beds?.Count ?? -1}");
             
@@ -199,7 +243,7 @@ namespace HairRemovalSim.Staff
                     continue;
                 }
                 
-                bool occupied = IsPositionOccupied(StaffAssignment.Treatment, i);
+                bool occupied = IsPositionOccupied(StaffAssignment.Treatment, i, excludeStaff);
                 Debug.Log($"[StaffManager] Bed {i}: occupied={occupied}");
                 if (!occupied)
                 {
@@ -232,32 +276,69 @@ namespace HairRemovalSim.Staff
         /// </summary>
         public void SpawnStaffController(HiredStaffData staffData)
         {
-            if (staffData == null || staffPrefab == null)
+            if (staffData == null || staffData.profile == null)
             {
-                Debug.LogWarning("[StaffManager] Cannot spawn - missing prefab or data");
+                Debug.LogWarning("[StaffManager] Cannot spawn - missing data or profile");
                 return;
             }
             
-            // Destroy existing controller if any
+            StaffProfileData profile = staffData.profile;
+            
+            // Check if profile has prefab
+            if (profile.prefab == null)
+            {
+                Debug.LogError($"[StaffManager] Profile {profile.staffName} has no prefab assigned!");
+                return;
+            }
+            
+            // Return existing controller to pool if any
             if (staffData.controller != null)
             {
-                Destroy(staffData.controller.gameObject);
+                ReturnStaffToPool(staffData.controller, profile);
+            }
+            
+            GameObject obj = null;
+            
+            // Try get from pool
+            if (staffPool.ContainsKey(profile) && staffPool[profile].Count > 0)
+            {
+                obj = staffPool[profile].Pop();
+            }
+            else
+            {
+                // Create new if empty
+                obj = CreateNewStaffObject(profile);
+                if (obj == null) return;
             }
             
             Vector3 spawnPos = staffSpawnPoint != null ? staffSpawnPoint.position : Vector3.zero;
-            GameObject obj = Instantiate(staffPrefab, spawnPos, Quaternion.identity);
-            obj.name = $"Staff_{staffData.Name}";
+            obj.transform.position = spawnPos;
+            obj.transform.rotation = Quaternion.identity;
+            obj.SetActive(true);
             
             StaffController controller = obj.GetComponent<StaffController>();
-            if (controller == null)
-            {
-                controller = obj.AddComponent<StaffController>();
-            }
+            if (controller == null) controller = obj.AddComponent<StaffController>();
             
             controller.Initialize(staffData);
             staffData.controller = controller;
             
             Debug.Log($"[StaffManager] Spawned {staffData.Name} at {spawnPos}");
+        }
+
+        private void ReturnStaffToPool(StaffController controller, StaffProfileData profile)
+        {
+            if (controller == null || profile == null) return;
+            
+            GameObject obj = controller.gameObject;
+            obj.SetActive(false);
+            obj.transform.SetParent(null); 
+            
+            if (!staffPool.ContainsKey(profile))
+            {
+                staffPool[profile] = new Stack<GameObject>();
+            }
+            
+            staffPool[profile].Push(obj);
         }
         
         /// <summary>

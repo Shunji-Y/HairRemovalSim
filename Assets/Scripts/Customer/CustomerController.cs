@@ -19,6 +19,7 @@ namespace HairRemovalSim.Customer
         
         [Header("References")]
         public NavMeshAgent agent;
+        public NavMeshObstacle obstacle; // For dynamic avoidance when stopped
         public BodyPartsDatabase bodyPartsDatabase; // UV-based body part system
 
         [Header("Status")]
@@ -38,6 +39,14 @@ namespace HairRemovalSim.Customer
         [SerializeField] private int additionalBudget = 0;
         public int AdditionalBudget => additionalBudget;
         
+        [Header("Obstacle Settings")]
+        [Tooltip("Radius of the NavMeshObstacle when stopped")]
+        [SerializeField] private float obstacleRadius = 0.35f;
+        [Tooltip("Height of the NavMeshObstacle")]
+        [SerializeField] private float obstacleHeight = 2.0f;
+        [Tooltip("Center offset of the NavMeshObstacle")]
+        [SerializeField] private Vector3 obstacleCenter = new Vector3(0, 1f, 0);
+
         [Header("Wait Time Gauge")]
         [Tooltip("Default max wait time for each location (seconds)")]
         [SerializeField] private float defaultMaxWaitTime = 30f;
@@ -59,6 +68,10 @@ namespace HairRemovalSim.Customer
         private Transform cashRegisterPoint; // Post-treatment payment
         private CustomerSpawner spawner; // Reference to spawner for pool return
         
+        [Header("Chair")]
+        private Environment.Chair currentChair; // Chair this customer is currently occupying
+        public Environment.Chair CurrentChair => currentChair;
+        
         [Header("Initialization")]
         public bool isInitialized = false; // Track if BodyParts are initialized
         private bool isFailedTreatment = false; // Track if leaving due to failed treatment (skip payment)
@@ -69,6 +82,7 @@ namespace HairRemovalSim.Customer
 
         [Header("Visuals")]
         public Animator animator;
+        private static readonly int SittingHash = Animator.StringToHash("Sitting");
         
         [Header("Clothing")]
         [Tooltip("Shirt/top clothing - hidden when ARM, CHEST, ABS, BACK, or ARMPIT is requested")]
@@ -96,6 +110,12 @@ namespace HairRemovalSim.Customer
         {
             agent = GetComponent<NavMeshAgent>();
             if (animator == null) animator = GetComponentInChildren<Animator>();
+            
+            // Auto-find BodyPart if not assigned in Inspector
+            if (bodyPart == null)
+            {
+                bodyPart = GetComponentInChildren<HairRemovalSim.Core.BodyPart>();
+            }
         }
 
 
@@ -104,20 +124,59 @@ namespace HairRemovalSim.Customer
             // Initialize BodyParts over multiple frames to avoid frame rate drop
             StartCoroutine(InitializeBodyPartsAsync());
         }
+
+        private Coroutine movementCoroutine;
+
+        private System.Collections.IEnumerator StandUpDelay()
+        {
+            // If currently sitting, wait 1 second before standing up (User request)
+            if (animator != null && animator.GetBool(SittingHash))
+            {
+                yield return new WaitForSeconds(1.0f);
+                SetSitting(false);
+            }
+        }
+        
+        private System.Collections.IEnumerator PrepareForMovement()
+        {
+            // 1. Wait for stand up delay (User request)
+            yield return StartCoroutine(StandUpDelay());
+
+            // 2. Stand up animation
+            SetSitting(false);
+            
+            // 3. Release logical chair occupancy
+            ReleaseChair();
+            
+            // 4. Disable obstacle and wait for NavMesh update
+            if (obstacle != null && obstacle.enabled)
+            {
+                obstacle.enabled = false;
+                yield return null; // Critical wait for NavMesh update (prevents warping)
+            }
+            
+            // 5. Enable agent
+            if (agent != null)
+            {
+                agent.enabled = true;
+                agent.isStopped = false;
+            }
+        }
         
         private System.Collections.IEnumerator InitializeBodyPartsAsync()
         {
-            HairRemovalSim.Core.BodyPart[] bodyParts = GetComponentsInChildren<HairRemovalSim.Core.BodyPart>();
-            
-            int count = 0;
-            foreach (HairRemovalSim.Core.BodyPart part in bodyParts)
-            {
-                part.Initialize();
-                count++;
+            //   HairRemovalSim.Core.BodyPart[] bodyParts = GetComponentsInChildren<HairRemovalSim.Core.BodyPart>();
+            yield return null;
+
+            bodyPart.Initialize();
+            //foreach (HairRemovalSim.Core.BodyPart part in bodyParts)
+            //{
+            //    part.Initialize();
+            //    count++;
                 
-                // Wait one frame between each initialization to spread the load
-                yield return null;
-            }
+            //    // Wait one frame between each initialization to spread the load
+            //    yield return null;
+            //}
             
             isInitialized = true; // Mark as initialized
         }
@@ -141,8 +200,66 @@ namespace HairRemovalSim.Customer
             
             // Initialize additional budget based on wealth level
             InitializeAdditionalBudget();
+            
+            // Configure NavMeshAgent for better avoidance
+            if (agent == null) agent = GetComponent<NavMeshAgent>();
+            if (agent != null)
+            {
+                // Random priority helps agents resolve collisions (lower number = higher priority)
+                agent.avoidancePriority = Random.Range(30, 70);
+                agent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
+                agent.radius = 0.3f; // Reduce radius slightly to allow passing in tight spaces
+            }
+            
+            // Configure NavMeshObstacle
+            if (obstacle == null) obstacle = GetComponent<NavMeshObstacle>();
+            if (obstacle == null) obstacle = gameObject.AddComponent<NavMeshObstacle>();
+            
+            if (obstacle != null)
+            {
+                obstacle.shape = NavMeshObstacleShape.Capsule;
+                obstacle.center = obstacleCenter;
+                obstacle.radius = obstacleRadius; 
+                obstacle.height = obstacleHeight;
+                obstacle.carving = true;
+                obstacle.carveOnlyStationary = false; // Carve immediately when enabled
+                obstacle.enabled = false; // Improved performance: only enable when stopped
+            }
+            
+            // Ensure agent is active by default
+            SetAgentActive(true);
         }
         
+        /// <summary>
+        /// Toggle between NavMeshAgent (moving) and NavMeshObstacle (stationary)
+        /// </summary>
+        private void SetAgentActive(bool isActive)
+        {
+            if (isActive)
+            {
+                // To move: disable obstacle first, then enable agent
+                if (obstacle != null) obstacle.enabled = false;
+                
+                // Wait one frame? usually okay to do immediately if order is correct
+                if (agent != null) 
+                {
+                    agent.enabled = true;
+                    agent.isStopped = false;
+                }
+            }
+            else
+            {
+                // To stop: disable agent first, then enable obstacle
+                if (agent != null) 
+                {
+                    agent.isStopped = true;
+                    agent.enabled = false;
+                }
+                
+                if (obstacle != null) obstacle.enabled = true;
+            }
+        }
+
         /// <summary>
         /// Initialize additional budget based on customer's wealth level
         /// </summary>
@@ -186,15 +303,21 @@ namespace HairRemovalSim.Customer
         }
         
         /// <summary>
-        /// Calculate upsell success rate based on item price and remaining budget
-        /// Formula: Clamp(2 - (price / budget), 0, 1)
+        /// Calculate upsell success rate based on total price vs total budget
+        /// Formula: Clamp(2 - (totalPrice / totalBudget), 0, 1)
+        /// where totalPrice = treatment price + upsell price
+        /// and totalBudget = treatment price + additional budget
         /// </summary>
         public float CalculateUpsellSuccessRate(int itemPrice)
         {
-            if (additionalBudget <= 0) return 0f;
+            int planPrice = data != null ? CustomerPlanHelper.GetPlanPrice(data.requestPlan) : 0;
+            int totalBudget = planPrice + additionalBudget;
+            int totalPrice = planPrice + itemPrice;
+            
+            if (totalBudget <= 0) return 0f;
             if (itemPrice <= 0) return 1f;
             
-            float rate = 2f - ((float)itemPrice / additionalBudget);
+            float rate = 2f - ((float)totalPrice / totalBudget);
             return Mathf.Clamp01(rate);
         }
         
@@ -542,28 +665,88 @@ namespace HairRemovalSim.Customer
             }
         }
         
+        public bool IsSitting => animator != null && animator.GetBool(SittingHash);
+
         /// <summary>
-        /// Navigate to a queue position while waiting
+        /// Set sitting animation state
         /// </summary>
-        public void GoToQueuePosition(Transform queuePos, Transform faceTarget = null)
+        public void SetSitting(bool sitting)
+        {
+            if (animator != null)
+            {
+                animator.SetBool(SittingHash, sitting);
+                Debug.Log($"[CustomerController] {data?.customerName} SetSitting({sitting})");
+            }
+        }
+        
+        // Track queue arrival coroutine to prevent duplicates
+        private Coroutine queueArrivalCoroutine;
+        
+        /// <summary>
+        /// Navigate to a queue position while waiting (sits after arrival)
+        /// </summary>
+        public void GoToQueuePosition(Transform queuePos, Transform faceTarget = null, bool shouldSit = true)
         {
             if (agent != null && queuePos != null)
             {
+                // Stop previous queue arrival coroutine
+                if (queueArrivalCoroutine != null)
+                {
+                    StopCoroutine(queueArrivalCoroutine);
+                    queueArrivalCoroutine = null;
+                }
+                
+                // Stand up if currently sitting
+                SetSitting(false);
+                
                 agent.enabled = true;
                 agent.isStopped = false;
                 agent.updateRotation = true;
                 currentState = CustomerState.Waiting;
                 agent.SetDestination(queuePos.position);
                 
-                // Start coroutine to check arrival and rotate
-                StartCoroutine(WaitForQueueArrivalAndRotate(queuePos));
+                // Start coroutine to check arrival, rotate, and sit
+                queueArrivalCoroutine = StartCoroutine(WaitForQueueArrivalAndRotate(queuePos, shouldSit));
             }
         }
         
         /// <summary>
-        /// Wait for arrival at queue position and smoothly rotate to match
+        /// Navigate to counter point (reception/cashier) - stands, does not sit
         /// </summary>
-        private System.Collections.IEnumerator WaitForQueueArrivalAndRotate(Transform queuePos)
+        public void GoToCounterPoint(Transform counterPos)
+        {
+            if (movementCoroutine != null) StopCoroutine(movementCoroutine);
+            movementCoroutine = StartCoroutine(GoToCounterPointRoutine(counterPos));
+        }
+
+        private System.Collections.IEnumerator GoToCounterPointRoutine(Transform counterPos)
+        {
+            if (agent != null && counterPos != null)
+            {
+                yield return StartCoroutine(PrepareForMovement());
+
+                // Stop previous queue arrival coroutine
+                if (queueArrivalCoroutine != null)
+                {
+                    StopCoroutine(queueArrivalCoroutine);
+                    queueArrivalCoroutine = null;
+                }
+                
+                agent.updateRotation = true;
+                currentState = CustomerState.Waiting;
+                agent.SetDestination(counterPos.position);
+                
+                // Rotate to match point but don't sit
+                queueArrivalCoroutine = StartCoroutine(WaitForQueueArrivalAndRotate(counterPos, false));
+            }
+        }
+        
+
+        
+        /// <summary>
+        /// Wait for arrival at queue position, smoothly rotate, and optionally sit
+        /// </summary>
+        private System.Collections.IEnumerator WaitForQueueArrivalAndRotate(Transform queuePos, bool shouldSit = true)
         {
             if (agent == null || queuePos == null) yield break;
             
@@ -599,23 +782,104 @@ namespace HairRemovalSim.Customer
             }
             
             transform.rotation = targetRotation;
+            
+            // Sit down after arriving and rotating
+            if (shouldSit)
+            {
+                SetSitting(true);
+            }
+            
+            // Switch to obstacle mode (stationary) whether sitting or standing
+            SetAgentActive(false);
+            
+            // Clear coroutine reference
+            queueArrivalCoroutine = null;
         }
         
         /// <summary>
-        /// Navigate to waiting area while waiting for a bed to become available
+        /// Navigate to waiting area while waiting for a bed to become available (sits)
         /// </summary>
         public void GoToWaitingArea(Transform waitPos)
         {
+            if (movementCoroutine != null) StopCoroutine(movementCoroutine);
+            movementCoroutine = StartCoroutine(GoToWaitingAreaRoutine(waitPos));
+        }
+
+        private System.Collections.IEnumerator GoToWaitingAreaRoutine(Transform waitPos)
+        {
             if (agent != null && waitPos != null)
             {
-                agent.enabled = true;
-                agent.isStopped = false;
+                yield return StartCoroutine(PrepareForMovement());
+
+                // Stop previous queue arrival coroutine
+                if (queueArrivalCoroutine != null)
+                {
+                    StopCoroutine(queueArrivalCoroutine);
+                    queueArrivalCoroutine = null;
+                }
+                
                 agent.updateRotation = true;
                 currentState = CustomerState.Waiting;
                 agent.SetDestination(waitPos.position);
+                
+                // Rotate and sit
+                queueArrivalCoroutine = StartCoroutine(WaitForQueueArrivalAndRotate(waitPos, true));
             }
         }
+        
+        /// <summary>
+        /// Navigate to a specific chair and sit
+        /// </summary>
+        public void GoToChair(Environment.Chair chair)
+        {
+            if (movementCoroutine != null) StopCoroutine(movementCoroutine);
+            movementCoroutine = StartCoroutine(GoToChairRoutine(chair));
+        }
 
+        private System.Collections.IEnumerator GoToChairRoutine(Environment.Chair chair)
+        {
+            if (chair != null && agent != null)
+            {
+                yield return StartCoroutine(PrepareForMovement());
+
+                // Stop previous queue arrival coroutine
+                if (queueArrivalCoroutine != null)
+                {
+                    StopCoroutine(queueArrivalCoroutine);
+                    queueArrivalCoroutine = null;
+                }
+                
+                // Occupy the new chair
+                if (!chair.Occupy(this))
+                {
+                    Debug.LogWarning($"[CustomerController] {data?.customerName} couldn't occupy chair {chair.name}");
+                    yield break;
+                }
+                currentChair = chair;
+                
+                agent.updateRotation = true;
+                currentState = CustomerState.Waiting;
+                agent.SetDestination(chair.SeatPosition.position);
+                
+                // Start waiting timer when going to chair (resets timer)
+                StartWaiting();
+                
+                // Rotate and sit
+                queueArrivalCoroutine = StartCoroutine(WaitForQueueArrivalAndRotate(chair.SeatPosition, true));
+            }
+        }
+        
+        /// <summary>
+        /// Release the currently occupied chair
+        /// </summary>
+        public void ReleaseChair()
+        {
+            if (currentChair != null)
+            {
+                currentChair.Release();
+                currentChair = null;
+            }
+        }
         public void StartTreatment()
         {
             currentState = CustomerState.InTreatment;
@@ -625,23 +889,36 @@ namespace HairRemovalSim.Customer
 
         public void LeaveShop()
         {
+            if (movementCoroutine != null) StopCoroutine(movementCoroutine);
+            movementCoroutine = StartCoroutine(LeaveShopRoutine());
+        }
+
+        private System.Collections.IEnumerator LeaveShopRoutine()
+        {
             currentState = CustomerState.Leaving;
+            
+            yield return StartCoroutine(PrepareForMovement());
+            
+            // Stop any pending queue arrival coroutine
+            if (queueArrivalCoroutine != null)
+            {
+                StopCoroutine(queueArrivalCoroutine);
+                queueArrivalCoroutine = null;
+            }
             
             if (agent == null)
             {
                 ReturnToPool();
-                return;
+                yield break;
             }
             
             if (exitPoint == null)
             {
-
                 ReturnToPool();
-                return;
+                yield break;
             }
             
-            // Enable agent first (same pattern as GoToBed)
-            agent.enabled = true;
+            // Agent enabled by PrepareForMovement
             
             // Check if on NavMesh, if not try to warp
             if (!agent.isOnNavMesh)
@@ -663,7 +940,7 @@ namespace HairRemovalSim.Customer
                     {
 
                         ReturnToPool();
-                        return;
+                        yield break;
                     }
                 }
             }
@@ -673,13 +950,31 @@ namespace HairRemovalSim.Customer
             {
 
                 ReturnToPool();
-                return;
+                yield break;
             }
             
             // Now agent should be on NavMesh - set destination (same pattern as GoToBed)
             agent.isStopped = false;
             agent.updateRotation = true;
             agent.SetDestination(exitPoint.position);
+            
+            // Wait for path calculation
+            yield return null;
+            
+            // Wait until path is pending or computed
+            while (agent != null && agent.pathPending) 
+            {
+                yield return null;
+            }
+            
+            // Wait until arrived at exit
+            while (agent != null && agent.remainingDistance > 0.5f)
+            {
+                yield return null;
+            }
+            
+            Debug.Log($"[CustomerController] {data.customerName} has left the shop.");
+            ReturnToPool();
             
 
         }
@@ -1148,18 +1443,19 @@ namespace HairRemovalSim.Customer
             // If in stage 3, check if pain has dropped below recovery threshold
             if (isInPainStage3)
             {
-                if (currentPain <= painRecoveryThreshold)
-                {
-                    isInPainStage3 = false;
-                    
-                    // Clear animator pain cooldown state
-                    if (animator != null && animator.enabled)
+                    if (currentPain <= painRecoveryThreshold)
                     {
-                        animator.SetBool("IsPainCooldown", false);
+                        isInPainStage3 = false;
+                        hasAppliedReviewPenalty = false; // Reset penalty flag so it can be applied again next time
+                        
+                        // Clear animator pain cooldown state
+                        if (animator != null && animator.enabled)
+                        {
+                            animator.SetBool("IsPainCooldown", false);
+                        }
+                        
+                        Debug.Log($"[CustomerController] {data.customerName} recovered from pain! Can receive treatment again.");
                     }
-                    
-                    Debug.Log($"[CustomerController] {data.customerName} recovered from pain! Can receive treatment again.");
-                }
                 else
                 {
                     return false; // Still in pain, can't receive treatment
@@ -1488,7 +1784,7 @@ namespace HairRemovalSim.Customer
         /// </summary>
         public void ApplyReceptionEffects(ItemData item)
         {
-            if (item == null || item.effects == null || item.effects.Count == 0) return;
+            if (item == null) return;
             
             // Initialize effect context if needed
             if (appliedEffects == null)
@@ -1498,6 +1794,14 @@ namespace HairRemovalSim.Customer
             
             // Apply all effects from the item
             EffectHelper.ApplyEffects(item, appliedEffects);
+            
+            // Add review bonus to persistent data
+            if (item.reviewBonus != 0)
+            {
+                data.reviewBonus += item.reviewBonus;
+                Debug.Log(data.reviewBonus);
+                Debug.Log($"[CustomerController] Added review bonus {item.reviewBonus} to {data.customerName} (total bonus: {data.reviewBonus})");
+            }
             
             Debug.Log($"[CustomerController] Applied reception effects from {item.name} to {data.customerName}");
         }
@@ -1513,7 +1817,11 @@ namespace HairRemovalSim.Customer
         private void ApplyReviewPenalty()
         {
             // Penalty is tracked via painMaxCount and applied when treatment completes
-            Debug.Log($"[CustomerController] Pain max count for {data.customerName}: {painMaxCount}");
+            // Also apply immediate penalty for real-time tracking
+            int penaltyPerPainEvent = 25; // Based on user report of -25
+            data.reviewPenalty += penaltyPerPainEvent;
+            
+            Debug.Log($"[CustomerController] Pain max count for {data.customerName}: {painMaxCount}. Applied penalty: {penaltyPerPainEvent}, Total: {data.reviewPenalty}");
         }
         
         /// <summary>
@@ -1633,7 +1941,22 @@ namespace HairRemovalSim.Customer
 
         public void GoToBed(Environment.BedController bed)
         {
-            if (bed == null) return;
+            if (movementCoroutine != null) StopCoroutine(movementCoroutine);
+            movementCoroutine = StartCoroutine(GoToBedRoutine(bed));
+        }
+
+        private System.Collections.IEnumerator GoToBedRoutine(Environment.BedController bed)
+        {
+            if (bed == null) yield break;
+            
+            yield return StartCoroutine(PrepareForMovement());
+            
+            // Stop any pending queue arrival coroutine
+            if (queueArrivalCoroutine != null)
+            {
+                StopCoroutine(queueArrivalCoroutine);
+                queueArrivalCoroutine = null;
+            }
             
             bed.AssignCustomer(this);
             assignedBed = bed; // Store reference
@@ -1655,8 +1978,6 @@ namespace HairRemovalSim.Customer
             // Start walking immediately - doors will be handled when customer gets close
             if (agent != null)
             {
-                agent.enabled = true;
-                agent.isStopped = false;
                 agent.updateRotation = true;
                 agent.SetDestination(destination);
             }
@@ -1973,21 +2294,7 @@ namespace HairRemovalSim.Customer
             }
             else if (currentState == CustomerState.Leaving)
             {
-                if (agent != null && !agent.pathPending && agent.remainingDistance < 0.5f)
-                {
-                    Debug.Log($"{data.customerName} has left the shop.");
-                    
-                    // Return to pool instead of Destroy
-                    if (spawner != null)
-                    {
-                        spawner.ReturnToPool(this);
-                    }
-                    else
-                    {
-                        Debug.LogWarning("[CustomerController] No spawner reference! Destroying instead.");
-                        Destroy(gameObject);
-                    }
-                }
+                // Logic moved to LeaveShopRoutine coroutine to ensure proper exit behavior
             }
         }
         
@@ -2117,5 +2424,52 @@ namespace HairRemovalSim.Customer
             staffReviewCoefficient = 1f;
             upsellSuccess = false;
         }
+        /// <summary>
+        /// Get the current calculates review score based on personal factors
+        /// (Base - Penalty + Bonus). Does not include environment factors like debris.
+        /// </summary>
+        public int GetCurrentReviewScore()
+        {
+            if (data == null) return 0;
+            return GetBaseReviewValue() - data.reviewPenalty + data.reviewBonus;
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private void OnGUI()
+        {
+            if (data == null || Camera.main == null) return;
+
+            // Only show if visible and close enough
+            Vector3 screenPos = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 2.2f);
+            if (screenPos.z > 0 && screenPos.z < 10)
+            {
+                // Simple debug label
+                var style = new GUIStyle(GUI.skin.label);
+                style.alignment = TextAnchor.MiddleCenter;
+                style.normal.textColor = Color.white;
+                style.fontStyle = FontStyle.Bold;
+                
+                // Background box
+                float w = 250;
+                float h = 60;
+                Rect rect = new Rect(screenPos.x - w/2, Screen.height - screenPos.y - h/2, w, h);
+                
+                // Calculate score
+                int currentScore = GetCurrentReviewScore();
+                string text = $"Review: {currentScore}\n(Base:{GetBaseReviewValue()} - Pen:{data.reviewPenalty} + Bon:{data.reviewBonus})";
+                
+                // Draw shadow
+                var shadowRect = rect;
+                shadowRect.x += 1;
+                shadowRect.y += 1;
+                style.normal.textColor = Color.black;
+                GUI.Label(shadowRect, text, style);
+                
+                // Draw text
+                style.normal.textColor = currentScore >= 30 ? Color.green : (currentScore < 0 ? Color.red : Color.yellow);
+                GUI.Label(rect, text, style);
+            }
+        }
+#endif
     }
 }

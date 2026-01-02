@@ -114,9 +114,9 @@ namespace HairRemovalSim.Staff
         {
             if (staffData == null) return;
             
-            // Leave for the day
-            LeaveShop();
-            Debug.Log($"[StaffController] {staffData.Name} leaving shop");
+            // Staff continues working overtime - don't leave immediately
+            // They will process remaining customers
+            Debug.Log($"[StaffController] {staffData.Name} working overtime to serve remaining customers");
         }
         
         private void Update()

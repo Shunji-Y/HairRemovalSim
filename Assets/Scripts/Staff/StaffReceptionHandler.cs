@@ -67,6 +67,9 @@ namespace HairRemovalSim.Staff
             currentCustomer = customer;
             isProcessing = true;
             
+            // Pause waiting timer - customer is being processed, gauge stays visible
+            customer.PauseWaiting();
+            
             // Set animation state
             staffController?.SetAnimInReceRegi(true);
             
@@ -97,11 +100,16 @@ namespace HairRemovalSim.Staff
                 // FAILED - customer leaves with -50 review
                 HandleFailure(customer);
                 FinishProcessing();
+                // Advance queue on failure (customer leaves)
+                receptionManager?.AdvanceQueue();
                 yield break;
             }
             
             // SUCCESS - process customer's request
             ProcessCustomerRequest(customer, rankData);
+            
+            // Finish processing first to reset timer (reception wait done)
+            FinishProcessing();
             
             // Find available bed and send customer
             BedController availableBed = FindAvailableBed();
@@ -112,12 +120,13 @@ namespace HairRemovalSim.Staff
             }
             else
             {
-                // No bed available - add to waiting list
+                // No bed available - add to waiting list (StartWaiting will be called here)
                 receptionManager?.AddToWaitingList(customer);
                 Debug.Log($"[StaffReceptionHandler] No available bed, {customer.data?.customerName} added to waiting list");
             }
             
-            FinishProcessing();
+            // Advance the reception queue to bring next customer to counter
+            receptionManager?.AdvanceQueue();
         }
         
         /// <summary>
@@ -137,6 +146,12 @@ namespace HairRemovalSim.Staff
             {
                 Core.ShopManager.Instance.AddReview(-50, 0);
                 Core.ShopManager.Instance.AddCustomerReview(1); // 1 star
+            }
+            
+            // Show angry leave popup
+            if (UI.PopupNotificationManager.Instance != null)
+            {
+                UI.PopupNotificationManager.Instance.ShowAngryLeave(50);
             }
             
             customer.LeaveShop();
@@ -189,6 +204,12 @@ namespace HairRemovalSim.Staff
                         }
                         
                         Debug.Log($"[StaffReceptionHandler] Upsell success: +${selectedItem.Value.price}");
+                        
+                        // Show item success popup
+                        if (UI.PopupNotificationManager.Instance != null)
+                        {
+                            UI.PopupNotificationManager.Instance.ShowItemResult(true);
+                        }
                     }
                     else
                     {
@@ -196,6 +217,12 @@ namespace HairRemovalSim.Staff
                         int penalty = customer.CalculateUpsellFailurePenalty(selectedItem.Value.successRate);
                         data.reviewPenalty += penalty;
                         Debug.Log($"[StaffReceptionHandler] Upsell failed! Review penalty: {penalty}");
+                        
+                        // Show item failure popup
+                        if (UI.PopupNotificationManager.Instance != null)
+                        {
+                            UI.PopupNotificationManager.Instance.ShowItemResult(false);
+                        }
                     }
                 }
                 // No eligible item = no upsell attempted

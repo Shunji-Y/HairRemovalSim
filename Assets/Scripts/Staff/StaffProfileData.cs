@@ -17,6 +17,10 @@ namespace HairRemovalSim.Staff
         
         [Tooltip("Portrait image for UI display")]
         public Sprite portrait;
+
+        [Header("Visual")]
+        [Tooltip("Prefab for this staff member")]
+        public GameObject prefab;
         
         [Header("Rank")]
         [Tooltip("Reference to rank data (defines stats)")]

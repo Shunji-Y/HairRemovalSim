@@ -15,6 +15,10 @@ namespace HairRemovalSim.UI
         [SerializeField] private Image backgroundImage;
         [SerializeField] private Image iconImage;
         
+        [Header("Slot Settings")]
+        [Tooltip("Slot index (0-4) for multiple upsell slots")]
+        [SerializeField] private int slotIndex = 0;
+        
         [Header("Colors")]
         [SerializeField] private Color normalColor = Color.white;
         [SerializeField] private Color highlightColor = Color.yellow;
@@ -28,6 +32,7 @@ namespace HairRemovalSim.UI
         
         public string ItemId => currentItemId;
         public bool HasItem => !string.IsNullOrEmpty(currentItemId);
+        public int SlotIndex => slotIndex;
         
         private void Awake()
         {
@@ -81,8 +86,8 @@ namespace HairRemovalSim.UI
                             slot.AddOne(itemId);
                             Debug.Log($"[PaymentItemDropTarget] Returned {itemId} to checkout slot");
                             
-                            // Notify PaymentPanel to clear the added item
-                            PaymentPanel.Instance.ClearAddedItem();
+                            // Notify PaymentPanel to clear this slot's added item
+                            PaymentPanel.Instance.ClearAddedItem(slotIndex);
                             return;
                         }
                     }
@@ -121,19 +126,15 @@ namespace HairRemovalSim.UI
                 }
             }
             
-            // Notify PaymentPanel
+            // Notify PaymentPanel with slot index
             if (PaymentPanel.Instance != null)
             {
-                PaymentPanel.Instance.OnItemAdded(itemId);
+                PaymentPanel.Instance.OnItemAdded(slotIndex, itemId);
             }
         }
         
-        /// <summary>
-        /// Clear the item (for confirm - item is consumed)
-        /// </summary>
-        public void Clear()
+        public void ClearSlot()
         {
-            Debug.Log($"[PaymentItemDropTarget] Clear called, had item: {currentItemId}");
             currentItemId = null;
             if (iconImage != null)
                 iconImage.enabled = false;
@@ -149,7 +150,7 @@ namespace HairRemovalSim.UI
                 Debug.Log($"[PaymentItemDropTarget] Returning {currentItemId} to stock before clearing");
                 ReturnItemToCheckout(currentItemId);
             }
-            Clear();
+            ClearSlot();
         }
         
         #region Drag back to CheckoutItemSlotUI
@@ -216,10 +217,10 @@ namespace HairRemovalSim.UI
                     checkoutSlot.AddOne(currentItemId);
                     
                     // Clear and notify
-                    Clear();
+                    ClearSlot();
                     if (PaymentPanel.Instance != null)
                     {
-                        PaymentPanel.Instance.ClearAddedItem();
+                        PaymentPanel.Instance.ClearAddedItem(slotIndex);
                     }
                     
                     Debug.Log($"[PaymentItemDropTarget] Dragged item back to checkout slot");

@@ -546,7 +546,7 @@ namespace HairRemovalSim.Treatment
         /// shortHairMultiplier: multiplier when all hair is short/stubble (mask ~0.3)
         /// Returns 0 if no hair (mask ~0.0)
         /// </summary>
-        public float CalculatePainMultiplier(float averageMaskValue, float longHairMultiplier = 5.0f, float shortHairMultiplier = 1f)
+        public float CalculatePainMultiplier(float averageMaskValue, float longHairMultiplier = 4.5f, float shortHairMultiplier = 0.6f)
         {
             // No hair = no pain
             if (averageMaskValue < 0.05f)
@@ -601,8 +601,14 @@ namespace HairRemovalSim.Treatment
                     int removedPartPixels = initialPartPixels - currentPartPixels;
                     float partPercentage = Mathf.Clamp((float)removedPartPixels / initialPartPixels * 100f + completionBuffer, 0f, 100f);
                     
+                    var threshold = 99f;
+                    if(part.partName.Contains("Armpit"))
+                    {
+                        Debug.Log(partPercentage);
+                        threshold = 95f;
+                    }
                     // Round up to 100% when reaching 99.5% or higher
-                    if (partPercentage >= 99f)
+                    if (partPercentage >= threshold)
                     {
                         partPercentage = 100f;
                     }

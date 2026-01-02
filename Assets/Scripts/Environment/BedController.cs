@@ -390,6 +390,7 @@ namespace HairRemovalSim.Environment
                     if (CurrentCustomer != null)
                     {
                         CurrentCustomer.PauseWaiting();
+                        CurrentCustomer.OnLieDownComplete();
                     }
                 }
                 

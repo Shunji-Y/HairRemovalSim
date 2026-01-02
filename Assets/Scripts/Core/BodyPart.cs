@@ -32,6 +32,13 @@ namespace HairRemovalSim.Core
 
         public void Initialize()
         {
+            // If partName is still "Unknown", try to infer from GameObject name
+            if (partName == "Unknown" || string.IsNullOrEmpty(partName))
+            {
+                partName = gameObject.name;
+                Debug.Log($"[BodyPart] partName was Unknown, set to GameObject name: {partName}");
+            }
+            
             treatmentController = GetComponent<HairTreatmentController>();
             if (treatmentController == null)
             {

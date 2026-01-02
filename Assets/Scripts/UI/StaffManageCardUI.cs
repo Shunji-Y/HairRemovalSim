@@ -8,7 +8,7 @@ namespace HairRemovalSim.UI
 {
     /// <summary>
     /// UI card for a hired staff member in the manage panel.
-    /// Shows name, photo, rank, assignment location, and fire button.
+    /// Shows name, photo, rank, assignment location, and fire/reassign buttons.
     /// </summary>
     public class StaffManageCardUI : MonoBehaviour
     {
@@ -19,9 +19,11 @@ namespace HairRemovalSim.UI
         [SerializeField] private TMP_Text assignmentText;
         [SerializeField] private TMP_Text statusText;
         [SerializeField] private Button fireButton;
+        [SerializeField] private Button reassignButton;
         
         private HiredStaffData staffData;
         private System.Action<HiredStaffData> onFireClicked;
+        private System.Action<HiredStaffData> onReassignClicked;
         
         // Shorthand for localization
         private LocalizationManager L => LocalizationManager.Instance;
@@ -29,10 +31,11 @@ namespace HairRemovalSim.UI
         /// <summary>
         /// Setup the card with hired staff data
         /// </summary>
-        public void Setup(HiredStaffData data, System.Action<HiredStaffData> fireCallback)
+        public void Setup(HiredStaffData data, System.Action<HiredStaffData> fireCallback, System.Action<HiredStaffData> reassignCallback = null)
         {
             staffData = data;
             onFireClicked = fireCallback;
+            onReassignClicked = reassignCallback;
             
             // Set photo
             if (photoImage != null && data.profile?.portrait != null)
@@ -72,6 +75,15 @@ namespace HairRemovalSim.UI
                 fireButton.onClick.RemoveAllListeners();
                 fireButton.onClick.AddListener(OnFireButtonClicked);
             }
+            
+            // Setup reassign button
+            if (reassignButton != null)
+            {
+                reassignButton.onClick.RemoveAllListeners();
+                reassignButton.onClick.AddListener(OnReassignButtonClicked);
+                // Only enable reassign for active staff
+                reassignButton.interactable = data.isActive;
+            }
         }
         
         private string GetAssignmentDisplayText(HiredStaffData data)
@@ -96,6 +108,11 @@ namespace HairRemovalSim.UI
         private void OnFireButtonClicked()
         {
             onFireClicked?.Invoke(staffData);
+        }
+        
+        private void OnReassignButtonClicked()
+        {
+            onReassignClicked?.Invoke(staffData);
         }
     }
 }

@@ -16,8 +16,6 @@ namespace HairRemovalSim.Customer
         public UI.ReceptionManager receptionManager; // Reference to reception for queue registration
         public Core.BodyPartsDatabase bodyPartsDatabase; // UV-based body part system
         
-        [Header("Spawn Intervals")]
-        public float spawnInterval = 30f; // Seconds
         public int maxCustomers = 3;
         
         [Header("Object Pool")]
@@ -387,8 +385,12 @@ namespace HairRemovalSim.Customer
 
         private void Start()
         {
-            // Initialize timer so the first customer spawns after opening
-            timer = spawnInterval;
+            // Initialize maxCustomers from current grade
+            if (ShopManager.Instance != null)
+            {
+                maxCustomers = ShopManager.Instance.GetCurrentMaxSimultaneous();
+                Debug.Log($"[CustomerSpawner] Initialized maxCustomers to {maxCustomers} for grade {ShopManager.Instance.ShopGrade}");
+            }
             
             // Initialize customer pool at scene start
             StartCoroutine(InitializePool());
@@ -508,8 +510,36 @@ namespace HairRemovalSim.Customer
                 return selected;
             }
             
-            Debug.LogWarning($"[CustomerSpawner] No available customers in pool! All {activeCount}/{customerPool.Count} are active. Consider increasing pool size.");
-            return null;
+            // Pool is empty - create new customer instance (same as Staff pool behavior)
+            Debug.Log($"[CustomerSpawner] Pool empty ({activeCount}/{customerPool.Count} active), creating new customer instance");
+            return CreateNewCustomerInstance();
+        }
+        
+        /// <summary>
+        /// Create a new customer instance when pool is exhausted
+        /// </summary>
+        private CustomerController CreateNewCustomerInstance()
+        {
+            if (customerPrefabs.Count == 0)
+            {
+                Debug.LogError("[CustomerSpawner] No customer prefabs assigned!");
+                return null;
+            }
+            
+            // Randomly select a prefab
+            GameObject prefab = customerPrefabs[Random.Range(0, customerPrefabs.Count)];
+            GameObject obj = Instantiate(prefab, Vector3.zero, Quaternion.identity);
+            obj.name = $"Customer_Dynamic_{customerPool.Count}_{prefab.name}";
+            
+            CustomerController customer = obj.GetComponent<CustomerController>();
+            if (customer != null)
+            {
+                // Add to pool for future reuse
+                customerPool.Add(customer);
+                Debug.Log($"[CustomerSpawner] Created new customer instance: {obj.name} (pool size now: {customerPool.Count})");
+            }
+            
+            return customer;
         }
         
         public void ReturnToPool(CustomerController customer)

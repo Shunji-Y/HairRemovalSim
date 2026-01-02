@@ -42,6 +42,13 @@ namespace HairRemovalSim.Core
         [Tooltip("Position where staff picks up items from warehouse")]
         public Transform pickupPoint;
         
+        [Header("New Item Indicator")]
+        [Tooltip("TMP text to show 'New!!' when items are delivered")]
+        [SerializeField] private TMPro.TextMeshProUGUI newIndicatorText;
+        
+        // Flag for new items delivered
+        private bool hasNewItems = false;
+        
         // Slot data
         private WarehouseSlot[] slots;
         
@@ -53,6 +60,7 @@ namespace HairRemovalSim.Core
         public int CurrentRows => initialRows + (warehouseLevel - 1);
         public int MaxSlots => columns * CurrentRows;
         public int Level => warehouseLevel;
+        public bool HasNewItems => hasNewItems;
         
         protected override void Awake()
         {
@@ -365,6 +373,32 @@ namespace HairRemovalSim.Core
                 }
             }
             return result;
+        }
+        
+        /// <summary>
+        /// Show "New!!" indicator when items are delivered
+        /// </summary>
+        public void ShowNewIndicator()
+        {
+            hasNewItems = true;
+            if (newIndicatorText != null)
+            {
+                newIndicatorText.gameObject.SetActive(true);
+            }
+            Debug.Log("[WarehouseManager] New items delivered! Showing indicator.");
+        }
+        
+        /// <summary>
+        /// Hide "New!!" indicator when player interacts with warehouse
+        /// </summary>
+        public void HideNewIndicator()
+        {
+            hasNewItems = false;
+            if (newIndicatorText != null)
+            {
+                newIndicatorText.gameObject.SetActive(false);
+            }
+            Debug.Log("[WarehouseManager] Indicator hidden after interaction.");
         }
     }
 }

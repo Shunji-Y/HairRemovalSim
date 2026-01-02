@@ -264,19 +264,19 @@ namespace HairRemovalSim.Customer
         {
             switch (plan)
             {
-                case CustomerRequestPlan.Chest: return 20;
-                case CustomerRequestPlan.Stomach: return 30;
-                case CustomerRequestPlan.Underarms: return 35;
-                case CustomerRequestPlan.Back: return 45;
-                case CustomerRequestPlan.Beard: return 50;
-                case CustomerRequestPlan.Arms: return 80;
-                case CustomerRequestPlan.Legs: return 90;
-                case CustomerRequestPlan.BeardHighQuality: return 100;
-                case CustomerRequestPlan.ArmsAndLegs: return 180;
-                case CustomerRequestPlan.UpperBodyNoArms: return 150;
-                case CustomerRequestPlan.UpperBody: return 240;
-                case CustomerRequestPlan.FullBodyNoBeard: return 350;
-                case CustomerRequestPlan.FullBodyWithBeard: return 420;
+                case CustomerRequestPlan.Chest: return 25;
+                case CustomerRequestPlan.Stomach: return 40;
+                case CustomerRequestPlan.Underarms: return 48;
+                case CustomerRequestPlan.Back: return 60;
+                case CustomerRequestPlan.Beard: return 70;
+                case CustomerRequestPlan.Arms: return 110;
+                case CustomerRequestPlan.Legs: return 120;
+                case CustomerRequestPlan.BeardHighQuality: return 135;
+                case CustomerRequestPlan.ArmsAndLegs: return 240;
+                case CustomerRequestPlan.UpperBodyNoArms: return 200;
+                case CustomerRequestPlan.UpperBody: return 320;
+                case CustomerRequestPlan.FullBodyNoBeard: return 470;
+                case CustomerRequestPlan.FullBodyWithBeard: return 560;
                 default: return 50;
             }
         }

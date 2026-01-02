@@ -269,6 +269,7 @@ namespace HairRemovalSim.UI
         {
             RecalculatePrice();
             UpdateSuccessRateDisplay(itemId);
+            UpdateMoodDisplay(); // Update mood based on new item
             Debug.Log($"[ReceptionPanel] Extra item set: {itemId}");
         }
         
@@ -282,6 +283,7 @@ namespace HairRemovalSim.UI
                 successRateText.gameObject.SetActive(false);
             }
             
+            UpdateMoodDisplay(); // Revert mood (remove item bonus)
             Debug.Log($"[ReceptionPanel] Extra item cleared, price recalculated");
         }
         
@@ -691,17 +693,17 @@ namespace HairRemovalSim.UI
         #region Mood Display
         
         /// <summary>
-        /// Calculate and update mood icon based on customer's base review value
+        /// Calculate and update mood icon based on customer's projected review value
         /// </summary>
         private void UpdateMoodDisplay()
         {
             if (currentCustomer == null || moodIcon == null || moodSprites == null || moodSprites.Length < 5) return;
             
-            // Get base review value from customer
-            int baseReview = currentCustomer.GetBaseReviewValue();
+            // Get projected review value
+            int projectedReview = CalculateProjectedReview();
             
             // Get mood level
-            var mood = GetMoodFromReview(baseReview);
+            var mood = GetMoodFromReview(projectedReview);
             
             // Update icon
             int index = (int)mood;
@@ -710,6 +712,37 @@ namespace HairRemovalSim.UI
                 moodIcon.sprite = moodSprites[index];
                 moodIcon.enabled = true;
             }
+        }
+        
+        /// <summary>
+        /// Calculate projected review including current drop item effect
+        /// </summary>
+        private int CalculateProjectedReview()
+        {
+            if (currentCustomer == null) return 0;
+            
+            // Base review
+            int total = currentCustomer.GetBaseReviewValue();
+            
+            // Add current review penalty/bonus (persistent)
+            var data = currentCustomer.data;
+            if (data != null)
+            {
+                total = total - data.reviewPenalty + data.reviewBonus;
+            }
+            
+            // Add temporary item bonus (if item dropped in reception)
+            if (extraItemDropTarget != null && extraItemDropTarget.HasItem)
+            {
+                string itemId = extraItemDropTarget.ItemId;
+                var itemData = Core.ItemDataRegistry.Instance?.GetItem(itemId);
+                if (itemData != null)
+                {
+                    total += itemData.reviewBonus;
+                }
+            }
+            
+            return total;
         }
         
         /// <summary>

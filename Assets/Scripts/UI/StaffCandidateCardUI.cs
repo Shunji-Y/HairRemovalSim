@@ -37,10 +37,14 @@ namespace HairRemovalSim.UI
             candidate = staffCandidate;
             onHireClicked = hireCallback;
             
+            // Prefer sourceProfileData if available, otherwise use candidate fields
+            var profileData = candidate.sourceProfileData;
+            
             // Set photo
-            if (photoImage != null && candidate.photo != null)
+            Sprite photoSprite = profileData != null ? profileData.portrait : candidate.photo;
+            if (photoImage != null && photoSprite != null)
             {
-                photoImage.sprite = candidate.photo;
+                photoImage.sprite = photoSprite;
                 photoImage.enabled = true;
             }
             else if (photoImage != null)
@@ -48,17 +52,20 @@ namespace HairRemovalSim.UI
                 photoImage.enabled = false;
             }
             
-            // Set name
+            // Set name (prefer StaffProfileData.staffName)
+            string displayName = profileData != null ? profileData.staffName : candidate.displayName;
             if (nameText != null)
-                nameText.text = candidate.displayName;
+                nameText.text = displayName;
             
-            // Set rank (localized)
+            // Set rank (prefer StaffProfileData.Rank)
+            string rankDisplay = profileData != null ? profileData.rankData?.GetDisplayName() : candidate.GetRankDisplayName();
             if (rankText != null)
-                rankText.text = L?.Get("ui.staff_rank", candidate.GetRankDisplayName()) ?? $"Rank: {candidate.GetRankDisplayName()}";
+                rankText.text = L?.Get("ui.staff_rank", rankDisplay) ?? $"Rank: {rankDisplay}";
             
-            // Set daily cost
+            // Set daily cost (prefer StaffProfileData.DailySalary)
+            int salary = profileData != null ? profileData.DailySalary : candidate.DailySalary;
             if (costText != null)
-                costText.text = L?.Get("ui.staff_daily_cost", candidate.DailySalary) ?? $"Cost/Day: ¥{candidate.DailySalary:N0}";
+                costText.text = L?.Get("ui.staff_daily_cost", salary) ?? $"Cost/Day: ¥{salary:N0}";
             
             // Setup stars based on rank
             SetupRankStars();
