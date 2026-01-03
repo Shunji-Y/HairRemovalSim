@@ -28,6 +28,7 @@ namespace HairRemovalSim.UI
         [SerializeField] private Button coolingTab;
         [SerializeField] private Button miscTab;
         [SerializeField] private Button placementTab;
+        [SerializeField] private Button usefulTab;
         
         [Header("Tool Cards")]
         [SerializeField] private Transform cardsContainer;
@@ -42,6 +43,10 @@ namespace HairRemovalSim.UI
         [SerializeField] private TMP_Text deliveryInfoText;
         [SerializeField] private Button confirmButton;
         [SerializeField] private Button cancelButton;
+        
+        [Header("Immediate Delivery Toggle")]
+        [SerializeField] private Toggle immediateDeliveryToggle;
+        [SerializeField] private TMP_Text immediateDeliveryFeeText;
         
         [Header("Sell Panel")]
         [SerializeField] private Button sellToolsButton;
@@ -64,6 +69,12 @@ namespace HairRemovalSim.UI
         private TreatmentToolType currentFilter = TreatmentToolType.Laser;
         private bool isSellMode = false;
         private bool isPlacementMode = false;
+        private bool isUsefulMode = false;
+        private bool isImmediateDelivery = false;
+        
+        // Delivery plan item IDs
+        private const string PREMIUM_DELIVERY_PLAN_ID = "premium_delivery_plan";
+        private const string EXECUTIVE_DELIVERY_PLAN_ID = "executive_delivery_plan";
         
         public bool IsOpen => panel != null && panel.activeSelf;
         
@@ -85,12 +96,18 @@ namespace HairRemovalSim.UI
                 miscTab.onClick.AddListener(() => SetFilter(TreatmentToolType.Other));
             if (placementTab != null)
                 placementTab.onClick.AddListener(ShowPlacementItems);
+            if (usefulTab != null)
+                usefulTab.onClick.AddListener(ShowUsefulItems);
             
             // Setup purchase dialog buttons
             if (confirmButton != null)
                 confirmButton.onClick.AddListener(OnConfirmPurchase);
             if (cancelButton != null)
                 cancelButton.onClick.AddListener(CloseConfirmDialog);
+            
+            // Setup immediate delivery toggle
+            if (immediateDeliveryToggle != null)
+                immediateDeliveryToggle.onValueChanged.AddListener(OnImmediateDeliveryToggled);
             
             // Setup sell mode button
             if (sellToolsButton != null)
@@ -151,6 +168,7 @@ namespace HairRemovalSim.UI
         {
             currentFilter = filter;
             isPlacementMode = false;
+            isUsefulMode = false;
             CloseSellMode();
             RefreshCards();
         }
@@ -158,9 +176,20 @@ namespace HairRemovalSim.UI
         private void ShowPlacementItems()
         {
             isPlacementMode = true;
+            isUsefulMode = false;
             CloseSellMode();
             RefreshCards();
         }
+        
+        private void ShowUsefulItems()
+        {
+            isPlacementMode = false;
+            isUsefulMode = true;
+            CloseSellMode();
+            RefreshCards();
+        }
+        
+
         
         public void RefreshDisplay()
         {
@@ -189,23 +218,58 @@ namespace HairRemovalSim.UI
         {
             ClearCards();
             
-            int currentGrade = GetCurrentShopGrade();
+            int currentStarLevel = GetCurrentStarLevel();
             
             if (isPlacementMode)
             {
-                RefreshPlacementCards(currentGrade);
+                RefreshPlacementCards(currentStarLevel);
+            }
+            else if (isUsefulMode)
+            {
+                RefreshUsefulCards(currentStarLevel);
             }
             else
             {
                 var tools = GetFilteredTools();
                 foreach (var tool in tools)
                 {
-                    CreateToolCard(tool, currentGrade);
+                    CreateToolCard(tool, currentStarLevel);
                 }
             }
         }
         
-        private void RefreshPlacementCards(int currentGrade)
+        private void RefreshUsefulCards(int currentGrade)
+        {
+            if (ItemDataRegistry.Instance == null) return;
+            
+            var items = ItemDataRegistry.Instance.GetItemsByCategory(ItemCategory.Useful);
+            int currentStarLevel = GetCurrentStarLevel();
+            
+            foreach (var item in items)
+            {
+                // Star level filter: hide if requiredStarLevel > currentStarLevel + 5
+                int starDiff = item.requiredStarLevel - currentStarLevel;
+                if (starDiff > 5) continue;
+                
+                // Check if already owned (one-time purchase items)
+                bool isOwned = IsUsefulItemOwned(item.itemId);
+                
+                // For Useful items, use ToolShopCardUI with owned state
+                CreateToolCard(item, currentStarLevel);
+            }
+        }
+        
+        private bool IsUsefulItemOwned(string itemId)
+        {
+            // Check WarehouseManager for useful items
+            if (HairRemovalSim.Core.WarehouseManager.Instance != null)
+            {
+                return HairRemovalSim.Core.WarehouseManager.Instance.GetTotalItemCount(itemId) > 0;
+            }
+            return false;
+        }
+        
+        private void RefreshPlacementCards(int currentStarLevel)
         {
             if (PlacementManager.Instance == null || ItemDataRegistry.Instance == null) return;
             
@@ -213,16 +277,16 @@ namespace HairRemovalSim.UI
             
             foreach (var item in items)
             {
-                // Grade filter
-                int gradeDiff = item.requiredShopGrade - currentGrade;
-                if (gradeDiff >= 2) continue;
+                // Star level filter: hide if requiredStarLevel > currentStarLevel + 5
+                int starDiff = item.requiredStarLevel - currentStarLevel;
+                if (starDiff > 5) continue;
                 
                 bool isOwned = PlacementManager.Instance.IsOwned(item.itemId);
-                CreatePlacementCard(item, currentGrade, isOwned);
+                CreatePlacementCard(item, currentStarLevel, isOwned);
             }
         }
         
-        private void CreatePlacementCard(ItemData item, int currentGrade, bool isOwned)
+        private void CreatePlacementCard(ItemData item, int currentStarLevel, bool isOwned)
         {
             if (toolCardPrefab == null || cardsContainer == null) return;
             
@@ -233,7 +297,7 @@ namespace HairRemovalSim.UI
             if (card != null)
             {
                 // Always pass callback, card will handle owned state via isOwned flag
-                card.Setup(item, currentGrade, OnPlacementPurchaseCallback, isOwned);
+                card.Setup(item, currentStarLevel, OnPlacementPurchaseCallback, isOwned);
             }
         }
         
@@ -268,7 +332,7 @@ namespace HairRemovalSim.UI
             toolCards.Clear();
         }
         
-        private void CreateToolCard(ItemData tool, int currentGrade)
+        private void CreateToolCard(ItemData tool, int currentStarLevel)
         {
             if (toolCardPrefab == null || cardsContainer == null) return;
             
@@ -277,7 +341,7 @@ namespace HairRemovalSim.UI
             
             if (cardUI != null)
             {
-                cardUI.Setup(tool, currentGrade, OnToolPurchaseRequested);
+                cardUI.Setup(tool, currentStarLevel, OnToolPurchaseRequested);
             }
             
             toolCards.Add(cardObj);
@@ -295,6 +359,20 @@ namespace HairRemovalSim.UI
             
             confirmDialog.SetActive(true);
             
+            // Reset immediate delivery toggle
+            isImmediateDelivery = false;
+            if (immediateDeliveryToggle != null)
+            {
+                immediateDeliveryToggle.isOn = false;
+                
+                // Hide toggle for Placement and Useful items (they are instant/special)
+                bool showToggle = !isPlacementMode && !isUsefulMode;
+                immediateDeliveryToggle.gameObject.SetActive(showToggle);
+                
+                if (immediateDeliveryFeeText != null)
+                    immediateDeliveryFeeText.gameObject.SetActive(showToggle);
+            }
+            
             // Icon
             if (confirmItemIcon != null && tool.icon != null)
                 confirmItemIcon.sprite = tool.icon;
@@ -304,16 +382,116 @@ namespace HairRemovalSim.UI
                 confirmItemName.text = L?.Get(tool.nameKey); ;
             
             // Price
-            if (confirmPriceText != null)
-                confirmPriceText.text = $"${tool.price:N0}";
+            UpdateConfirmDialogPrice(tool);
             
             // Delivery info
-            if (deliveryInfoText != null)
+            UpdateDeliveryInfo(tool);
+            
+            // Hide delivery info and ensure toggle logic consistency for Placement/Useful
+            if (isPlacementMode || isUsefulMode)
             {
-                int currentDay = GameManager.Instance?.DayCount ?? 1;
+                if (deliveryInfoText != null) deliveryInfoText.gameObject.SetActive(false);
+                if (immediateDeliveryFeeText != null) immediateDeliveryFeeText.gameObject.SetActive(false);
+            }
+            else
+            {
+                if (deliveryInfoText != null) deliveryInfoText.gameObject.SetActive(true);
+                // immediateDeliveryFeeText visibility is handled by toggle state logic or UpdateImmediateDeliveryFeeText if needed, 
+                // but commonly we only show it if toggle is on.
+                // Re-evaluate toggle visibility just in case
+            }
+        }
+        
+        private void UpdateConfirmDialogPrice(ItemData tool)
+        {
+            if (confirmPriceText == null) return;
+            
+            int basePrice = tool.price;
+            int deliveryFee = isImmediateDelivery ? CalculateImmediateDeliveryFee(basePrice) : 0;
+            int totalPrice = basePrice + deliveryFee;
+            
+            if (deliveryFee > 0)
+            {
+                float feePercent = GetImmediateDeliveryFeePercent() * 100f;
+                confirmPriceText.text = $"${totalPrice:N0} (+{feePercent:F0}%)";
+            }
+            else
+            {
+                confirmPriceText.text = $"${basePrice:N0}";
+            }
+        }
+        
+        private void UpdateDeliveryInfo(ItemData tool)
+        {
+            if (deliveryInfoText == null) return;
+            
+            int currentDay = GameManager.Instance?.DayCount ?? 1;
+            
+            if (isImmediateDelivery)
+            {
+                deliveryInfoText.text = L?.Get("toolshop.delivery_immediate") ?? "Delivery: Immediate";
+            }
+            else
+            {
                 deliveryInfoText.text = L?.Get("toolshop.delivery_info", currentDay + 1) 
                     ?? $"Delivery: Day {currentDay + 1}";
             }
+            
+            // Update delivery fee text
+            UpdateImmediateDeliveryFeeText(tool);
+        }
+        
+        private void UpdateImmediateDeliveryFeeText(ItemData tool)
+        {
+            if (immediateDeliveryFeeText == null) return;
+            
+            int fee = CalculateImmediateDeliveryFee(tool.price);
+            float feePercent = GetImmediateDeliveryFeePercent() * 100f;
+            
+            if (fee == 0)
+            {
+                immediateDeliveryFeeText.text = "$0";
+            }
+            else
+            {
+                immediateDeliveryFeeText.text = $"${fee:N0} (+{feePercent:F0}%)";
+            }
+        }
+        
+        private void OnImmediateDeliveryToggled(bool isOn)
+        {
+            isImmediateDelivery = isOn;
+            if (pendingPurchase != null)
+            {
+                UpdateConfirmDialogPrice(pendingPurchase);
+                UpdateDeliveryInfo(pendingPurchase);
+            }
+        }
+        
+        /// <summary>
+        /// Get immediate delivery fee percentage based on owned delivery plans
+        /// </summary>
+        private float GetImmediateDeliveryFeePercent()
+        {
+            // Check for Executive plan (free delivery)
+            if (IsUsefulItemOwned(EXECUTIVE_DELIVERY_PLAN_ID))
+                return 0f;
+            
+            // Check for Premium plan (10% fee)
+            if (IsUsefulItemOwned(PREMIUM_DELIVERY_PLAN_ID))
+                return 0.10f;
+            
+            // Default: 20% fee
+            return 0.20f;
+        }
+        
+        /// <summary>
+        /// Calculate immediate delivery fee for a given price
+        /// </summary>
+        private int CalculateImmediateDeliveryFee(int basePrice)
+        {
+            float percent = GetImmediateDeliveryFeePercent();
+            return Mathf.RoundToInt(basePrice * percent);
         }
         
         private void CloseConfirmDialog()
@@ -346,22 +524,49 @@ namespace HairRemovalSim.UI
                 return;
             }
             
+            // Calculate total price with delivery fee
+            int basePrice = pendingPurchase.price;
+            int deliveryFee = isImmediateDelivery ? CalculateImmediateDeliveryFee(basePrice) : 0;
+            int totalPrice = basePrice + deliveryFee;
+            
             // Check money
             if (EconomyManager.Instance == null || 
-                !EconomyManager.Instance.SpendMoney(pendingPurchase.price))
+                !EconomyManager.Instance.SpendMoney(totalPrice))
             {
                 Debug.Log("[ToolShopPanel] Not enough money");
                 CloseConfirmDialog();
                 return;
             }
             
-            // Schedule delivery for next day
-            ScheduleDelivery(pendingPurchase);
-            
-            Debug.Log($"[ToolShopPanel] Purchased: {pendingPurchase.name} - Delivery scheduled");
+            // Deliver immediately or schedule for next day
+            if (isImmediateDelivery)
+            {
+                DeliverImmediately(pendingPurchase);
+                Debug.Log($"[ToolShopPanel] Purchased: {pendingPurchase.name} - Immediate delivery");
+            }
+            else
+            {
+                ScheduleDelivery(pendingPurchase);
+                Debug.Log($"[ToolShopPanel] Purchased: {pendingPurchase.name} - Delivery scheduled for tomorrow");
+            }
             
             CloseConfirmDialog();
             RefreshCards();
+        }
+        
+        private void DeliverImmediately(ItemData item)
+        {
+            // Deliver directly to warehouse
+            if (HairRemovalSim.Core.WarehouseManager.Instance != null)
+            {
+                HairRemovalSim.Core.WarehouseManager.Instance.AddItem(item.itemId, 1);
+                HairRemovalSim.Core.WarehouseManager.Instance.ShowNewIndicator();
+                Debug.Log($"[ToolShopPanel] {item.name} delivered immediately to warehouse");
+            }
+            else
+            {
+                Debug.LogWarning($"[ToolShopPanel] WarehouseManager not found, immediate delivery failed");
+            }
         }
         
         private void ScheduleDelivery(ItemData item)
@@ -383,12 +588,17 @@ namespace HairRemovalSim.UI
             return ShopManager.Instance?.ShopGrade ?? 1;
         }
         
+        private int GetCurrentStarLevel()
+        {
+            return ShopManager.Instance?.StarRating ?? 1;
+        }
+        
         private List<ItemData> GetFilteredTools()
         {
             if (ItemDataRegistry.Instance == null)
                 return new List<ItemData>();
             
-            int currentGrade = GetCurrentShopGrade();
+            int currentStarLevel = GetCurrentStarLevel();
             
             // Get treatment tools
             var toolItems = ItemDataRegistry.Instance.GetItemsByCategory(ItemCategory.TreatmentTool);
@@ -400,27 +610,27 @@ namespace HairRemovalSim.UI
                     toolItems.Add(tool);
             }
             
-            // Filter by current type and grade visibility
+            // Filter by current type and star level visibility
             var filtered = new List<ItemData>();
             foreach (var tool in toolItems)
             {
                 if (tool.toolType != currentFilter)
                     continue;
                 
-                // Grade filter: hide if requiredGrade > currentGrade + 1
-                // Show locked if requiredGrade == currentGrade + 1
-                // Show unlocked if requiredGrade <= currentGrade
-                int gradeDiff = tool.requiredShopGrade - currentGrade;
-                if (gradeDiff >= 2)
+                // Star level filter: hide if requiredStarLevel > currentStarLevel + 5
+                // Show locked if requiredStarLevel > currentStarLevel
+                // Show unlocked if requiredStarLevel <= currentStarLevel
+                int starDiff = tool.requiredStarLevel - currentStarLevel;
+                if (starDiff > 5)
                     continue; // Hide completely
                 
                 filtered.Add(tool);
             }
             
-            // Sort by grade then price
+            // Sort by star level then price
             filtered.Sort((a, b) => {
-                int gradeCompare = a.requiredShopGrade.CompareTo(b.requiredShopGrade);
-                return gradeCompare != 0 ? gradeCompare : a.price.CompareTo(b.price);
+                int starCompare = a.requiredStarLevel.CompareTo(b.requiredStarLevel);
+                return starCompare != 0 ? starCompare : a.price.CompareTo(b.price);
             });
             
             return filtered;

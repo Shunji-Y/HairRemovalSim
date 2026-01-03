@@ -62,11 +62,11 @@ namespace HairRemovalSim.Staff
         public int DailySalary => profile?.DailySalary ?? 100;
         
         /// <summary>
-        /// Check if staff starts working today (hired yesterday)
+        /// Check if staff should start working (immediate activation on hire)
         /// </summary>
         public bool ShouldStartWorking(int currentDay)
         {
-            return !isActive && currentDay > hireDayNumber;
+            return !isActive && currentDay >= hireDayNumber;
         }
         
         /// <summary>

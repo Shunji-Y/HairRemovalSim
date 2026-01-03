@@ -264,9 +264,9 @@ namespace HairRemovalSim.Customer
         {
             switch (plan)
             {
-                case CustomerRequestPlan.Chest: return 25;
-                case CustomerRequestPlan.Stomach: return 40;
-                case CustomerRequestPlan.Underarms: return 48;
+                case CustomerRequestPlan.Chest: return 40;
+                case CustomerRequestPlan.Stomach: return 50;
+                case CustomerRequestPlan.Underarms: return 30;
                 case CustomerRequestPlan.Back: return 60;
                 case CustomerRequestPlan.Beard: return 70;
                 case CustomerRequestPlan.Arms: return 110;

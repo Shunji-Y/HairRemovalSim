@@ -26,12 +26,26 @@ namespace HairRemovalSim.Core
         
         [HideInInspector]
         public HairTreatmentController treatmentController;
+        
+        private bool isInitialized = false;
 
         private List<Hair> hairs = new List<Hair>();
         private Dictionary<Transform, Hair> visualToDataMap = new Dictionary<Transform, Hair>();
+        
+        /// <summary>
+        /// Ensure treatmentController is initialized (lazy initialization)
+        /// Call this before accessing treatmentController
+        /// </summary>
+        public void EnsureInitialized()
+        {
+            if (isInitialized) return;
+            Initialize();
+        }
 
         public void Initialize()
         {
+            if (isInitialized) return;
+            
             // If partName is still "Unknown", try to infer from GameObject name
             if (partName == "Unknown" || string.IsNullOrEmpty(partName))
             {
@@ -47,6 +61,7 @@ namespace HairRemovalSim.Core
             
             treatmentController.Initialize();
             
+            isInitialized = true;
             Debug.Log($"[BodyPart] {partName}: Initialized with Shader-based Hair System.");
         }
         

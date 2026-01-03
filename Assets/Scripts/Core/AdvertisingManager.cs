@@ -74,10 +74,10 @@ namespace HairRemovalSim.Core
             }
             
             int currentDay = GameManager.Instance?.DayCount ?? 1;
-            int currentGrade = ShopManager.Instance?.ShopGrade ?? 1;
+            int currentStarLevel = ShopManager.Instance?.StarRating ?? 1;
             
             // Check if unlocked
-            if (!adData.IsUnlockedForGrade(currentGrade))
+            if (!adData.IsUnlockedForStarLevel(currentStarLevel))
             {
                 reason = LocalizationManager.Instance?.Get("advertising.locked") ?? "LOCKED";
                 return false;
@@ -187,12 +187,12 @@ namespace HairRemovalSim.Core
             if (adData == null) return false;
             
             int currentDay = GameManager.Instance?.DayCount ?? 1;
-            int currentGrade = ShopManager.Instance?.ShopGrade ?? 1;
+            int currentStarLevel = ShopManager.Instance?.StarRating ?? 1;
             
             // Check if unlocked
-            if (!adData.IsUnlockedForGrade(currentGrade))
+            if (!adData.IsUnlockedForStarLevel(currentStarLevel))
             {
-                Debug.Log($"[AdvertisingManager] Ad '{adData.displayName}' requires grade {adData.requiredShopGrade}");
+                Debug.Log($"[AdvertisingManager] Ad '{adData.displayName}' requires star level {adData.requiredStarLevel}");
                 return false;
             }
             

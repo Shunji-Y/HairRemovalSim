@@ -48,6 +48,9 @@ namespace HairRemovalSim.Customer
         [Tooltip("Facility boost from items like air purifier (0 to 0.3)")]
         [SerializeField] private float _facilityBoost = 0f;
         
+        // Static counter for unique customer names
+        private static int customerIdCounter = 0;
+        
         [Tooltip("Business hours in seconds (10:00-19:00 = 9 hours = 540 real seconds at 60x speed)")]
         [SerializeField] private float businessHoursSeconds = 600f;
         
@@ -108,12 +111,18 @@ namespace HairRemovalSim.Customer
         }
         
         /// <summary>
-        /// Get max customers for current grade with facility boost
+        /// Get max customers for current grade with facility boost and day length coefficient
+        /// Base 600 seconds = 1.0 coefficient, 450 seconds = 0.75 coefficient
         /// </summary>
         public int GetMaxCustomers()
         {
             int baseMax = ShopManager.Instance?.GetCurrentMaxCustomers() ?? 18;
-            return Mathf.RoundToInt(baseMax * (1f + _facilityBoost));
+            
+            // Apply day length coefficient (600 seconds = 1.0)
+            float dayLengthCoefficient = businessHoursSeconds / 600f;
+            
+            // Apply facility boost and day length coefficient
+            return Mathf.RoundToInt(baseMax * (1f + _facilityBoost) * dayLengthCoefficient);
         }
         
         /// <summary>
@@ -616,7 +625,7 @@ namespace HairRemovalSim.Customer
                 
                 // Generate customer data (use test settings if enabled)
                 CustomerData data = new CustomerData();
-                data.customerName = useTestSettings ? "TestCustomer" : "Guest " + Random.Range(100, 999);
+                data.customerName = useTestSettings ? "TestCustomer" : "Guest " + (++customerIdCounter);
                 data.hairiness = useTestSettings ? testHairinessLevel : (HairinessLevel)Random.Range(0, 4);
                 data.wealth = useTestSettings ? testWealthLevel : GetRandomCustomerWealthLevel();
                 
@@ -684,22 +693,6 @@ namespace HairRemovalSim.Customer
                 
                 Debug.Log($"[CustomerSpawner] {data.customerName} requested plan: {data.GetPlanDisplayName()} ({partCount} parts), price: ${planPrice}, tolerance: {data.painToleranceLevel}");
                 
-                // Register with reception to get queue position
-                if (receptionManager != null)
-                {
-                    Transform queuePos = receptionManager.RegisterCustomer(customer);
-                    if (queuePos == null)
-                    {
-                        Debug.LogWarning($"[CustomerSpawner] Could not register {data.customerName} to queue, sending to reception");
-                        customer.GoToReception(receptionPoint);
-                    }
-                }
-                else
-                {
-                    Debug.LogError("[CustomerSpawner] ReceptionManager reference not set! Customer going to reception point");
-                    customer.GoToReception(receptionPoint);
-                }
-                
                 activeCustomers.Add(customer);
                 
                 // Record for daily stats
@@ -707,6 +700,49 @@ namespace HairRemovalSim.Customer
                 {
                     Core.DailyStatsManager.Instance.RecordCustomerSpawned();
                 }
+                
+                // Wait for initialization to complete before registering to queue
+                StartCoroutine(WaitForInitializationAndRegister(customer));
+            }
+        }
+        
+        /// <summary>
+        /// Wait for customer initialization to complete, then register with reception
+        /// This prevents customers from moving before BodyParts are fully initialized
+        /// </summary>
+        private System.Collections.IEnumerator WaitForInitializationAndRegister(CustomerController customer)
+        {
+            // Wait until customer is initialized (max 5 seconds timeout)
+            float timeout = 5f;
+            float elapsed = 0f;
+            
+            while (!customer.isInitialized && elapsed < timeout)
+            {
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            
+            if (!customer.isInitialized)
+            {
+                Debug.LogWarning($"[CustomerSpawner] {customer.data?.customerName} initialization timeout! Forcing initialization.");
+                // Force mark as initialized if timeout
+                customer.isInitialized = true;
+            }
+            
+            // Now register with reception to get queue position
+            if (receptionManager != null)
+            {
+                Transform queuePos = receptionManager.RegisterCustomer(customer);
+                if (queuePos == null)
+                {
+                    Debug.LogWarning($"[CustomerSpawner] Could not register {customer.data?.customerName} to queue, sending to reception");
+                    customer.GoToReception(receptionPoint);
+                }
+            }
+            else
+            {
+                Debug.LogError("[CustomerSpawner] ReceptionManager reference not set! Customer going to reception point");
+                customer.GoToReception(receptionPoint);
             }
         }
     }

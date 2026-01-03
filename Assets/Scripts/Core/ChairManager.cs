@@ -75,25 +75,39 @@ namespace HairRemovalSim.Core
         
         /// <summary>
         /// Find the closest empty chair to a position, prioritizing the specified category
+        /// Optimized version without LINQ for better performance with many chairs
         /// </summary>
         public Chair FindClosestEmptyChair(Vector3 fromPosition, ChairCategory preferredCategory)
         {
-            // First try preferred category
-            var preferredChairs = allChairs
-                .Where(c => c.category == preferredCategory && !c.IsOccupied)
-                .OrderBy(c => Vector3.Distance(fromPosition, c.SeatPosition.position))
-                .FirstOrDefault();
+            Chair closestPreferred = null;
+            Chair closestAny = null;
+            float closestPreferredDist = float.MaxValue;
+            float closestAnyDist = float.MaxValue;
             
-            if (preferredChairs != null)
+            for (int i = 0; i < allChairs.Count; i++)
             {
-                return preferredChairs;
+                var chair = allChairs[i];
+                if (chair == null || chair.IsOccupied) continue;
+                
+                float dist = (fromPosition - chair.SeatPosition.position).sqrMagnitude; // sqrMagnitude faster than Distance
+                
+                if (chair.category == preferredCategory)
+                {
+                    if (dist < closestPreferredDist)
+                    {
+                        closestPreferredDist = dist;
+                        closestPreferred = chair;
+                    }
+                }
+                
+                if (dist < closestAnyDist)
+                {
+                    closestAnyDist = dist;
+                    closestAny = chair;
+                }
             }
             
-            // Fallback to any empty chair
-            return allChairs
-                .Where(c => !c.IsOccupied)
-                .OrderBy(c => Vector3.Distance(fromPosition, c.SeatPosition.position))
-                .FirstOrDefault();
+            return closestPreferred ?? closestAny;
         }
         
         /// <summary>
@@ -102,6 +116,14 @@ namespace HairRemovalSim.Core
         public int GetEmptyChairCount(ChairCategory category)
         {
             return allChairs.Count(c => c.category == category && !c.IsOccupied);
+        }
+        
+        /// <summary>
+        /// Get chair's index in the list (for debugging)
+        /// </summary>
+        public int GetChairIndex(Chair chair)
+        {
+            return allChairs.IndexOf(chair);
         }
         
         /// <summary>

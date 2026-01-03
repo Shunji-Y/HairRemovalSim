@@ -51,10 +51,10 @@ namespace HairRemovalSim.UI
                 L.OnLocaleChanged -= RefreshDisplay;
         }
         
-        public void Setup(AdvertisementData data, int currentGrade, System.Action<AdvertisementData> onStart)
+        public void Setup(AdvertisementData data, int currentStarLevel, System.Action<AdvertisementData> onStart)
         {
             adData = data;
-            isLocked = !data.IsUnlockedForGrade(currentGrade);
+            isLocked = !data.IsUnlockedForStarLevel(currentStarLevel);
             onStartCallback = onStart;
             
             if (startButton != null)
@@ -146,8 +146,8 @@ namespace HairRemovalSim.UI
             
             if (lockedText != null && isLocked)
             {
-                lockedText.text = L?.Get("advertising.locked_grade", adData.requiredShopGrade)
-                    ?? $"Grade {adData.requiredShopGrade} Required";
+                lockedText.text = L?.Get("advertising.locked_star", adData.requiredStarLevel)
+                    ?? $"★{adData.requiredStarLevel} Required";
             }
         }
         

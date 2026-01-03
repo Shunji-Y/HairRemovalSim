@@ -383,13 +383,13 @@ namespace HairRemovalSim.UI
             if (itemData.category == ItemCategory.PlacementItem)
                 return "Placement";
             
-            if (itemData.canPlaceAtReception)
+            if (itemData.CanPlaceAtReception)
                 return "Reception";
             
-            if (itemData.canUseAtCheckout)
+            if (itemData.CanUseAtCheckout)
                 return "Checkout";
             
-            if (itemData.canPlaceOnShelf)
+            if (itemData.CanPlaceOnShelf)
                 return "Shelf";
             
             return "";
@@ -419,13 +419,13 @@ namespace HairRemovalSim.UI
             if (itemData.category == ItemCategory.PlacementItem)
                 return placementIcon;
             
-            if (itemData.canPlaceAtReception)
+            if (itemData.CanPlaceAtReception)
                 return receptionItemIcon;
             
-            if (itemData.canUseAtCheckout)
+            if (itemData.CanUseAtCheckout)
                 return checkoutItemIcon;
             
-            if (itemData.canPlaceOnShelf)
+            if (itemData.CanPlaceOnShelf)
                 return shelfItemIcon;
             
             return null;

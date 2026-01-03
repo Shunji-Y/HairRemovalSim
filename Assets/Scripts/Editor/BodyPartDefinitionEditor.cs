@@ -9,7 +9,7 @@ namespace HairRemovalSim.Core
     /// UV領域を視覚的に確認できるプレビューを追加
     /// </summary>
     [CustomEditor(typeof(BodyPartDefinition))]
-    public class BodyPartDefinitionEditor : Editor
+    public class BodyPartDefinitionEditor : UnityEditor.Editor
     {
         private const float PREVIEW_SIZE = 256f;
         

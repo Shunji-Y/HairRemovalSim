@@ -6,7 +6,7 @@ namespace HairRemovalSim.Staff
 {
     /// <summary>
     /// Generates random staff candidates for hiring.
-    /// Filters by current shop grade.
+    /// Filters by current star level.
     /// </summary>
     public class StaffCandidateGenerator : MonoBehaviour
     {
@@ -88,7 +88,7 @@ namespace HairRemovalSim.Staff
         {
             currentCandidates.Clear();
             
-            int shopGrade = ShopManager.Instance?.ShopGrade ?? 1;
+            int currentStarLevel = ShopManager.Instance?.StarRating ?? 1;
             
             if (StaffManager.Instance == null || StaffManager.Instance.availableProfiles == null)
             {
@@ -96,14 +96,14 @@ namespace HairRemovalSim.Staff
                 return;
             }
             
-            // Get candidate count based on grade
-            int count = GetCandidateCountForGrade(shopGrade);
+            // Get candidate count based on star level
+            int count = GetCandidateCountForStarLevel(currentStarLevel);
             
-            // Get available profiles that match current grade restrictions
-            var availableProfiles = GetAvailableProfilesForGrade(shopGrade);
+            // Get available profiles that match current star level restrictions
+            var availableProfiles = GetAvailableProfilesForStarLevel(currentStarLevel);
             if (availableProfiles.Count == 0)
             {
-                Debug.Log("[StaffCandidateGenerator] No profiles available at current grade");
+                Debug.Log("[StaffCandidateGenerator] No profiles available at current star level");
                 return;
             }
             
@@ -117,21 +117,22 @@ namespace HairRemovalSim.Staff
                 currentCandidates.Add(candidate);
             }
             
-            Debug.Log($"[StaffCandidateGenerator] Generated {currentCandidates.Count} candidates for grade {shopGrade}");
+            Debug.Log($"[StaffCandidateGenerator] Generated {currentCandidates.Count} candidates for star level {currentStarLevel}");
         }
         
         /// <summary>
-        /// Get profiles available at current shop grade
+        /// Get profiles available at current star level
         /// </summary>
-        private List<StaffProfileData> GetAvailableProfilesForGrade(int shopGrade)
+        private List<StaffProfileData> GetAvailableProfilesForStarLevel(int currentStarLevel)
         {
             var available = new List<StaffProfileData>();
-            StaffRank maxRank = GetMaxRankForGrade(shopGrade);
             
             foreach (var profile in StaffManager.Instance.availableProfiles)
             {
-                if (profile == null) continue;
-                if (profile.Rank <= maxRank)
+                if (profile == null || profile.rankData == null) continue;
+                
+                // Check if this rank is unlocked at current star level
+                if (profile.rankData.requiredStarLevel <= currentStarLevel)
                 {
                     available.Add(profile);
                 }
@@ -167,54 +168,29 @@ namespace HairRemovalSim.Staff
         }
         
         /// <summary>
-        /// Get number of candidate cards for shop grade
-        /// Grade 2: 1, Grade 3: 2, Grade 4: 3, Grade 5: 4, Grade 6+: 5
+        /// Get number of candidate cards based on star level
+        /// ★1-3: 0, ★4-7: 1, ★8-13: 2, ★14-18: 3, ★19-24: 4, ★25+: 5
         /// </summary>
-        private int GetCandidateCountForGrade(int shopGrade)
+        private int GetCandidateCountForStarLevel(int starLevel)
         {
-            switch (shopGrade)
-            {
-                case 1: return 0; // No hiring at grade 1
-                case 2: return 1;
-                case 3: return 2;
-                case 4: return 3;
-                case 5: return 4;
-                default: return 5; // Grade 6+
-            }
+            if (starLevel < 4) return 0;     // No hiring below ★4
+            if (starLevel < 8) return 1;     // ★4-7: 1 candidate
+            if (starLevel < 14) return 2;    // ★8-13: 2 candidates
+            if (starLevel < 19) return 3;    // ★14-18: 3 candidates
+            if (starLevel < 25) return 4;    // ★19-24: 4 candidates
+            return 5;                        // ★25+: 5 candidates
         }
         
         /// <summary>
-        /// Get max rank allowed for shop grade
-        /// Grade 2: College only
-        /// Grade 3: up to NewGrad
-        /// Grade 4: up to MidCareer
-        /// Grade 5: up to Veteran
-        /// Grade 6+: All (including Professional)
+        /// Get ranks available for given star level (using requiredStarLevel)
         /// </summary>
-        private StaffRank GetMaxRankForGrade(int shopGrade)
-        {
-            switch (shopGrade)
-            {
-                case 1: 
-                case 2: return StaffRank.College;
-                case 3: return StaffRank.NewGrad;
-                case 4: return StaffRank.MidCareer;
-                case 5: return StaffRank.Veteran;
-                default: return StaffRank.Professional; // Grade 6+
-            }
-        }
-        
-        /// <summary>
-        /// Get ranks available for given shop grade
-        /// </summary>
-        private List<StaffRankData> GetAvailableRanks(int shopGrade)
+        private List<StaffRankData> GetAvailableRanks(int starLevel)
         {
             var available = new List<StaffRankData>();
-            StaffRank maxRank = GetMaxRankForGrade(shopGrade);
             
             foreach (var rank in allRanks)
             {
-                if (rank != null && rank.rank <= maxRank)
+                if (rank != null && rank.requiredStarLevel <= starLevel)
                 {
                     available.Add(rank);
                 }

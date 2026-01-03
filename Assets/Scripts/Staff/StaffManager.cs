@@ -126,7 +126,17 @@ namespace HairRemovalSim.Staff
             
             hiredStaff.Add(hiredData);
             
-            Debug.Log($"[StaffManager] Hired {profile.staffName} ({profile.Rank}). Assignment: {hiredData.GetAssignmentDisplayText()}. Starts tomorrow.");
+            // Check if should start immediately
+            if (hiredData.ShouldStartWorking(currentDay))
+            {
+                hiredData.isActive = true;
+                SpawnStaffController(hiredData);
+                Debug.Log($"[StaffManager] Hired {profile.staffName} ({profile.Rank}). Assignment: {hiredData.GetAssignmentDisplayText()}. Starts immediately.");
+            }
+            else
+            {
+                Debug.Log($"[StaffManager] Hired {profile.staffName} ({profile.Rank}). Assignment: {hiredData.GetAssignmentDisplayText()}. Starts tomorrow.");
+            }
             
             OnStaffHired?.Invoke(hiredData);
             return true;

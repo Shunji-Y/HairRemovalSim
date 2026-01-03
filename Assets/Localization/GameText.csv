@@ -329,4 +329,7 @@ Cost: ${1}","グレード{0}にアップグレードしますか？
 "item.CoffeeMachine.desc",800000000121,"基本集客度が10%アップする","基本集客度が10%アップする","Base attraction +10%","基本集客度が10%アップする"
 "item.AromaDiffuser",800000000122,"香薰机","香薰機","Aroma Diffuser","アロマディフューザー"
 "item.AromaDiffuser.desc",800000000123,"お客様の痛み上昇度が10%減少","お客様的痛み上昇度が10%減少","Customer pain gain -10%","お客様の痛み上昇度が10%減少する"
-"dailysummary.review.remaining",800000000124,"(还差{0})","(還差{0})","(need {0})","(あと{0})"
+"dailysummary.review.remaining",800000000124,"(还差{0})","(還差{0})","(need {0})","(あと{0})"useful,Useful,�֗�,,
+toolshop.delivery_immediate,Immediate,����,,
+item.premium_delivery_plan.name,Premium Delivery Plan,�v���~�A���z�B�v����,,
+item.executive_delivery_plan.name,Executive Delivery Plan,�G�O�[�N�e�B�u�z�B�v����,,

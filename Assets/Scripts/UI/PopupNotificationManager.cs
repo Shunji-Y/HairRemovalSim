@@ -37,12 +37,18 @@ namespace HairRemovalSim.UI
         [SerializeField] private float maxX = 300f;
         [SerializeField] private float minY = -100f;
         [SerializeField] private float maxY = 100f;
+        [SerializeField] private float popupVerticalSpacing = 60f; // Spacing between sequential popups
         
         [Header("Sound IDs (from SoundManager)")]
         [SerializeField] private string moneyPlusSoundId = "money_plus";
         [SerializeField] private string moneyMinusSoundId = "money_minus";
         [SerializeField] private string reviewPlusSoundId = "review_plus";
         [SerializeField] private string reviewMinusSoundId = "review_minus";
+        
+        // Sequential popup tracking
+        private float lastSpawnTime;
+        private int spawnSequenceIndex;
+        private const float SEQUENCE_RESET_TIME = 0.5f; // Reset sequence after this many seconds
         
         private void Awake()
         {
@@ -144,13 +150,26 @@ namespace HairRemovalSim.UI
         {
             if (popupPrefab == null || popupContainer == null) return;
             
+            // Track sequence for spacing
+            float currentTime = Time.time;
+            if (currentTime - lastSpawnTime > SEQUENCE_RESET_TIME)
+            {
+                spawnSequenceIndex = 0;
+            }
+            else
+            {
+                spawnSequenceIndex++;
+            }
+            lastSpawnTime = currentTime;
+            
             GameObject popupObj = Instantiate(popupPrefab, popupContainer);
             RectTransform rt = popupObj.GetComponent<RectTransform>();
             
-            // Random position
+            // Position with vertical offset for sequential popups
             float x = Random.Range(minX, maxX);
-            float y = Random.Range(minY, maxY);
-            rt.anchoredPosition = new Vector2(x, y);
+            float baseY = Random.Range(minY, maxY);
+            float yOffset = spawnSequenceIndex * popupVerticalSpacing;
+            rt.anchoredPosition = new Vector2(x, baseY + yOffset);
             
             // Initialize and show
             var popup = popupObj.GetComponent<PopupNotificationUI>();

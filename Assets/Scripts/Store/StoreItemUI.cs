@@ -116,7 +116,7 @@ namespace HairRemovalSim.Store
             if (lockedOverlay != null)
                 lockedOverlay.SetActive(isLocked);
             if (lockedText != null && isLocked)
-                lockedText.text = $"Grade {itemData.requiredShopGrade}";
+                lockedText.text = $"★{itemData.requiredStarLevel}";
             
             // Apply locked color override if locked
             if (cardBackground != null && isLocked)
@@ -143,17 +143,17 @@ namespace HairRemovalSim.Store
             Color selectedColor = normalColor;
             
             // Determine category (priority order: Reception > Checkout > Shelf)
-            if (itemData.canPlaceAtReception)
+            if (itemData.CanPlaceAtReception)
             {
                 selectedIcon = receptionIcon;
                 selectedColor = receptionColor;
             }
-            else if (itemData.canUseAtCheckout)
+            else if (itemData.CanUseAtCheckout)
             {
                 selectedIcon = checkoutIcon;
                 selectedColor = checkoutColor;
             }
-            else if (itemData.canPlaceOnShelf)
+            else if (itemData.CanPlaceOnShelf)
             {
                 selectedIcon = shelfIcon;
                 selectedColor = shelfColor;

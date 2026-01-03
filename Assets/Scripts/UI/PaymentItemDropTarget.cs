@@ -147,7 +147,6 @@ namespace HairRemovalSim.UI
         {
             if (HasItem)
             {
-                Debug.Log($"[PaymentItemDropTarget] Returning {currentItemId} to stock before clearing");
                 ReturnItemToCheckout(currentItemId);
             }
             ClearSlot();

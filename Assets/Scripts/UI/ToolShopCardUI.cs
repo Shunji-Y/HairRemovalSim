@@ -57,10 +57,10 @@ namespace HairRemovalSim.UI
                 L.OnLocaleChanged -= RefreshDisplay;
         }
         
-        public void Setup(ItemData data, int currentShopGrade, System.Action<ItemData> onPurchase, bool owned = false)
+        public void Setup(ItemData data, int currentStarLevel, System.Action<ItemData> onPurchase, bool owned = false)
         {
             itemData = data;
-            isLocked = !data.IsUnlockedForGrade(currentShopGrade);
+            isLocked = !data.IsUnlockedForStarLevel(currentStarLevel);
             isOwned = owned;
             onPurchaseCallback = onPurchase;
             
@@ -118,41 +118,16 @@ namespace HairRemovalSim.UI
         
         private void UpdateStatSliders()
         {
-            // Scope slider
+            // Stat fields have been removed from ItemData.
+            // Hide all stat sliders if they exist.
             if (scopeSlider != null)
-            {
-                scopeSlider.minValue = 0;
-                scopeSlider.maxValue = 100;
-                scopeSlider.value = itemData.statScope;
-                scopeSlider.interactable = false;
-            }
-            
-            // Pain slider
+                scopeSlider.gameObject.SetActive(false);
             if (painSlider != null)
-            {
-                painSlider.minValue = 0;
-                painSlider.maxValue = 100;
-                painSlider.value = itemData.statPain;
-                painSlider.interactable = false;
-            }
-            
-            // Power slider
+                painSlider.gameObject.SetActive(false);
             if (powerSlider != null)
-            {
-                powerSlider.minValue = 0;
-                powerSlider.maxValue = 100;
-                powerSlider.value = itemData.statPower;
-                powerSlider.interactable = false;
-            }
-            
-            // Speed slider
+                powerSlider.gameObject.SetActive(false);
             if (speedSlider != null)
-            {
-                speedSlider.minValue = 0;
-                speedSlider.maxValue = 100;
-                speedSlider.value = itemData.statSpeed;
-                speedSlider.interactable = false;
-            }
+                speedSlider.gameObject.SetActive(false);
         }
         
         private void UpdateLockState()
@@ -162,8 +137,8 @@ namespace HairRemovalSim.UI
             
             if (lockedText != null && isLocked)
             {
-                lockedText.text = L?.Get("tool.locked_grade", itemData.requiredShopGrade) 
-                    ?? $"Requires Grade {itemData.requiredShopGrade}";
+                lockedText.text = L?.Get("tool.locked_star", itemData.requiredStarLevel) 
+                    ?? $"★{itemData.requiredStarLevel} Required";
             }
         }
         

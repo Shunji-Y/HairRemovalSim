@@ -287,13 +287,13 @@ namespace HairRemovalSim.Staff
                     switch (target.location)
                     {
                         case RestockLocation.Reception:
-                            canPlace = itemData.canPlaceAtReception;
+                            canPlace = itemData.CanPlaceAtReception;
                             break;
                         case RestockLocation.Checkout:
-                            canPlace = itemData.canUseAtCheckout;
+                            canPlace = itemData.CanUseAtCheckout;
                             break;
                         case RestockLocation.TreatmentShelf:
-                            canPlace = itemData.canPlaceOnShelf;
+                            canPlace = itemData.CanPlaceOnShelf;
                             break;
                     }
                     
@@ -474,17 +474,17 @@ namespace HairRemovalSim.Staff
                     switch (target.location)
                     {
                         case RestockLocation.Reception:
-                            canPlace = itemData.canPlaceAtReception;
+                            canPlace = itemData.CanPlaceAtReception;
                             break;
                         case RestockLocation.Checkout:
-                            canPlace = itemData.canUseAtCheckout;
+                            canPlace = itemData.CanUseAtCheckout;
                             break;
                         case RestockLocation.TreatmentShelf:
-                            canPlace = itemData.canPlaceOnShelf;
+                            canPlace = itemData.CanPlaceOnShelf;
                             break;
                     }
                     
-                    Debug.Log($"[StaffRestockHandler] Item {itemId} for {target.location}: canPlace={canPlace} (canPlaceOnShelf={itemData.canPlaceOnShelf})");
+                    Debug.Log($"[StaffRestockHandler] Item {itemId} for {target.location}: canPlace={canPlace} (CanPlaceOnShelf={itemData.CanPlaceOnShelf})");
                     
                     if (!canPlace) continue;
                     

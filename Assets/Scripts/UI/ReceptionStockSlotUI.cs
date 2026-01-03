@@ -69,9 +69,9 @@ namespace HairRemovalSim.UI
             
             // Check if item can be placed at reception
             var itemData = ItemDataRegistry.Instance?.GetItem(dropItemId);
-            if (itemData == null || !itemData.canPlaceAtReception)
+            if (itemData == null || !itemData.CanPlaceAtReception)
             {
-                Debug.Log($"[ReceptionStockSlotUI] Item '{dropItemId}' cannot be placed at reception (canPlaceAtReception=false)");
+                Debug.Log($"[ReceptionStockSlotUI] Item '{dropItemId}' cannot be placed at reception (CanPlaceAtReception=false)");
                 return;
             }
             

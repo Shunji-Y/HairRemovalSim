@@ -69,9 +69,9 @@ namespace HairRemovalSim.UI
             
             // Check if item can be used at checkout
             var itemData = ItemDataRegistry.Instance?.GetItem(dropItemId);
-            if (itemData == null || !itemData.canUseAtCheckout)
+            if (itemData == null || !itemData.CanUseAtCheckout)
             {
-                Debug.Log($"[CheckoutStockSlotUI] Item '{dropItemId}' cannot be used at checkout (canUseAtCheckout=false)");
+                Debug.Log($"[CheckoutStockSlotUI] Item '{dropItemId}' cannot be used at checkout (CanUseAtCheckout=false)");
                 return;
             }
             

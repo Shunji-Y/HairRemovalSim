@@ -711,7 +711,7 @@ namespace HairRemovalSim.Environment
             if (string.IsNullOrEmpty(itemId) || quantity <= 0) return 0;
             
             var itemData = Core.ItemDataRegistry.Instance?.GetItem(itemId);
-            if (itemData == null || !itemData.canPlaceOnShelf) return 0;
+            if (itemData == null || !itemData.CanPlaceOnShelf) return 0;
             
             int remaining = quantity;
             int maxStack = itemData.maxStackOnShelf;

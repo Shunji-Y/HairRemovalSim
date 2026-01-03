@@ -122,17 +122,45 @@ namespace HairRemovalSim.UI
                 titleText.text = L?.Get("review.title") ?? "SALON REVIEWS";
             }
             
-            // Stars display
+            // Stars display - 30 star system with 3 tiers (10 visible stars: 5x2)
+            // Yellow (★1-10), Orange (★11-20), Purple (★21-30)
             if (starsDisplayText != null)
             {
                 int currentStars = ShopManager.Instance?.StarRating ?? 1;
-                string stars = "";
-                for (int i = 0; i < 7; i++)
+                
+                // Determine tier and display stars
+                int tier = (currentStars - 1) / 10; // 0=yellow, 1=orange, 2=purple
+                int starsInTier = ((currentStars - 1) % 10) + 1; // 1-10 within tier
+                
+                string row1 = "";
+                string row2 = "";
+                
+                // Build 5x2 star display
+                for (int i = 0; i < 5; i++)
                 {
-                    stars += i < currentStars ? "★" : "☆";
+                    row1 += (i < starsInTier) ? "★" : "☆";
                 }
-                starsDisplayText.text = stars;
-                starsDisplayText.color = new Color(1f, 0.8f, 0.2f); // Golden
+                for (int i = 5; i < 10; i++)
+                {
+                    row2 += (i < starsInTier) ? "★" : "☆";
+                }
+                
+                starsDisplayText.text = $"{row1}\n{row2}";
+                
+                // Color by tier
+                switch (tier)
+                {
+                    case 0: // Yellow (★1-10)
+                        starsDisplayText.color = new Color(1f, 0.85f, 0.2f); // Gold/Yellow
+                        break;
+                    case 1: // Orange (★11-20)
+                        starsDisplayText.color = new Color(1f, 0.5f, 0.1f); // Orange
+                        break;
+                    case 2: // Purple (★21-30)
+                    default:
+                        starsDisplayText.color = new Color(0.7f, 0.3f, 0.9f); // Purple
+                        break;
+                }
             }
             
             // Progress to next star
@@ -141,7 +169,7 @@ namespace HairRemovalSim.UI
                 int currentStars = ShopManager.Instance?.StarRating ?? 1;
                 float progress = ShopManager.Instance?.StarProgress ?? 0f;
                 
-                if (currentStars >= 7)
+                if (currentStars >= 30)
                 {
                     starProgressSlider.value = 1f;
                     starProgressSlider.gameObject.SetActive(false);
@@ -158,7 +186,7 @@ namespace HairRemovalSim.UI
             {
                 int currentStars = ShopManager.Instance?.StarRating ?? 1;
                 
-                if (currentStars >= 7)
+                if (currentStars >= 30)
                 {
                     progressText.text = L?.Get("review.max_stars") ?? "Max Rating!";
                 }

@@ -249,10 +249,15 @@ namespace HairRemovalSim.Treatment
 
         public void ClearMask()
         {
+            // Guard: masks not yet created
+            if (maskTextures == null || maskTextures.Length == 0) return;
+            
             // Step 1: Clear all masks to WHITE (hair everywhere by default)
             // This ensures that if UV layout rendering fails or doesn't cover everything, we still have hair.
             for (int i = 0; i < maskTextures.Length; i++)
             {
+                if (maskTextures[i] == null) continue;
+                
                 RenderTexture.active = maskTextures[i];
                 // R=1 (Hair present), G=0 (No burn), B=0, A=0
                 GL.Clear(false, true, new Color(1f, 0f, 0f, 0f));
@@ -350,6 +355,8 @@ namespace HairRemovalSim.Treatment
 
         public void HideDecal()
         {
+            if (targetMaterials == null) return;
+            
             foreach (var mat in targetMaterials)
             {
                 if (mat != null) mat.SetFloat("_DecalEnabled", 0.0f);

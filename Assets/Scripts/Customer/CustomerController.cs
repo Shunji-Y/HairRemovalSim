@@ -206,14 +206,28 @@ namespace HairRemovalSim.Customer
             if (agent != null)
             {
                 // Random priority helps agents resolve collisions (lower number = higher priority)
+                // Only set priority if you want random variation, otherwise respect inspector?
+                // For now, let's keep priority randomization but REMOVE radius/type override so Inspector settings work
                 agent.avoidancePriority = Random.Range(30, 70);
-                agent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
-                agent.radius = 0.3f; // Reduce radius slightly to allow passing in tight spaces
+                
+                // REMOVED: agent.obstacleAvoidanceType = ... (Let user set in Inspector)
+                // REMOVED: agent.radius = ... (Let user set in Inspector, user wants 0.1f)
             }
             
-            // Configure NavMeshObstacle
+            // Configure NavMeshObstacle - MUST disable agent first to avoid conflict!
             if (obstacle == null) obstacle = GetComponent<NavMeshObstacle>();
-            if (obstacle == null) obstacle = gameObject.AddComponent<NavMeshObstacle>();
+            if (obstacle == null)
+            {
+                // Temporarily disable agent to avoid "both active" warning
+                bool wasAgentEnabled = agent != null && agent.enabled;
+                if (agent != null) agent.enabled = false;
+                
+                obstacle = gameObject.AddComponent<NavMeshObstacle>();
+                obstacle.enabled = false; // Disable immediately!
+                
+                // Re-enable agent
+                if (agent != null) agent.enabled = wasAgentEnabled;
+            }
             
             if (obstacle != null)
             {
@@ -228,6 +242,9 @@ namespace HairRemovalSim.Customer
             
             // Ensure agent is active by default
             SetAgentActive(true);
+            
+            // Mark as initialized (for pooled customers that don't call Start again)
+            isInitialized = true;
         }
         
         /// <summary>
@@ -328,7 +345,7 @@ namespace HairRemovalSim.Customer
         public int CalculateUpsellFailurePenalty(float successRate)
         {
             if (successRate <= 0.01f) return 50; // Avoid division by near-zero
-            float penalty = 5f / successRate;
+            float penalty = 3f / successRate;
             return Mathf.Min(Mathf.RoundToInt(penalty), 50);
         }
         
@@ -750,51 +767,115 @@ namespace HairRemovalSim.Customer
         {
             if (agent == null || queuePos == null) yield break;
             
-            // Wait until arrived
-            while (agent != null && agent.enabled)
+            // Wait for path to be calculated
+            yield return null;
+            int waitFrames = 0;
+            while (agent != null && agent.enabled && agent.pathPending)
             {
-                if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.1f)
+                waitFrames++;
+                yield return null;
+            }
+            Debug.Log($"[CustomerController] Path calculation done in {waitFrames} frames. Status: {agent?.pathStatus}");
+            
+            if (agent != null && agent.pathStatus != UnityEngine.AI.NavMeshPathStatus.PathComplete)
+            {
+                Debug.LogWarning($"[CustomerController] Path status is {agent.pathStatus} (Partial/Invalid) - may get stuck!");
+                // Don't break immediately, let it try to move as far as possible? 
+                // Or maybe this IS the problem. If invalid, remainingDistance might be 0.
+            }
+
+            // Wait until arrived
+            float timeout = 30f;
+            float elapsed = 0f;
+            float arrivalDist = 0.5f; // Relaxed arrival distance to avoid getting stuck
+
+            while (agent != null && agent.enabled && elapsed < timeout)
+            {
+                if (!agent.pathPending && agent.remainingDistance <= arrivalDist)
                 {
+                    // Debug.Log($"[CustomerController] {data?.customerName} Arrived near chair (Dist: {agent.remainingDistance:F2})");
                     break;
                 }
-                yield return new WaitForSeconds(0.1f);
+                
+                elapsed += 0.2f;
+                yield return new WaitForSeconds(0.2f);
             }
             
-            // Arrived - stop and rotate smoothly
+            if (elapsed >= timeout)
+            {
+                 // Just warning, proceed to align anyway
+                 Debug.LogWarning($"[CustomerController] {data?.customerName} timed out waiting for arrival. Forcing alignment.");
+            }
+            
+            // Arrived - stop NavMesh agent
             if (agent != null)
             {
                 agent.isStopped = true;
-                agent.updateRotation = false;
+                agent.velocity = Vector3.zero;
             }
             
-            // Smooth rotation to queue position rotation
-            float rotationSpeed = 180f;
-            Quaternion targetRotation = queuePos.rotation;
-            
-            while (Quaternion.Angle(transform.rotation, targetRotation) > 0.5f)
-            {
-                transform.rotation = Quaternion.RotateTowards(
-                    transform.rotation, 
-                    targetRotation, 
-                    rotationSpeed * Time.deltaTime
-                );
-                yield return null;
-            }
-            
-            transform.rotation = targetRotation;
+            // Smoothly align to the exact seat position/rotation
+            yield return StartCoroutine(AlignToSeatRoutine(queuePos));
             
             // Sit down after arriving and rotating
             if (shouldSit)
             {
                 SetSitting(true);
             }
-            
-            // Switch to obstacle mode (stationary) whether sitting or standing
-            SetAgentActive(false);
-            
-            // Clear coroutine reference
-            queueArrivalCoroutine = null;
+            else
+            {
+                // If not sitting (queueing), we are already aligned by AlignToSeatRoutine
+            }
         }
+        
+        /// <summary>
+        /// Smoothly moves and rotates the customer to the exact target transform.
+        /// Disables NavMeshAgent to avoid conflict during forced movement.
+        /// </summary>
+        private System.Collections.IEnumerator AlignToSeatRoutine(Transform target)
+        {
+            if (target == null) yield break;
+
+            // Disable agent to allow manual transform manipulation
+            if (agent != null)
+            {
+                agent.enabled = false; 
+            }
+            
+            // Force stop walking animation immediately
+            if (animator != null)
+            {
+                animator.SetFloat("Speed", 0f);
+            }
+
+            Vector3 startPos = transform.position;
+            Quaternion startRot = transform.rotation;
+            
+            // Goal position but keeping original Y (height)
+            Vector3 targetPos = target.position;
+            targetPos.y = startPos.y;
+            
+            float duration = 0.5f; // Slide time
+            float time = 0f;
+            
+            while (time < duration)
+            {
+                time += Time.deltaTime;
+                float t = time / duration;
+                // SmoothStep
+                t = t * t * (3f - 2f * t);
+                
+                transform.position = Vector3.Lerp(startPos, targetPos, t);
+                transform.rotation = Quaternion.Lerp(startRot, target.rotation, t);
+                yield return null;
+            }
+            
+            // Ensure exact match (X/Z only)
+            transform.position = targetPos;
+            transform.rotation = target.rotation;
+        }
+            
+
         
         /// <summary>
         /// Navigate to waiting area while waiting for a bed to become available (sits)
@@ -836,39 +917,118 @@ namespace HairRemovalSim.Customer
             movementCoroutine = StartCoroutine(GoToChairRoutine(chair));
         }
 
-        private System.Collections.IEnumerator GoToChairRoutine(Environment.Chair chair)
+        private System.Collections.IEnumerator GoToChairRoutine(Environment.Chair targetChair)
         {
-            if (chair != null && agent != null)
-            {
-                yield return StartCoroutine(PrepareForMovement());
+            if (targetChair == null || agent == null) yield break;
+            
+            yield return StartCoroutine(PrepareForMovement());
 
-                // Stop previous queue arrival coroutine
-                if (queueArrivalCoroutine != null)
+            // Stop previous queue arrival coroutine
+            if (queueArrivalCoroutine != null)
+            {
+                StopCoroutine(queueArrivalCoroutine);
+                queueArrivalCoroutine = null;
+            }
+            
+            // Try to occupy the target chair
+            Environment.Chair chairToUse = targetChair;
+            if (!chairToUse.Occupy(this))
+            {
+                // Chair taken - find alternative (only once)
+                var alternative = Core.ChairManager.Instance?.FindClosestEmptyChair(transform.position, targetChair.category);
+                if (alternative != null && alternative != targetChair && alternative.Occupy(this))
                 {
-                    StopCoroutine(queueArrivalCoroutine);
-                    queueArrivalCoroutine = null;
+                    chairToUse = alternative;
                 }
-                
-                // Occupy the new chair
-                if (!chair.Occupy(this))
+                else
                 {
-                    Debug.LogWarning($"[CustomerController] {data?.customerName} couldn't occupy chair {chair.name}");
+                    // No chair available
+                    currentState = CustomerState.Waiting;
+                    StartWaiting();
                     yield break;
                 }
-                currentChair = chair;
-                
-                agent.updateRotation = true;
-                currentState = CustomerState.Waiting;
-                agent.SetDestination(chair.SeatPosition.position);
-                
-                // Start waiting timer when going to chair (resets timer)
-                StartWaiting();
-                
-                // Rotate and sit
-                queueArrivalCoroutine = StartCoroutine(WaitForQueueArrivalAndRotate(chair.SeatPosition, true));
             }
+            
+            currentChair = chairToUse;
+            agent.updateRotation = true;
+            currentState = CustomerState.Waiting;
+            agent.SetDestination(chairToUse.SeatPosition.position);
+            
+            // Wait for path calculation
+            yield return null;
+            while (agent != null && agent.pathPending) yield return null;
+            
+            // If path is invalid, try ONE alternative immediately
+            if (agent != null && agent.pathStatus != UnityEngine.AI.NavMeshPathStatus.PathComplete)
+            {
+                Debug.LogWarning($"[CustomerController] {data?.customerName} path to {chairToUse.name} is {agent.pathStatus}. Trying simplified fallback...");
+                chairToUse.Release(); // Release unreachable chair
+                
+                // Try to find another chair
+                var alternative = Core.ChairManager.Instance?.FindClosestEmptyChair(transform.position, targetChair.category);
+                if (alternative != null && alternative != targetChair && alternative.Occupy(this))
+                {
+                    Debug.Log($"[CustomerController] {data?.customerName} switching to {alternative.name}");
+                    chairToUse = alternative;
+                    currentChair = chairToUse;
+                    agent.SetDestination(chairToUse.SeatPosition.position);
+                }
+                else
+                {
+                    Debug.LogError($"[CustomerController] {data?.customerName} No reachable alternative found. Waiting in place.");
+                }
+            }
+            
+            // Start waiting and arrival detection
+            StartWaiting();
+            queueArrivalCoroutine = StartCoroutine(WaitForQueueArrivalAndRotate(chairToUse.SeatPosition, true));
         }
         
+        /// <summary>
+        /// Navigate to a chair that is already reserved/occupied by this customer
+        /// Used when chair is pre-reserved by ReceptionManager to avoid race conditions
+        /// </summary>
+        public void GoToReservedChair(Environment.Chair chair)
+        {
+            if (chair == null) return;
+            
+            // DON'T set currentChair here!
+            // PrepareForMovement will release the OLD currentChair
+            // We set the new chair AFTER PrepareForMovement completes
+            
+            if (movementCoroutine != null) StopCoroutine(movementCoroutine);
+            movementCoroutine = StartCoroutine(GoToReservedChairRoutine(chair));
+        }
+        
+        private System.Collections.IEnumerator GoToReservedChairRoutine(Environment.Chair chair)
+        {
+            if (chair == null || agent == null) yield break;
+            
+            // PrepareForMovement calls ReleaseChair which will release our pre-reserved chair
+            // We need to restore it after PrepareForMovement completes
+            yield return StartCoroutine(PrepareForMovement());
+            
+            // Restore the pre-reserved chair reference (PrepareForMovement cleared it)
+            currentChair = chair;
+
+            // Stop previous queue arrival coroutine
+            if (queueArrivalCoroutine != null)
+            {
+                StopCoroutine(queueArrivalCoroutine);
+                queueArrivalCoroutine = null;
+            }
+            
+            // Chair is already occupied by us, just navigate
+            agent.updateRotation = true;
+            currentState = CustomerState.Waiting;
+            agent.SetDestination(chair.SeatPosition.position);
+            
+            // Start waiting timer when going to chair (resets timer)
+            StartWaiting();
+            
+            // Rotate and sit
+            queueArrivalCoroutine = StartCoroutine(WaitForQueueArrivalAndRotate(chair.SeatPosition, true));
+        }
         /// <summary>
         /// Release the currently occupied chair
         /// </summary>

@@ -33,6 +33,16 @@ namespace HairRemovalSim.Store
         [SerializeField] private TextMeshProUGUI totalText;
         [SerializeField] private Button purchaseButton;
         
+        [Header("Immediate Delivery Toggle")]
+        [SerializeField] private Toggle immediateDeliveryToggle;
+        [SerializeField] private TextMeshProUGUI immediateDeliveryFeeText;
+        
+        // Delivery plan item IDs
+        private const string PREMIUM_DELIVERY_PLAN_ID = "premium_delivery_plan";
+        private const string EXECUTIVE_DELIVERY_PLAN_ID = "executive_delivery_plan";
+
+        private bool isImmediateDelivery = false;
+        
         [Header("Item Detail Display (Bottom Panels)")]
         [SerializeField] private GameObject detailPanelRoot;
         [SerializeField] private TextMeshProUGUI descriptionText;
@@ -53,6 +63,9 @@ namespace HairRemovalSim.Store
         {
             if (purchaseButton != null)
                 purchaseButton.onClick.AddListener(OnPurchaseClicked);
+                
+            if (immediateDeliveryToggle != null)
+                immediateDeliveryToggle.onValueChanged.AddListener(OnImmediateDeliveryToggled);
         }
         
         private void OnDestroy()
@@ -63,6 +76,11 @@ namespace HairRemovalSim.Store
         
         private void OnEnable()
         {
+            // Reset immediate delivery
+            isImmediateDelivery = false;
+            if (immediateDeliveryToggle != null)
+                immediateDeliveryToggle.isOn = false;
+            
             // Refresh store items each time panel is shown
             PopulateStore();
             HideTooltip();
@@ -90,18 +108,18 @@ namespace HairRemovalSim.Store
                 return;
             }
             
-            int currentGrade = ShopManager.Instance?.ShopGrade ?? 1;
+            int currentStarLevel = ShopManager.Instance?.StarRating ?? 1;
             var storeItems = ItemDataRegistry.Instance.GetStoreItems();
             
-            // Create item UIs (filtered by grade)
+            // Create item UIs (filtered by star level)
             foreach (var itemData in storeItems)
             {
-                // Grade filter: hide if requiredGrade > currentGrade + 1
-                int gradeDiff = itemData.requiredShopGrade - currentGrade;
-                if (gradeDiff >= 1)//2)
+                // Star level filter: hide if requiredStarLevel > currentStarLevel + 5
+                int starDiff = itemData.requiredStarLevel - currentStarLevel;
+                if (starDiff > 5)
                     continue; // Hide completely
                 
-                bool isLocked = gradeDiff == 1;
+                bool isLocked = starDiff > 0;
                 
                 GameObject itemObj = Instantiate(itemPrefab, itemContainer);
                 StoreItemUI itemUI = itemObj.GetComponent<StoreItemUI>();
@@ -170,17 +188,17 @@ namespace HairRemovalSim.Store
             string categoryName = "";
             Sprite categorySprite = null;
             
-            if (item.canPlaceAtReception)
+            if (item.CanPlaceAtReception)
             {
                 categoryName = "Reception";
                 categorySprite = receptionIcon;
             }
-            else if (item.canUseAtCheckout)
+            else if (item.CanUseAtCheckout)
             {
                 categoryName = "Checkout";
                 categorySprite = checkoutIcon;
             }
-            else if (item.canPlaceOnShelf)
+            else if (item.CanPlaceOnShelf)
             {
                 categoryName = "Shelf";
                 categorySprite = shelfIcon;
@@ -335,9 +353,9 @@ namespace HairRemovalSim.Store
         }
         
         /// <summary>
-        /// Calculate total price
+        /// Calculate total price without fee
         /// </summary>
-        private int CalculateTotal()
+        private int CalculateBaseTotal()
         {
             int total = 0;
             foreach (var entry in cart.Values)
@@ -345,6 +363,18 @@ namespace HairRemovalSim.Store
                 total += entry.itemData.price * entry.quantity;
             }
             return total;
+        }
+
+        /// <summary>
+        /// Calculate total price including delivery fee
+        /// </summary>
+        private int CalculateTotalWithFee()
+        {
+            int baseTotal = CalculateBaseTotal();
+            if (!isImmediateDelivery) return baseTotal;
+
+            int fee = CalculateImmediateDeliveryFee(baseTotal);
+            return baseTotal + fee;
         }
         
         /// <summary>
@@ -354,8 +384,77 @@ namespace HairRemovalSim.Store
         {
             if (totalText != null)
             {
-                totalText.text = $"${CalculateTotal():N0}";
+                int total = CalculateTotalWithFee();
+                int baseTotal = CalculateBaseTotal();
+                
+                if (isImmediateDelivery && baseTotal > 0)
+                {
+                    float feePercent = GetImmediateDeliveryFeePercent() * 100f;
+                    totalText.text = $"${total:N0} (+{feePercent:F0}%)";
+                }
+                else
+                {
+                    totalText.text = $"${total:N0}";
+                }
             }
+
+            // Update delivery fee text
+            if (immediateDeliveryFeeText != null)
+            {
+                if (isImmediateDelivery)
+                {
+                    int baseTotal = CalculateBaseTotal();
+                    int fee = CalculateImmediateDeliveryFee(baseTotal);
+                    float feePercent = GetImmediateDeliveryFeePercent() * 100f;
+                    immediateDeliveryFeeText.text = baseTotal > 0 ? $"+${fee:N0}" : "$0";
+                }
+                else
+                {
+                    immediateDeliveryFeeText.text = "";
+                }
+            }
+        }
+
+        private void OnImmediateDeliveryToggled(bool isOn)
+        {
+            isImmediateDelivery = isOn;
+            UpdateTotalDisplay();
+        }
+        
+        /// <summary>
+        /// Get immediate delivery fee percentage based on owned delivery plans
+        /// </summary>
+        private float GetImmediateDeliveryFeePercent()
+        {
+            // Check for Executive plan (free delivery)
+            if (IsUsefulItemOwned(EXECUTIVE_DELIVERY_PLAN_ID))
+                return 0f;
+            
+            // Check for Premium plan (10% fee)
+            if (IsUsefulItemOwned(PREMIUM_DELIVERY_PLAN_ID))
+                return 0.10f;
+            
+            // Default: 20% fee
+            return 0.20f;
+        }
+        
+        /// <summary>
+        /// Calculate immediate delivery fee for a given price
+        /// </summary>
+        private int CalculateImmediateDeliveryFee(int basePrice)
+        {
+            float percent = GetImmediateDeliveryFeePercent();
+            return Mathf.RoundToInt(basePrice * percent);
+        }
+
+        private bool IsUsefulItemOwned(string itemId)
+        {
+            // Check WarehouseManager for useful items
+            if (HairRemovalSim.Core.WarehouseManager.Instance != null)
+            {
+                return HairRemovalSim.Core.WarehouseManager.Instance.GetTotalItemCount(itemId) > 0;
+            }
+            return false;
         }
         
         /// <summary>
@@ -369,7 +468,7 @@ namespace HairRemovalSim.Store
                 return;
             }
             
-            int totalCost = CalculateTotal();
+            int totalCost = CalculateTotalWithFee();
             
             // Check if player has enough money
             if (EconomyManager.Instance == null)
@@ -384,22 +483,37 @@ namespace HairRemovalSim.Store
                 return;
             }
             
-            // Note: No warehouse space check for pending orders
-            // Items will be delivered next day and space will be checked then
             // Process purchase
             if (EconomyManager.Instance.SpendMoney(totalCost))
             {
-                // Add all items as pending orders (delivered next day)
-                if (InventoryManager.Instance != null)
+                if (isImmediateDelivery)
                 {
-                    foreach (var entry in cart.Values)
+                    // Immediate delivery: add directly to warehouse
+                    if (HairRemovalSim.Core.WarehouseManager.Instance != null)
                     {
-                        InventoryManager.Instance.AddPendingOrder(entry.itemData, entry.quantity);
-                        Debug.Log($"[StorePanel] Ordered {entry.quantity}x {entry.itemData.name} (delivered tomorrow)");
+                        foreach (var entry in cart.Values)
+                        {
+                            HairRemovalSim.Core.WarehouseManager.Instance.AddItem(entry.itemData.itemId, entry.quantity);
+                            Debug.Log($"[StorePanel] {entry.quantity}x {entry.itemData.name} delivered immediately");
+                        }
+                        HairRemovalSim.Core.WarehouseManager.Instance.ShowNewIndicator();
+                        Debug.Log($"[StorePanel] Order placed! Total: ${totalCost} - Immediate delivery");
+                    }
+                }
+                else
+                {
+                    // Standard delivery: add to pending orders (delivered next day)
+                    if (InventoryManager.Instance != null)
+                    {
+                        foreach (var entry in cart.Values)
+                        {
+                            InventoryManager.Instance.AddPendingOrder(entry.itemData, entry.quantity);
+                            Debug.Log($"[StorePanel] Ordered {entry.quantity}x {entry.itemData.name} (delivered tomorrow)");
+                        }
+                        Debug.Log($"[StorePanel] Order placed! Total: ${totalCost} - Items will be delivered next day");
                     }
                 }
                 
-                Debug.Log($"[StorePanel] Order placed! Total: ${totalCost} - Items will be delivered next day");
                 ClearCart();
             }
         }

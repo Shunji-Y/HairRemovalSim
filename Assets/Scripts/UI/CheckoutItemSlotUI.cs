@@ -211,23 +211,8 @@ namespace HairRemovalSim.UI
                 Destroy(dragIcon);
             }
             
-            // Check if dropped on payment panel add slot
-            var results = new System.Collections.Generic.List<RaycastResult>();
-            EventSystem.current.RaycastAll(eventData, results);
-            
-            foreach (var result in results)
-            {
-                var dropTarget = result.gameObject.GetComponent<PaymentItemDropTarget>();
-                if (dropTarget != null && !IsEmpty)
-                {
-                    // Notify payment panel
-                    if (PaymentPanel.Instance != null)
-                    {
-                        PaymentPanel.Instance.OnItemAdded(itemId);
-                    }
-                    break;
-                }
-            }
+            // Note: PaymentItemDropTarget.OnDrop handles the item addition with proper slot index
+            // We don't call OnItemAdded here to avoid duplicate calls
         }
         
         public void OnPointerEnter(PointerEventData eventData)

@@ -45,6 +45,10 @@ namespace HairRemovalSim.Core
         [Tooltip("Database containing all grade-specific settings")]
         [SerializeField] private GradeConfigDatabase gradeConfigDatabase;
         
+        [Header("Star Level Configuration")]
+        [Tooltip("Configuration for 30-star level system (review thresholds)")]
+        [SerializeField] private StarLevelConfig starLevelConfig;
+        
         // Events
         public System.Action<CustomerReview> OnReviewAdded;
         public System.Action<int, int> OnStarRatingChanged; // old, new
@@ -85,18 +89,18 @@ namespace HairRemovalSim.Core
         public int ReviewScore => reviewScore;
         
         /// <summary>
-        /// Current star rating (1-7) based on cumulative review score
+        /// Current star rating (1-30) based on cumulative review score
         /// </summary>
         public int StarRating
         {
             get
             {
-                if (gradeConfigDatabase != null)
-                    return gradeConfigDatabase.GetStarRatingFromReview(reviewScore);
+                if (starLevelConfig != null)
+                    return starLevelConfig.GetStarLevelFromReview(reviewScore);
                 
                 // Fallback to old logic
                 int stars = 1 + (reviewScore / REVIEW_PER_STAR);
-                return Mathf.Clamp(stars, 1, MAX_STARS);
+                return Mathf.Clamp(stars, 1, 30);
             }
         }
         
@@ -107,11 +111,11 @@ namespace HairRemovalSim.Core
         {
             get
             {
-                if (gradeConfigDatabase != null)
-                    return gradeConfigDatabase.GetStarProgress(reviewScore, StarRating);
+                if (starLevelConfig != null)
+                    return starLevelConfig.GetProgressToNextStar(reviewScore, StarRating);
                 
                 // Fallback to old logic
-                if (StarRating >= MAX_STARS) return 1f;
+                if (StarRating >= 30) return 1f;
                 int currentStarBase = (StarRating - 1) * REVIEW_PER_STAR;
                 return (float)(reviewScore - currentStarBase) / REVIEW_PER_STAR;
             }
@@ -124,16 +128,12 @@ namespace HairRemovalSim.Core
         public (int current, int total, int nextStar) GetProgressToNextStar()
         {
             int currentStars = StarRating;
-            if (currentStars >= 7)
-                return (0, 0, 7);
+            if (currentStars >= 30)
+                return (0, 0, 30);
             
-            if (gradeConfigDatabase != null)
+            if (starLevelConfig != null)
             {
-                int currentThreshold = gradeConfigDatabase.GetReviewThreshold(currentStars);
-                int nextThreshold = gradeConfigDatabase.GetReviewThreshold(currentStars + 1);
-                int current = reviewScore - currentThreshold;
-                int total = nextThreshold - currentThreshold;
-                return (current, total, currentStars + 1);
+                return starLevelConfig.GetProgressDetails(reviewScore, currentStars);
             }
             
             // Fallback

@@ -207,14 +207,14 @@ namespace HairRemovalSim.UI
             if (AdvertisingManager.Instance == null || adCardPrefab == null || availableAdsContainer == null)
                 return;
             
-            // Use ShopGrade
-            int currentGrade = ShopManager.Instance?.ShopGrade ?? 1;
+            // Use StarRating for unlock check
+            int currentStarLevel = ShopManager.Instance?.StarRating ?? 1;
             
             foreach (var adData in AdvertisingManager.Instance.AvailableAds)
             {
-                // Grade filter: hide if requiredGrade > currentGrade + 1
-                int gradeDiff = adData.requiredShopGrade - currentGrade;
-                if (gradeDiff >= 2)
+                // Star level filter: hide if requiredStarLevel > currentStarLevel + 5
+                int starDiff = adData.requiredStarLevel - currentStarLevel;
+                if (starDiff > 5)
                     continue; // Hide completely
                 
                 var cardObj = Instantiate(adCardPrefab, availableAdsContainer);
@@ -222,8 +222,7 @@ namespace HairRemovalSim.UI
                 
                 if (cardUI != null)
                 {
-                    // isLocked will be determined by gradeDiff == 1
-                    cardUI.Setup(adData, currentGrade, OnAdStartRequested);
+                    cardUI.Setup(adData, currentStarLevel, OnAdStartRequested);
                 }
                 
                 adCards.Add(cardObj);

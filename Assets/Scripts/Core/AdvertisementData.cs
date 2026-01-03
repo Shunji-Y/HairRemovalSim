@@ -37,6 +37,10 @@ namespace HairRemovalSim.Core
         [Range(1, 6)]
         public int requiredShopGrade = 1;
         
+        [Tooltip("Required star level to unlock (1-30, takes priority over grade)")]
+        [Range(1, 30)]
+        public int requiredStarLevel = 1;
+        
         [Header("Duration & Effect")]
         [Tooltip("How many days the ad lasts")]
         [Min(1)]
@@ -61,11 +65,19 @@ namespace HairRemovalSim.Core
         public int cooldownDays = 0;
         
         /// <summary>
-        /// Check if this ad is unlocked for the given shop grade
+        /// Check if this ad is unlocked for the given shop grade (legacy)
         /// </summary>
         public bool IsUnlockedForGrade(int currentGrade)
         {
             return currentGrade >= requiredShopGrade;
+        }
+        
+        /// <summary>
+        /// Check if this ad is unlocked for the given star level
+        /// </summary>
+        public bool IsUnlockedForStarLevel(int starLevel)
+        {
+            return starLevel >= requiredStarLevel;
         }
         
         /// <summary>

@@ -58,29 +58,6 @@ namespace HairRemovalSim.Core
         [Tooltip("Target body area for this tool")]
         public ToolTargetArea targetArea = ToolTargetArea.Body;
         
-        [Tooltip("Scope - Effect range (0=narrow, 100=ultra wide)")]
-        [Range(0, 100)]
-        public int statScope = 50;
-        
-        [Tooltip("Pain - Pain level (0=painless, 100=extreme pain)")]
-        [Range(0, 100)]
-        public int statPain = 0;
-        
-        [Tooltip("Power - Hair removal effectiveness (0=weak, 100=max power)")]
-        [Range(0, 100)]
-        public int statPower = 50;
-        
-        [Tooltip("Speed - Fire rate (0=slow, 100=continuous)")]
-        [Range(0, 100)]
-        public int statSpeed = 50;
-        
-        [Tooltip("Does this tool require hair to be shaved first?")]
-        public bool requiresShaving = false;
-        
-        [Tooltip("Maximum hair length this tool can handle (0=any length)")]
-        [Range(0f, 1f)]
-        public float maxHairLengthForUse = 0f;
-        
         // ==========================================
         // 【消耗品】Consumable / Shelf Settings
         // ==========================================
@@ -102,12 +79,6 @@ namespace HairRemovalSim.Core
         [Range(1, 99)]
         public int maxWarehouseStack = 10;
         
-        [Tooltip("Can this item be placed on treatment shelf from warehouse?")]
-        public bool canPlaceOnShelf = true;
-        
-        [Tooltip("Can this item be placed in reception desk slots (EXTRA ITEMS)?")]
-        public bool canPlaceAtReception = false;
-        
         [Tooltip("If true, this item cannot be sold in ToolShopPanel")]
         public bool cantSell = false;
         
@@ -115,9 +86,6 @@ namespace HairRemovalSim.Core
         // 【レジ】Checkout Settings
         // ==========================================
         [Header("【レジ】")]
-        [Tooltip("Can this item be used at checkout?")]
-        public bool canUseAtCheckout = false;
-        
         [Tooltip("Review bonus when used at checkout (positive = good)")]
         public int reviewBonus = 0;
         
@@ -158,6 +126,10 @@ namespace HairRemovalSim.Core
         [Range(1, 10)]
         public int requiredShopGrade = 1;
         
+        [Tooltip("Required star level to unlock this item (1-30, takes priority over grade)")]
+        [Range(1, 30)]
+        public int requiredStarLevel = 1;
+        
         [Tooltip("Category for sorting/filtering")]
         public ItemCategory category = ItemCategory.Tool;
         
@@ -169,6 +141,11 @@ namespace HairRemovalSim.Core
         public bool IsTreatmentTool => toolType != TreatmentToolType.None;
         public bool IsShaver => toolType == TreatmentToolType.Shaver;
         public bool IsLaser => toolType == TreatmentToolType.Laser;
+        
+        // Category-based placement helpers (backward compatibility)
+        public bool CanPlaceOnShelf => category == ItemCategory.Shelf || category == ItemCategory.Consumable;
+        public bool CanPlaceAtReception => category == ItemCategory.Reception;
+        public bool CanUseAtCheckout => category == ItemCategory.Checkout;
         
         /// <summary>
         /// Get localized name using nameKey, fallback to ScriptableObject name
@@ -199,22 +176,22 @@ namespace HairRemovalSim.Core
             return (!string.IsNullOrEmpty(localized) && !localized.StartsWith("[")) ? localized : "";
         }
         
-        /// <summary>
-        /// Check if this tool can be used on hair of given length
-        /// </summary>
-        public bool CanUseOnHairLength(float hairLength)
-        {
-            // If maxHairLengthForUse is 0, can use on any length
-            if (maxHairLengthForUse <= 0f) return true;
-            return hairLength <= maxHairLengthForUse;
-        }
+
         
         /// <summary>
-        /// Check if this item is unlocked for the given shop grade
+        /// Check if this item is unlocked for the given shop grade (legacy)
         /// </summary>
         public bool IsUnlockedForGrade(int shopGrade)
         {
             return shopGrade >= requiredShopGrade;
+        }
+        
+        /// <summary>
+        /// Check if this item is unlocked for the given star level
+        /// </summary>
+        public bool IsUnlockedForStarLevel(int starLevel)
+        {
+            return starLevel >= requiredStarLevel;
         }
         
         /// <summary>
@@ -275,6 +252,10 @@ namespace HairRemovalSim.Core
         PlacementItem,  // 設置アイテム（観葉植物、空気清浄機等）
         Furniture,      // 家具
         Upgrade,        // アップグレード
+        Useful,         // 便利アイテム（配達プラン、会員証等）
+        Shelf,          // 棚に配置可能（Treatment Shelf用）
+        Reception,      // 受付に配置可能
+        Checkout,       // レジで使用可能
         Other           // その他
     }
 }

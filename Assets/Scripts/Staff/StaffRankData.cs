@@ -108,9 +108,9 @@ namespace HairRemovalSim.Staff
         [Min(0)]
         public int dailySalary = 100;
         
-        [Tooltip("Required shop grade to hire this rank (2=College, 3=NewGrad, 4=MidCareer, 5=Veteran, 6=Professional)")]
-        [Range(2, 6)]
-        public int requiredGrade = 2;
+        [Tooltip("Required star level to hire this rank (College=4, NewGrad=8, MidCareer=14, Veteran=19, Professional=25)")]
+        [Range(1, 30)]
+        public int requiredStarLevel = 4;
         
         /// <summary>
         /// Get localized display name

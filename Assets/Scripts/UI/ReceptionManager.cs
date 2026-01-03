@@ -77,11 +77,13 @@ namespace HairRemovalSim.UI
                 return null;
             }
             
-            // Check if this is the first customer (queue empty AND no one being processed)
-            bool isFirstCustomer = customerQueue.Count == 0 && currentCustomer == null;
-            
+            // Enqueue FIRST to prevent race condition
             customerQueue.Enqueue(customer);
             processedCustomers.Add(customer);
+            
+            // Check if this is the first customer AFTER enqueueing
+            // (queue count == 1 means this customer is alone in queue)
+            bool isFirstCustomer = customerQueue.Count == 1 && currentCustomer == null;
             
             // Start waiting timer for reception queue
             customer.StartWaiting();
@@ -102,12 +104,11 @@ namespace HairRemovalSim.UI
                 customer.GoToChair(chair);
                 return chair.SeatPosition;
             }
-            else
-            {
-                Debug.LogWarning($"[ReceptionManager] {customer.data.customerName} no chair available, standing at reception");
-                customer.GoToCounterPoint(transform);
-                return transform;
-            }
+            
+            // No chair available - go to counter position
+            Debug.LogWarning($"[ReceptionManager] {customer.data.customerName} no chair available, standing at reception");
+            customer.GoToCounterPoint(transform);
+            return transform;
         }
 
         // IInteractable Implementation

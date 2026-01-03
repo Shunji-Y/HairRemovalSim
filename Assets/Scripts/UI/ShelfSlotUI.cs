@@ -341,7 +341,7 @@ namespace HairRemovalSim.UI
             if (itemData == null) return;
             
             // Check if this item can be placed on shelf
-            if (!itemData.canPlaceOnShelf)
+            if (!itemData.CanPlaceOnShelf)
             {
                 Debug.Log($"[ShelfSlotUI] {itemData.name} cannot be placed on treatment shelf");
                 return;

@@ -38,11 +38,12 @@ namespace HairRemovalSim.UI
                 return null;
             }
             
-            // Check if this is the first customer (queue is empty before adding)
-            bool isFirstCustomer = customerQueue.Count == 0;
-            
+            // Enqueue FIRST to prevent race condition
             customerQueue.Enqueue(customer);
             processedCustomers.Add(customer);
+            
+            // Check if this is the first customer AFTER enqueueing
+            bool isFirstCustomer = customerQueue.Count == 1;
             
             // Start waiting timer for cashier queue
             customer.StartWaiting();
@@ -63,12 +64,11 @@ namespace HairRemovalSim.UI
                 customer.GoToChair(chair);
                 return chair.SeatPosition;
             }
-            else
-            {
-                Debug.LogWarning($"[CashRegister] {customer.data.customerName} no chair available, standing at register");
-                customer.GoToCounterPoint(transform);
-                return transform;
-            }
+            
+            // No chair available - go to counter position
+            Debug.LogWarning($"[CashRegister] {customer.data.customerName} no chair available, standing at register");
+            customer.GoToCounterPoint(transform);
+            return transform;
         }
         
         /// <summary>

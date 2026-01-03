@@ -8,15 +8,60 @@ from enum import Enum
 import math
 
 # ============================================
-# 定数定義
+# 定数定義 (★30段階版)
 # ============================================
 
+# お客ランク: 5ティア × 6サブレベル = 30段階
+# (ランク名, ティア, サブレベル, プラン価格, 追加予算min, 追加予算max, 解放星レベル)
+CUSTOMER_RANKS = [
+    ("Poorest1", "Poorest", 1, 30, 15, 23, 1),
+    ("Poorest2", "Poorest", 2, 30, 23, 30, 2),
+    ("Poorest3", "Poorest", 3, 40, 30, 37, 3),
+    ("Poorest4", "Poorest", 4, 40, 37, 45, 4),
+    ("Poorest5", "Poorest", 5, 50, 45, 52, 5),
+    ("Poorest6", "Poorest", 6, 50, 52, 60, 6),
+    ("Poor1", "Poor", 1, 80, 60, 70, 7),
+    ("Poor2", "Poor", 2, 80, 70, 80, 8),
+    ("Poor3", "Poor", 3, 80, 80, 90, 9),
+    ("Poor4", "Poor", 4, 70, 90, 100, 10),
+    ("Poor5", "Poor", 5, 70, 100, 110, 11),
+    ("Poor6", "Poor", 6, 70, 110, 120, 12),
+    ("Normal1", "Normal", 1, 100, 120, 130, 13),
+    ("Normal2", "Normal", 2, 100, 130, 140, 14),
+    ("Normal3", "Normal", 3, 120, 140, 150, 15),
+    ("Normal4", "Normal", 4, 120, 150, 160, 16),
+    ("Normal5", "Normal", 5, 135, 160, 180, 17),
+    ("Normal6", "Normal", 6, 135, 180, 210, 18),
+    ("Rich1", "Rich", 1, 240, 210, 240, 19),
+    ("Rich2", "Rich", 2, 240, 240, 270, 20),
+    ("Rich3", "Rich", 3, 200, 270, 300, 21),
+    ("Rich4", "Rich", 4, 200, 300, 330, 22),
+    ("Rich5", "Rich", 5, 320, 330, 350, 23),
+    ("Rich6", "Rich", 6, 320, 350, 410, 24),
+    ("Richest1", "Richest", 1, 470, 410, 470, 25),
+    ("Richest2", "Richest", 2, 470, 470, 520, 26),
+    ("Richest3", "Richest", 3, 470, 520, 580, 27),
+    ("Richest4", "Richest", 4, 560, 580, 630, 28),
+    ("Richest5", "Richest", 5, 560, 630, 690, 29),
+    ("Richest6", "Richest", 6, 560, 690, 750, 30),
+]
+
+# ティアとグレードの対応 (ティア解放にはグレードが必要)
+TIER_GRADE_REQUIREMENT = {
+    "Poorest": 1,
+    "Poor": 2,
+    "Normal": 3,
+    "Rich": 4,
+    "Richest": 5,
+}
+
 class WealthLevel(Enum):
-    POOREST = 0   # 極貧
-    POOR = 1      # 貧乏
-    NORMAL = 2    # 普通
-    RICH = 3      # 富裕
-    RICHEST = 4   # 大富豪
+    """互換性のために残す (内部では CUSTOMER_RANKS を使用)"""
+    POOREST = 0
+    POOR = 1
+    NORMAL = 2
+    RICH = 3
+    RICHEST = 4
 
 class StaffRank(Enum):
     STUDENT = 0       # 大学生
@@ -24,6 +69,7 @@ class StaffRank(Enum):
     REGULAR = 2       # 中堅社員
     VETERAN = 3       # ベテラン
     PRO = 4           # プロ
+
 
 # スタッフ成功率 (顧客ランク × スタッフランク)
 STAFF_SUCCESS_RATE = {
@@ -68,13 +114,13 @@ STAFF_REVIEW_MULTIPLIER = {
     StaffRank.PRO: 1.10,
 }
 
-# スタッフ日給
+# スタッフ日給 (上昇)
 STAFF_DAILY_SALARY = {
-    StaffRank.STUDENT: 80,
-    StaffRank.NEWBIE: 100,
-    StaffRank.REGULAR: 150,
-    StaffRank.VETERAN: 200,
-    StaffRank.PRO: 300,
+    StaffRank.STUDENT: 150,   # 80 -> 150
+    StaffRank.NEWBIE: 200,    # 100 -> 200
+    StaffRank.REGULAR: 300,   # 150 -> 300
+    StaffRank.VETERAN: 450,   # 200 -> 450
+    StaffRank.PRO: 700,       # 300 -> 700
 }
 
 
@@ -141,49 +187,49 @@ PLAN_PRICES = {
     WealthLevel.RICHEST: {"full_no_beard": 350, "full_with_beard": 420},
 }
 
-# グレード設定 - 目標: ローンあり35日, ローンなし50日
-# attraction_cap: 集客度上限, max_customers: 基礎集客数上限(ツール補正前)
-# beds: ベッド数, staff_slots: ベッド数+3, rent: 家賃(3日毎)
-# 基礎処理能力: 1ベッドあたり18人/日 (低めに設定してローンなしを遅くする)
+# グレード設定 - ローンが必要になるようupgrade_cost/rent上昇
+# required_stars: 5刻みでグレードアップ (G2=★5, G3=★10, G4=★15, G5=★20, G6=★25, G7=★30)
+# max_customers: 600秒基準の値 (450秒では ×0.75 = G6で214人程度)
+# 施設アイテム購入費: G3: 3000+3000=6000, G4: +25000, G5: +100000+10000, G6: +100000
 GRADE_CONFIG = {
-    1: {"upgrade_cost": 0, "beds": 1, "staff_slots": 4, "rent": 50, "required_stars": 1, "attraction_cap": 100, "max_customers": 18},
-    2: {"upgrade_cost": 2000, "beds": 2, "staff_slots": 5, "rent": 150, "required_stars": 2, "attraction_cap": 250, "max_customers": 36},
-    3: {"upgrade_cost": 8000, "beds": 4, "staff_slots": 7, "rent": 400, "required_stars": 3, "attraction_cap": 400, "max_customers": 72},
-    4: {"upgrade_cost": 35000, "beds": 6, "staff_slots": 9, "rent": 800, "required_stars": 4, "attraction_cap": 600, "max_customers": 108},
-    5: {"upgrade_cost": 120000, "beds": 8, "staff_slots": 11, "rent": 1200, "required_stars": 5, "attraction_cap": 800, "max_customers": 144},
-    6: {"upgrade_cost": 450000, "beds": 10, "staff_slots": 13, "rent": 1800, "required_stars": 6, "attraction_cap": 1200, "max_customers": 220},
-    7: {"upgrade_cost": 900000, "beds": 10, "staff_slots": 13, "rent": 2500, "required_stars": 7, "attraction_cap": 1200, "max_customers": 220},
+    1: {"upgrade_cost": 0, "beds": 1, "staff_slots": 4, "rent": 100, "required_stars": 1, "attraction_cap": 100, "max_customers": 18, "facility_cost": 0},
+    2: {"upgrade_cost": 5000, "beds": 2, "staff_slots": 5, "rent": 300, "required_stars": 5, "attraction_cap": 250, "max_customers": 36, "facility_cost": 1000},
+    3: {"upgrade_cost": 20000, "beds": 4, "staff_slots": 7, "rent": 800, "required_stars": 10, "attraction_cap": 400, "max_customers": 79, "facility_cost": 9000},
+    4: {"upgrade_cost": 80000, "beds": 6, "staff_slots": 9, "rent": 1500, "required_stars": 15, "attraction_cap": 600, "max_customers": 124, "facility_cost": 35000},
+    5: {"upgrade_cost": 250000, "beds": 8, "staff_slots": 11, "rent": 2500, "required_stars": 20, "attraction_cap": 800, "max_customers": 172, "facility_cost": 110000},
+    6: {"upgrade_cost": 800000, "beds": 10, "staff_slots": 13, "rent": 4000, "required_stars": 25, "attraction_cap": 1200, "max_customers": 286, "facility_cost": 100000},
+    7: {"upgrade_cost": 2000000, "beds": 10, "staff_slots": 13, "rent": 6000, "required_stars": 30, "attraction_cap": 1200, "max_customers": 286, "facility_cost": 0},
 }
 MAX_GRADE = 7
 
-# レビュー閾値 (累積レビュー値 → 星)
-# 目標滞在日数に合わせて調整: お金が貯まるタイミングで★がギリギリ足りる
+# レビュー閾値 (累積レビュー値 → 星レベル) ★1-30
+# レビューより金が足りなくなるよう閾値を下げる
 REVIEW_THRESHOLDS = {
-    1: 0,
-    2: 1000,    # G1: 3日
-    3: 4500,    # G2: 4日
-    4: 15000,   # G3: 5日
-    5: 45000,   # G4: 6日
-    6: 110000,  # G5: 8日
-    7: 300000,  # G6: 9日 (最長)
+    1: 0,       2: 180,     3: 430,     4: 770,     5: 1200,
+    6: 1800,    7: 2500,    8: 3400,    9: 4500,    10: 5600,
+    11: 7100,   12: 9000,   13: 11200,  14: 13800,  15: 16400,
+    16: 20000,  17: 24500,  18: 29800,  19: 35700,  20: 42700,
+    21: 52500,  22: 63000,  23: 75000,  24: 90000,  25: 107000,
+    26: 129000, 27: 154000, 28: 182000, 29: 214000, 30: 250000,
 }
 
 
-# 広告設定 (グレード別解放)
+
+# 広告設定 (星レベル別解放) - コスト上昇
 # attraction_boost: 集客度上昇ポイント, duration: 効果日数, decay: 日次減衰ポイント
-# cost: コスト, grade_req: 必要グレード
+# cost: コスト, star_req: 必要星レベル
 
 AD_CONFIG = {
-    "none": {"cost": 0, "attraction_boost": 0, "duration": 0, "decay": 0, "grade_req": 1},
-    "free_sns": {"cost": 0, "attraction_boost": 5, "duration": 3, "grade_req": 1, "decay": 1},
-    "flyer": {"cost": 500, "attraction_boost": 15, "duration": 5, "grade_req": 2, "decay": 3},
-    "paid_sns": {"cost": 1500, "attraction_boost": 30, "duration": 4, "grade_req": 3, "decay": 5},
-    "magazine": {"cost": 3500, "attraction_boost": 50, "duration": 5, "grade_req": 3, "decay": 8},
-    "train_poster": {"cost": 6000, "attraction_boost": 80, "duration": 5, "grade_req": 4, "decay": 12},
-    "tv_cm": {"cost": 30000, "attraction_boost": 150, "duration": 5, "grade_req": 5, "decay": 25},
-    "billboard": {"cost": 60000, "attraction_boost": 200, "duration": 5, "grade_req": 5, "decay": 30},
-    "video_ad": {"cost": 20000, "attraction_boost": 100, "duration": 4, "grade_req": 4, "decay": 20},
-    "influencer": {"cost": 80000, "attraction_boost": 250, "duration": 5, "grade_req": 6, "decay": 40}, # 瞬間風速すごい
+    "none": {"cost": 0, "attraction_boost": 0, "duration": 0, "decay": 0, "star_req": 1},
+    "free_sns": {"cost": 0, "attraction_boost": 5, "duration": 3, "star_req": 1, "decay": 1},
+    "flyer": {"cost": 1000, "attraction_boost": 15, "duration": 5, "star_req": 4, "decay": 3},
+    "paid_sns": {"cost": 3000, "attraction_boost": 30, "duration": 4, "star_req": 7, "decay": 5},
+    "magazine": {"cost": 8000, "attraction_boost": 50, "duration": 5, "star_req": 10, "decay": 8},
+    "train_poster": {"cost": 15000, "attraction_boost": 80, "duration": 5, "star_req": 14, "decay": 12},
+    "tv_cm": {"cost": 60000, "attraction_boost": 150, "duration": 5, "star_req": 17, "decay": 25},
+    "billboard": {"cost": 120000, "attraction_boost": 200, "duration": 5, "star_req": 20, "decay": 30},
+    "video_ad": {"cost": 40000, "attraction_boost": 100, "duration": 4, "star_req": 24, "decay": 20},
+    "influencer": {"cost": 200000, "attraction_boost": 250, "duration": 5, "star_req": 27, "decay": 40},
 }
 
 # 集客率の日次変動 (ランダム要素)
@@ -199,135 +245,86 @@ AD_CONFIG = {
 #     "premium_set": {"price": 150, "rate": 0.05, "review_bonus": 8},
 # }
 
-# 施術ツール設定 (グレード別) - コスト調整済み
-# type: ツール種類 (face/body/shaver), cost: 購入コスト(1台), time_reduction: 施術時間短縮率, review_bonus: レビューボーナス
+# 施術ツール設定 (星レベル別) - コスト上昇版
+# name: ツール名, type: カテゴリ, cost: 購入コスト, time_reduction: 施術時間短縮率, star_req: 必要星レベル
 TOOL_CONFIG = {
-    1: {
-        "face": {"name": "SmoothRayFace", "cost": 500, "time_reduction": 0.0, "review_bonus": 0},
-        "body": {"name": "SmoothRayBody", "cost": 500, "time_reduction": 0.0, "review_bonus": 0},
-        "shaver": {"name": "RustyShaver", "cost": 250, "time_reduction": 0.0, "review_bonus": 0},
-    },
-    2: {
-        "face": {"name": "SmoothRayFacePro", "cost": 500, "time_reduction": 0.10, "review_bonus": 0},
-        "body": {"name": "SmoothRayBodyPro", "cost": 500, "time_reduction": 0.10, "review_bonus": 0},
-        "shaver": {"name": "TheShaver", "cost": 250, "time_reduction": 0.05, "review_bonus": 0},
-    },
-    3: {
-        "face": {"name": "SmoothRayFaceProMax", "cost": 1500, "time_reduction": 0.20, "review_bonus": 0},
-        "body": {"name": "SmoothRayBodyProMax", "cost": 1500, "time_reduction": 0.20, "review_bonus": 0},
-        "shaver": {"name": "PremiumShaver", "cost": 500, "time_reduction": 0.10, "review_bonus": 0},
-    },
-    4: {
-        "face": {"name": "SmoothRayFaceUltra", "cost": 3000, "time_reduction": 0.30, "review_bonus": 0},
-        "body": {"name": "SmoothRayBodyUltra", "cost": 3000, "time_reduction": 0.30, "review_bonus": 0},
-        "shaver": {"name": "PremiumShaver", "cost": 0, "time_reduction": 0.10, "review_bonus": 0},
-    },
-    5: {
-        "face": {"name": "νSmoothRay", "cost": 8000, "time_reduction": 0.45, "review_bonus": 0},
-        "body": {"name": "νSmoothRay", "cost": 0, "time_reduction": 0.45, "review_bonus": 0},
-        "shaver": {"name": "PremiumShaver", "cost": 0, "time_reduction": 0.10, "review_bonus": 0},
-    },
-    6: {
-        "face": {"name": "SmoothRayω", "cost": 15000, "time_reduction": 0.60, "review_bonus": 0},
-        "body": {"name": "SmoothRayω", "cost": 0, "time_reduction": 0.60, "review_bonus": 0},
-        "shaver": {"name": "PremiumShaver", "cost": 0, "time_reduction": 0.10, "review_bonus": 0},
-    },
+    "RustyShaver": {"type": "shaver", "cost": 250, "time_reduction": 0.0, "star_req": 1},
+    "SmoothRayFace": {"type": "face", "cost": 500, "time_reduction": 0.0, "star_req": 1},
+    "SmoothRayBody": {"type": "body", "cost": 500, "time_reduction": 0.0, "star_req": 3},
+    "TheShaver": {"type": "shaver", "cost": 500, "time_reduction": 0.05, "star_req": 6},
+    "SmoothRayBodyPro": {"type": "body", "cost": 1000, "time_reduction": 0.10, "star_req": 7},
+    "SmoothRayFacePro": {"type": "face", "cost": 1000, "time_reduction": 0.10, "star_req": 9},
+    "PremiumShaver": {"type": "shaver", "cost": 500, "time_reduction": 0.10, "star_req": 11},
+    "SmoothRayBodyProMax": {"type": "body", "cost": 1500, "time_reduction": 0.20, "star_req": 13},
+    "SmoothRayFaceProMax": {"type": "face", "cost": 1500, "time_reduction": 0.20, "star_req": 16},
+    "SmoothRayBodyUltra": {"type": "body", "cost": 3000, "time_reduction": 0.30, "star_req": 19},
+    "SmoothRayFaceUltra": {"type": "face", "cost": 3000, "time_reduction": 0.30, "star_req": 21},
+    "ContinuousLaser": {"type": "dual", "cost": 10000, "time_reduction": 0.40, "star_req": 23},
+    "NuSmoothRay": {"type": "dual", "cost": 8000, "time_reduction": 0.45, "star_req": 24},
+    "SmoothRayOmega": {"type": "dual", "cost": 15000, "time_reduction": 0.60, "star_req": 27},
 }
 
-# 販売アイテム設定 (グレード別)
-# type: reception(受付) / register(レジ)
-# cost: 仕入れコスト, price: 販売価格追加, review_bonus: レビューボーナス, time_reduction: 施術時間短縮率
-# 利益率を見直し（高すぎるの是正）
+# 販売アイテム設定 (星レベル別) - スプレッドシートに基づく
+# type: reception(受付) / register(レジ) / treatment(施術)
+# cost: 仕入れコスト, price: 販売価格追加, review_bonus: レビューボーナス, star_req: 必要星レベル
 ITEM_CONFIG = {
-    1: {
-        "reception": [
-            {"name": "NumbingCreamC", "cost": 10, "price": 15, "review_bonus": 0, "type": "upsell"},
-            {"name": "ServiceTicket", "cost": 10, "price": 0, "review_bonus": 5, "type": "review"},
-        ],
-        "register": [
-            {"name": "AfterCareSet", "cost": 10, "price": 25, "review_bonus": 0, "type": "upsell"},
-            {"name": "MoistureLotion", "cost": 15, "price": 35, "review_bonus": 0, "type": "upsell"},
-            {"name": "MoistureCream", "cost": 20, "price": 45, "review_bonus": 0, "type": "upsell"},
-            {"name": "StampCard", "cost": 10, "price": 0, "review_bonus": 2, "type": "review"}, # plus attraction
-            {"name": "Candy", "cost": 5, "price": 0, "review_bonus": 2, "type": "review"},
-        ],
-    },
-    2: {
-        "reception": [
-            {"name": "NumbingCreamC", "cost": 10, "price": 15, "review_bonus": 0, "type": "upsell"},
-            {"name": "ServiceTicket", "cost": 10, "price": 0, "review_bonus": 5, "type": "review"},
-            # G2 additions
-            {"name": "NumbingCreamB", "cost": 20, "price": 35, "review_bonus": 0, "type": "upsell"},
-            {"name": "NumbingCreamA", "cost": 25, "price": 45, "review_bonus": 0, "type": "upsell"},
-            {"name": "StressBall", "cost": 30, "price": 0, "review_bonus": 3, "type": "review"},
-        ],
-        "register": [
-            {"name": "AfterCareSet", "cost": 10, "price": 25, "review_bonus": 0, "type": "upsell"},
-            {"name": "MoistureLotion", "cost": 15, "price": 35, "review_bonus": 0, "type": "upsell"},
-            {"name": "MoistureCream", "cost": 20, "price": 45, "review_bonus": 0, "type": "upsell"},
-            {"name": "StampCard", "cost": 10, "price": 0, "review_bonus": 2, "type": "review"},
-            {"name": "Candy", "cost": 5, "price": 0, "review_bonus": 2, "type": "review"},
-            # G2 additions
-            {"name": "Coupon", "cost": 10, "price": 0, "review_bonus": 2, "type": "review"},
-            {"name": "Serum", "cost": 25, "price": 60, "review_bonus": 0, "type": "upsell"},
-            {"name": "MoistureMask", "cost": 35, "price": 75, "review_bonus": 0, "type": "upsell"},
-            {"name": "BronzeGift", "cost": 40, "price": 0, "review_bonus": 10, "type": "review"},
-            {"name": "Towel", "cost": 15, "price": 0, "review_bonus": 3, "type": "review"},
-        ],
-    },
-    3: {
-        "reception": [
-            # Accumulating previous items simplified for brevity, prioritizing new/higher items?
-            # Simulator randomly picks, so better to have full list if we want variety.
-            # For simplicity, I'll include higher tier items + some low tier.
-            {"name": "NumbingCreamA", "cost": 25, "price": 45, "review_bonus": 0, "type": "upsell"},
-            {"name": "VIPServiceTicket", "cost": 100, "price": 0, "review_bonus": 10, "type": "review"},
-        ],
-        "register": [
-            {"name": "PremiumLotion", "cost": 40, "price": 120, "review_bonus": 0, "type": "upsell"},
-            {"name": "PremiumCream", "cost": 50, "price": 140, "review_bonus": 0, "type": "upsell"},
-            {"name": "VIPStamp", "cost": 30, "price": 0, "review_bonus": 4, "type": "review"},
-        ],
-    },
-    4: {
-        "reception": [
-            {"name": "SensitiveGel", "cost": 60, "price": 120, "review_bonus": 0, "type": "upsell"},
-            {"name": "LaughingGas", "cost": 140, "price": 200, "review_bonus": 0, "type": "upsell"},
-        ],
-        "register": [
-            {"name": "SilverGift", "cost": 200, "price": 0, "review_bonus": 20, "type": "review"},
-        ],
-    },
-    5: {
-        "reception": [
-            {"name": "RelaxAroma", "cost": 150, "price": 300, "review_bonus": 0, "type": "upsell"},
-            {"name": "PlatinumServiceTicket", "cost": 300, "price": 0, "review_bonus": 20, "type": "review"},
-        ],
-        "register": [
-            {"name": "PlatinumSet", "cost": 250, "price": 400, "review_bonus": 0, "type": "upsell"},
-            {"name": "PlatinumStamp", "cost": 100, "price": 0, "review_bonus": 6, "type": "review"},
-        ],
-    },
-    6: {
-        "reception": [
-            {"name": "RelaxAroma", "cost": 150, "price": 300, "review_bonus": 0, "type": "upsell"},
-            {"name": "PlatinumServiceTicket", "cost": 300, "price": 0, "review_bonus": 20, "type": "review"},
-        ],
-        "register": [
-            {"name": "LuxurySet", "cost": 300, "price": 500, "review_bonus": 0, "type": "upsell"},
-            {"name": "GoldGift", "cost": 300, "price": 0, "review_bonus": 30, "type": "review"},
-        ],
-    },
+    # 受付アイテム
+    "NumbingCreamC": {"type": "reception", "cost": 10, "price": 15, "review_bonus": 0, "star_req": 1},
+    "ServiceTicket": {"type": "reception", "cost": 10, "price": 0, "review_bonus": 5, "star_req": 4},
+    "NumbingCreamB": {"type": "reception", "cost": 20, "price": 35, "review_bonus": 0, "star_req": 7},
+    "StressBall": {"type": "reception", "cost": 30, "price": 0, "review_bonus": 3, "star_req": 10},
+    "VIPServiceTicket": {"type": "reception", "cost": 100, "price": 0, "review_bonus": 10, "star_req": 14},
+    "LaughingGas": {"type": "reception", "cost": 140, "price": 200, "review_bonus": 0, "star_req": 17},
+    "NumbingCreamA": {"type": "reception", "cost": 25, "price": 45, "review_bonus": 0, "star_req": 20},
+    "SensitiveGel": {"type": "reception", "cost": 60, "price": 120, "review_bonus": 0, "star_req": 23},
+    "PlatinumServiceTicket": {"type": "reception", "cost": 300, "price": 0, "review_bonus": 20, "star_req": 26},
+    "RelaxAroma": {"type": "reception", "cost": 150, "price": 300, "review_bonus": 0, "star_req": 28},
+    
+    # レジアイテム
+    "AfterCareSet": {"type": "register", "cost": 10, "price": 25, "review_bonus": 0, "star_req": 1},
+    "Candy": {"type": "register", "cost": 5, "price": 0, "review_bonus": 2, "star_req": 1},
+    "StampCard": {"type": "register", "cost": 10, "price": 0, "review_bonus": 2, "star_req": 2},
+    "MoistureLotion": {"type": "register", "cost": 15, "price": 35, "review_bonus": 0, "star_req": 3},
+    "MoistureCream": {"type": "register", "cost": 20, "price": 45, "review_bonus": 0, "star_req": 4},
+    "Coupon": {"type": "register", "cost": 10, "price": 0, "review_bonus": 2, "star_req": 5},
+    "MoistureMask": {"type": "register", "cost": 35, "price": 75, "review_bonus": 0, "star_req": 7},
+    "Towel": {"type": "register", "cost": 15, "price": 0, "review_bonus": 3, "star_req": 8},
+    "Serum": {"type": "register", "cost": 25, "price": 60, "review_bonus": 0, "star_req": 11},
+    "BronzeGift": {"type": "register", "cost": 40, "price": 0, "review_bonus": 10, "star_req": 12},
+    "PremiumCream": {"type": "register", "cost": 50, "price": 140, "review_bonus": 0, "star_req": 13},
+    "PremiumLotion": {"type": "register", "cost": 40, "price": 120, "review_bonus": 0, "star_req": 15},
+    "VIPStamp": {"type": "register", "cost": 30, "price": 0, "review_bonus": 4, "star_req": 17},
+    "PlatinumSet": {"type": "register", "cost": 250, "price": 400, "review_bonus": 0, "star_req": 19},
+    "SilverGift": {"type": "register", "cost": 200, "price": 0, "review_bonus": 20, "star_req": 20},
+    "PlatinumStamp": {"type": "register", "cost": 100, "price": 0, "review_bonus": 6, "star_req": 22},
+    "GoldGift": {"type": "register", "cost": 300, "price": 0, "review_bonus": 30, "star_req": 25},
+    "LuxurySet": {"type": "register", "cost": 300, "price": 500, "review_bonus": 0, "star_req": 26},
+    
+    # 施術アイテム
+    "CoolingGelC": {"type": "treatment", "cost": 20, "price": 0, "review_bonus": 0, "star_req": 1},
+    "CoolingGelB": {"type": "treatment", "cost": 50, "price": 0, "review_bonus": 0, "star_req": 6},
+    "IcePack": {"type": "treatment", "cost": 30, "price": 0, "review_bonus": 0, "star_req": 9},
+    "CoolingGelA": {"type": "treatment", "cost": 100, "price": 0, "review_bonus": 0, "star_req": 14},
 }
 
-# ローン設定 (グレード別) - ローン使用時35日達成目標
+# スタッフランク解放設定 (星レベル別)
+STAFF_UNLOCK = {
+    StaffRank.STUDENT: 4,
+    StaffRank.NEWBIE: 8,
+    StaffRank.REGULAR: 14,
+    StaffRank.VETERAN: 19,
+    StaffRank.PRO: 25,
+}
+
+
+# ローン設定 (グレード別) - 高コスト化に対応して借入額増加
 # max_amount: 最大借入額, daily_rate: 日利(単利), term_days: 返済日数, grade_req: 必要グレード
 LOAN_CONFIG = {
-    "starter": {"max_amount": 6000, "daily_rate": 0.005, "term_days": 5, "grade_req": 1},
-    "business": {"max_amount": 30000, "daily_rate": 0.005, "term_days": 10, "grade_req": 2},
-    "expert": {"max_amount": 50000, "daily_rate": 0.01, "term_days": 6, "grade_req": 3},
-    "premium": {"max_amount": 200000, "daily_rate": 0.012, "term_days": 7, "grade_req": 4},
-    "elite": {"max_amount": 1000000, "daily_rate": 0.015, "term_days": 7, "grade_req": 5},
+    "starter": {"max_amount": 10000, "daily_rate": 0.005, "term_days": 5, "grade_req": 1},
+    "business": {"max_amount": 50000, "daily_rate": 0.005, "term_days": 10, "grade_req": 2},
+    "expert": {"max_amount": 150000, "daily_rate": 0.01, "term_days": 8, "grade_req": 3},
+    "premium": {"max_amount": 500000, "daily_rate": 0.012, "term_days": 10, "grade_req": 4},
+    "elite": {"max_amount": 2000000, "daily_rate": 0.015, "term_days": 10, "grade_req": 5},
 }
 
 # ローンは最大3種類まで同時借入可能（同じ種類は重複不可）
@@ -450,41 +447,72 @@ class Loan:
 @dataclass
 class SalonState:
     grade: int = 1
-    money: int = 3000  # 初期資金増額 (G1短縮のため)
+    money: int = 1000  # 初期資金
     cumulative_review: int = 0
-    star_rating: int = 1
-    attraction_level: int = 50  # 集客度 (G1上限100で50開始 = 10人)
+    star_level: int = 1  # ★1-30
+    attraction_level: int = 50  # 集客度 (G1上限100で50開始)
     day: int = 1
     staff: List[Staff] = field(default_factory=list)
     loans: List[Loan] = field(default_factory=list)
-    active_ads: List[dict] = field(default_factory=list)  # {"type": str, "remaining": int, "boost": float}
-    tool_grade: int = 1  # 現在所有のツールグレード
+    active_ads: List[dict] = field(default_factory=list)
     
     # 統計
     total_revenue: int = 0
     total_expenses: int = 0
     customers_served: int = 0
     
-    def get_total_time_reduction(self) -> float:
-        """現在のツールによる総施術時間短縮率を取得"""
-        if self.tool_grade not in TOOL_CONFIG:
-            return 0.0
-        
-        tools = TOOL_CONFIG[self.tool_grade]
-        total_reduction = 0.0
-        # 各部位の短縮率を加算 (例: フェイス0.1 + ボディ0.1 + シェーバー0.05 = 0.25)
-        # ※本来は施術内容によるが、簡易的に全施術に適用される効率係数とする
-        for tool_data in tools.values():
-            total_reduction += tool_data.get("time_reduction", 0.0)
-            
-        return total_reduction
+    @property
+    def star_rating(self) -> int:
+        """互換性のためのエイリアス"""
+        return self.star_level
     
-    def get_tool_review_bonus(self) -> int:
-        """現在のツールによるレビューボーナスを取得"""
-        if self.tool_grade not in TOOL_CONFIG:
-            return 0
-        tools = TOOL_CONFIG[self.tool_grade]
-        return sum(t["review_bonus"] for t in tools.values())
+    @star_rating.setter
+    def star_rating(self, value: int):
+        self.star_level = value
+    
+    def get_total_time_reduction(self) -> float:
+        """現在使用可能なツールの最高施術時間短縮率を取得"""
+        max_reduction = 0.0
+        for name, config in TOOL_CONFIG.items():
+            if config["star_req"] <= self.star_level:
+                if config["time_reduction"] > max_reduction:
+                    max_reduction = config["time_reduction"]
+        return max_reduction
+    
+    def get_available_items(self, item_type: str) -> List[dict]:
+        """指定タイプの利用可能なアイテムを取得 (星レベルでフィルタ)"""
+        available = []
+        for name, config in ITEM_CONFIG.items():
+            if config["type"] == item_type and config["star_req"] <= self.star_level:
+                available.append({"name": name, **config})
+        return available
+    
+    def get_available_tools(self) -> List[dict]:
+        """利用可能なツールを取得"""
+        available = []
+        for name, config in TOOL_CONFIG.items():
+            if config["star_req"] <= self.star_level:
+                available.append({"name": name, **config})
+        return available
+    
+    def get_available_ads(self) -> List[str]:
+        """利用可能な広告を取得"""
+        available = []
+        for name, config in AD_CONFIG.items():
+            if config["star_req"] <= self.star_level:
+                available.append(name)
+        return available
+    
+    def get_current_customer_rank(self) -> tuple:
+        """現在の星レベルとグレードから最高ランクのお客情報を取得"""
+        best_rank = CUSTOMER_RANKS[0]  # フォールバック
+        for rank_data in CUSTOMER_RANKS:
+            rank_name, tier, sublevel, price, budget_min, budget_max, star_req = rank_data
+            tier_grade = TIER_GRADE_REQUIREMENT[tier]
+            # グレード確認 & 星レベル確認
+            if self.grade >= tier_grade and star_req <= self.star_level:
+                best_rank = rank_data
+        return best_rank
     
     def get_beds(self) -> int:
         return GRADE_CONFIG[self.grade]["beds"]
@@ -502,31 +530,33 @@ class SalonState:
         """現在のグレードの集客度上限を取得"""
         return GRADE_CONFIG[self.grade]["attraction_cap"]
     
-    def get_max_customers(self) -> int:
-        """現在のグレードと設置アイテム効果に基づく最大顧客数を取得"""
+    def get_max_customers(self, operating_time: int = 450) -> int:
+        """現在のグレードに基づく最大顧客数を取得
+        
+        GRADE_CONFIGのmax_customersは600秒基準かつ施設アイテムブースト込みの値
+        """
         base_max = GRADE_CONFIG[self.grade]["max_customers"]
         
-        # 設置アイテムによる集客ブースト (空気清浄機、ルンバなど)
-        # G1-G2: +0%, G3: +10%, G4: +15%, G5: +20%, G6: +30%
-        facility_boost = {1: 0.0, 2: 0.0, 3: 0.10, 4: 0.15, 5: 0.20, 6: 0.30, 7: 0.30}
-        boost = facility_boost.get(self.grade, 0.0)
+        # 日の長さに応じた係数 (600秒 = 1.0, 450秒 = 0.75)
+        day_length_coefficient = operating_time / 600.0
         
-        effective_max = int(base_max * (1.0 + boost))
+        effective_max = int(base_max * day_length_coefficient)
         return effective_max
     
-    def get_current_customers(self) -> int:
+    def get_current_customers(self, operating_time: int = 450) -> int:
         """現在の集客度から実際の集客数を計算"""
         cap = self.get_attraction_cap()
-        max_cust = self.get_max_customers()
-        # 集客度 / 上限 * 集客数上限
+        max_cust = self.get_max_customers(operating_time)
         ratio = min(self.attraction_level / cap, 1.0)
         return int(max_cust * ratio)
     
     def update_star_rating(self):
+        """レビュー累積値から星レベルを更新 (互換性のため名前維持)"""
         for stars, threshold in sorted(REVIEW_THRESHOLDS.items(), reverse=True):
             if self.cumulative_review >= threshold:
-                self.star_rating = stars
+                self.star_level = stars
                 break
+
 
 # ============================================
 # シミュレーション
@@ -538,7 +568,7 @@ class SalonSimulator:
         self.config = config or {}
         
         # シミュレーション設定
-        self.operating_time = self.config.get("operating_time", 600)  # 10分 = 600秒
+        self.operating_time = self.config.get("operating_time", 450)  # 7.5分 = 450秒
         self.avg_treatment_time = self.config.get("avg_treatment_time", 15)  # 平均施術時間
         self.use_loans = self.config.get("use_loans", False)
         self.verbose = self.config.get("verbose", False)
@@ -548,14 +578,14 @@ class SalonSimulator:
             self.state.staff.append(Staff(rank=StaffRank.REGULAR))
     
     def _select_best_ad(self, exclude_types: list = None) -> str:
-        """現在のグレードで使用可能な最適な広告を選択"""
+        """現在の星レベルで使用可能な最適な広告を選択"""
         if exclude_types is None:
             exclude_types = []
         available_ads = []
         for ad_name, ad_config in AD_CONFIG.items():
             if ad_name == "none" or ad_name in exclude_types:
                 continue
-            if ad_config["grade_req"] <= self.state.grade:
+            if ad_config["star_req"] <= self.state.star_level:
                 # コスト効率 = attraction_boost / cost (無料は最優先)
                 if ad_config["cost"] == 0:
                     efficiency = 100.0
@@ -661,7 +691,7 @@ class SalonSimulator:
         
         # 集客度から集客数を計算
         cap = self.state.get_attraction_cap()
-        max_customers = self.state.get_max_customers()
+        max_customers = self.state.get_max_customers(self.operating_time)
         customer_ratio = effective_attraction / cap
         expected_customers = int(max_customers * customer_ratio)
         
@@ -695,41 +725,49 @@ class SalonSimulator:
                 
             processed_count += 1
             
-            customer = Customer.generate(self.state.star_rating, self.state.cumulative_review % 100)
+            # 新システム: CUSTOMER_RANKSから現在の最高ランクを取得
+            rank_data = self.state.get_current_customer_rank()
+            rank_name, tier, sublevel, plan_price, budget_min, budget_max, _ = rank_data
+            additional_budget = random.randint(budget_min, budget_max)
+            customer_payment = plan_price + additional_budget
+            
+            # WealthLevelを決定 (ティアからマッピング)
+            tier_to_wealth = {
+                "Poorest": WealthLevel.POOREST,
+                "Poor": WealthLevel.POOR,
+                "Normal": WealthLevel.NORMAL,
+                "Rich": WealthLevel.RICH,
+                "Richest": WealthLevel.RICHEST,
+            }
+            customer_wealth = tier_to_wealth.get(tier, WealthLevel.POOREST)
+            
             daily_customers += 1
             
             # スタッフ割り当て（ランダム）
             staff = random.choice(self.state.staff)
-            success = random.random() < staff.get_success_rate(customer.wealth)
+            success = random.random() < staff.get_success_rate(customer_wealth)
             review_multiplier = staff.get_review_multiplier()
             
             if success:
-                daily_revenue += customer.plan_price
+                daily_revenue += customer_payment
                 
                 # アイテム適用 (受付1つ + レジ1つ)
-                if self.state.grade in ITEM_CONFIG:
-                    items = ITEM_CONFIG[self.state.grade]
-                    
-                    # 受付アイテム: Upsell狙いか、ReviewUp狙いか
-                    # 戦略: 評価が低い(<40)ならReviewUp、高いならUpsellを狙う
-                    # 簡易ロジック: ランダムに選択
-                    if items.get("reception"):
-                        reception_item = random.choice(items["reception"])
-                        expense_items += reception_item["cost"]
-                        daily_revenue += reception_item["price"]
-                        daily_reviews.append(int(reception_item["review_bonus"] * review_multiplier))
-                        
-                    # レジアイテム
-                    if items.get("register"):
-                        register_item = random.choice(items["register"])
-                        expense_items += register_item["cost"]
-                        daily_revenue += register_item["price"]
-                        daily_reviews.append(int(register_item["review_bonus"] * review_multiplier))
+                reception_items = self.state.get_available_items("reception")
+                register_items = self.state.get_available_items("register")
                 
-                # ツールレビューボーナスは廃止(TOOL_CONFIGで0に設定済み)だがコードは残す
-                tool_review_bonus = self.state.get_tool_review_bonus()
-                if tool_review_bonus > 0:
-                    daily_reviews.append(int(tool_review_bonus * review_multiplier))
+                # 受付アイテム
+                if reception_items:
+                    reception_item = random.choice(reception_items)
+                    expense_items += reception_item["cost"]
+                    daily_revenue += reception_item["price"]
+                    daily_reviews.append(int(reception_item["review_bonus"] * review_multiplier))
+                    
+                # レジアイテム
+                if register_items:
+                    register_item = random.choice(register_items)
+                    expense_items += register_item["cost"]
+                    daily_revenue += register_item["price"]
+                    daily_reviews.append(int(register_item["review_bonus"] * review_multiplier))
                 
                 # 基本レビュー
                 roll = random.random()
@@ -972,8 +1010,11 @@ class SalonSimulator:
 # ============================================
 
 def main():
+    # 設定: 1日の長さをここで変更 (600秒=基準, 450秒=75%)
+    OPERATING_TIME = 450  # 450秒 = 7.5分 (目標設定)
+    
     print("=" * 60)
-    print("Hair Removal Salon Simulator")
+    print(f"Hair Removal Salon Simulator (Operating Time: {OPERATING_TIME}s)")
     print("=" * 60)
     
     # 複数回シミュレーション (ローンなし)
@@ -982,7 +1023,7 @@ def main():
     
     for i in range(num_runs):
         sim = SalonSimulator(config={
-            "operating_time": 600,
+            "operating_time": OPERATING_TIME,
             "avg_treatment_time": 15,
             "use_loans": False,
             "verbose": False,
@@ -1006,7 +1047,7 @@ def main():
     
     for i in range(num_runs):
         sim = SalonSimulator(config={
-            "operating_time": 600,
+            "operating_time": OPERATING_TIME,
             "avg_treatment_time": 15,
             "use_loans": True,
             "verbose": False,
@@ -1031,12 +1072,12 @@ def main():
     print("=" * 60)
     
     sim_no_loan = SalonSimulator(config={
-        "operating_time": 600,
+        "operating_time": OPERATING_TIME,
         "avg_treatment_time": 15,
         "use_loans": False,
         "verbose": True,
     })
-    results_no_loan = sim_no_loan.run(max_days=50)
+    results_no_loan = sim_no_loan.run(max_days=100)
     
     print("\n[Stats] Final Statistics (No Loans):")
     print(f"  Total Revenue: ${sim_no_loan.state.total_revenue}")
@@ -1052,12 +1093,12 @@ def main():
     print("=" * 60)
     
     sim_loan = SalonSimulator(config={
-        "operating_time": 600,
+        "operating_time": OPERATING_TIME,
         "avg_treatment_time": 15,
         "use_loans": True,
         "verbose": True,
     })
-    results_loan = sim_loan.run(max_days=50)
+    results_loan = sim_loan.run(max_days=100)
     
     print("\n[Stats] Final Statistics (With Loans):")
     print(f"  Total Revenue: ${sim_loan.state.total_revenue}")
@@ -1079,7 +1120,8 @@ def main():
     
     # CSV出力
     import csv
-    csv_path = "Tools/simulation_results.csv"
+    import os
+    csv_path = os.path.join(os.path.dirname(__file__), "simulation_results.csv")
     with open(csv_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow([

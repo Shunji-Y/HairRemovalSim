@@ -30,8 +30,7 @@ namespace HairRemovalSim.UI
         [SerializeField] private TextMeshProUGUI treatmentFeeText;
         [SerializeField] private TextMeshProUGUI totalAmountText;
         
-        [Header("Added Item Icons (5 slots)")]
-        [SerializeField] private Image[] addedItemIcons;
+        // Icons are handled by PaymentItemDropTarget directly
         
         [Header("Buttons")]
         [SerializeField] private Button confirmButton;
@@ -133,20 +132,13 @@ namespace HairRemovalSim.UI
                     }
                 }
             }
-            
-            // Clear added item icons
-            if (addedItemIcons != null)
+            else
             {
-                for (int i = 0; i < addedItemIcons.Length; i++)
-                {
-                    if (addedItemIcons[i] != null)
-                    {
-                        addedItemIcons[i].gameObject.SetActive(i < activeSlotCount);
-                        addedItemIcons[i].sprite = null;
-                        addedItemIcons[i].color = new Color(1, 1, 1, 0);
-                    }
-                }
+                Debug.LogWarning("[PaymentPanel] itemDropTargets is null! Please assign in Inspector.");
             }
+            
+            // Note: addedItemIcons display is handled by PaymentItemDropTarget itself
+            // No need to clear icons here as ClearSlot() handles it
             
             // Display total budget (plan price + additional budget)
             if (additionalBudgetText != null)
@@ -171,7 +163,7 @@ namespace HairRemovalSim.UI
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             
-            Debug.Log($"[PaymentPanel] Opened for {data.customerName}, fee: ${treatmentFee}, slots: {activeSlotCount}");
+
         }
         
         /// <summary>
@@ -195,7 +187,7 @@ namespace HairRemovalSim.UI
         /// </summary>
         public void Cancel()
         {
-            Debug.Log($"[PaymentPanel] Cancelled for {currentCustomer?.data?.customerName ?? "NULL"} - customer still at register");
+
             
             // Resume waiting timer from current value - payment was cancelled
             if (currentCustomer != null)
@@ -227,14 +219,16 @@ namespace HairRemovalSim.UI
             // Clear all payment info for next customer
             currentCustomer = null;
             treatmentFee = 0;
-            addedItemPrice = 0;
-            addedItemReviewBonus = 0;
-            addedItemId = null;
+            ClearAddedItem();
             
-            // Clear the item drop target display (item was consumed)
-            if (itemDropTarget != null)
+            // Clear the item drop target displays (items consumed)
+            if (itemDropTargets != null)
             {
-                itemDropTarget.Clear();
+                foreach (var target in itemDropTargets)
+                {
+                    if (target != null)
+                        target.ClearSlot();
+                }
             }
             
             // Re-lock cursor
@@ -298,8 +292,8 @@ namespace HairRemovalSim.UI
             // Subtract accumulated penalties and add bonuses
             int totalReview = baseReview - data.reviewPenalty + data.reviewBonus;
             Debug.Log(data.reviewBonus);
-            // Add item bonus
-            totalReview += addedItemReviewBonus;
+            
+            // Note: item review bonuses are now added in OnConfirmPayment after success check
             
             // Apply debris penalty (1 debris = -1 point)
             if (Environment.HairDebrisManager.Instance != null)
@@ -368,23 +362,16 @@ namespace HairRemovalSim.UI
             if (string.IsNullOrEmpty(itemId)) return;
             
             var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
-            if (itemData == null || !itemData.canUseAtCheckout) return;
+            if (itemData == null || !itemData.CanUseAtCheckout) return;
             
             addedItemIds[slotIndex] = itemId;
             addedItemPrices[slotIndex] = itemData.upsellPrice;
             addedItemReviewBonuses[slotIndex] = itemData.reviewBonus;
             
-            // Update icon for this slot
-            if (addedItemIcons != null && slotIndex < addedItemIcons.Length && addedItemIcons[slotIndex] != null)
-            {
-                addedItemIcons[slotIndex].sprite = itemData.icon;
-                addedItemIcons[slotIndex].color = Color.white;
-            }
+            // Note: Icon is handled by PaymentItemDropTarget.SetItem()
             
             UpdateDisplay();
             UpdateCheckoutSuccessRateDisplay(slotIndex);
-            
-            Debug.Log($"[PaymentPanel] Added item to slot {slotIndex}: {itemId}, price: ${itemData.upsellPrice}, reviewBonus: {itemData.reviewBonus}");
         }
         
         /// <summary>
@@ -404,29 +391,27 @@ namespace HairRemovalSim.UI
         }
         
         /// <summary>
-        /// Update success rate display based on dropped item (checkout)
+        /// Update success rate display based on total dropped items price
         /// </summary>
         private void UpdateCheckoutSuccessRateDisplay(int slotIndex)
         {
             if (successRateText == null || currentCustomer == null) return;
-            if (slotIndex < 0 || slotIndex >= MAX_UPSELL_SLOTS) return;
             
-            string itemId = addedItemIds[slotIndex];
-            if (string.IsNullOrEmpty(itemId))
+            // Calculate total price of all dropped items
+            int totalDroppedPrice = 0;
+            for (int i = 0; i < activeSlotCount; i++)
+            {
+                totalDroppedPrice += addedItemPrices[i];
+            }
+            
+            if (totalDroppedPrice <= 0)
             {
                 successRateText.gameObject.SetActive(false);
                 return;
             }
             
-            var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
-            if (itemData == null)
-            {
-                successRateText.gameObject.SetActive(false);
-                return;
-            }
-            
-            // Calculate success rate for this item
-            float successRate = currentCustomer.CalculateUpsellSuccessRate(itemData.upsellPrice);
+            // Calculate success rate using total dropped price
+            float successRate = currentCustomer.CalculateUpsellSuccessRate(totalDroppedPrice);
             int successPercent = Mathf.RoundToInt(successRate * 100f);
             
             // Display success rate
@@ -490,6 +475,30 @@ namespace HairRemovalSim.UI
         }
         
         /// <summary>
+        /// Return an item to checkout stock (used when upsell fails)
+        /// </summary>
+        private void ReturnItemToCheckoutStock(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId)) return;
+            if (checkoutItemSlots == null) return;
+            
+            foreach (var slot in checkoutItemSlots)
+            {
+                if (slot == null) continue;
+                
+                // Find matching or empty slot
+                if (slot.ItemId == itemId || slot.IsEmpty)
+                {
+                    slot.AddOne(itemId);
+                    Debug.Log($"[PaymentPanel] Returned failed item {itemId} to checkout stock");
+                    return;
+                }
+            }
+            
+            Debug.LogWarning($"[PaymentPanel] Could not find slot to return {itemId}");
+        }
+        
+        /// <summary>
         /// Clear all added items
         /// </summary>
         public void ClearAddedItem()
@@ -501,18 +510,7 @@ namespace HairRemovalSim.UI
                 addedItemReviewBonuses[i] = 0;
             }
             
-            // Clear icons
-            if (addedItemIcons != null)
-            {
-                foreach (var icon in addedItemIcons)
-                {
-                    if (icon != null)
-                    {
-                        icon.sprite = null;
-                        icon.color = new Color(1, 1, 1, 0);
-                    }
-                }
-            }
+            // Note: Icons are cleared by itemDropTargets[].ClearSlot()
             
             UpdateDisplay();
             
@@ -534,13 +532,12 @@ namespace HairRemovalSim.UI
             addedItemPrices[slotIndex] = 0;
             addedItemReviewBonuses[slotIndex] = 0;
             
-            if (addedItemIcons != null && slotIndex < addedItemIcons.Length && addedItemIcons[slotIndex] != null)
-            {
-                addedItemIcons[slotIndex].sprite = null;
-                addedItemIcons[slotIndex].color = new Color(1, 1, 1, 0);
-            }
+            // Note: Icon is cleared by PaymentItemDropTarget.ClearSlot()
             
             UpdateDisplay();
+            
+            // Recalculate success rate based on remaining items
+            UpdateCheckoutSuccessRateDisplay(0);
         }
         
         /// <summary>
@@ -611,11 +608,15 @@ namespace HairRemovalSim.UI
                     }
                     else
                     {
-                        // Failure: apply review penalty
+                        // Failure: apply review penalty and return item to stock
                         int penalty = currentCustomer.CalculateUpsellFailurePenalty(successRate);
                         data.reviewPenalty += penalty;
                         failCount++;
-                        Debug.Log($"[PaymentPanel] Slot {slotIndex} upsell failed! Penalty: {penalty}");
+                        
+                        // Return failed item to checkout stock
+                        ReturnItemToCheckoutStock(addedItemIds[slotIndex]);
+                        
+                        Debug.Log($"[PaymentPanel] Slot {slotIndex} upsell failed! Penalty: {penalty}, item returned to stock");
                     }
                 }
                 else
@@ -634,32 +635,8 @@ namespace HairRemovalSim.UI
             // Total amount = treatment fee + successfully upsold items
             int totalAmount = treatmentFee + totalUpsellPrice;
             
-            Debug.Log($"[PaymentPanel] Confirming payment - Amount: ${totalAmount}, Review: {finalReview}, Success: {successCount}, Fail: {failCount}");
-            
             // Save customer reference before Hide() clears it
             var customerToProcess = currentCustomer;
-            
-            // Check if customer leaves without paying
-            if (finalReview <= -50)
-            {
-                Debug.Log($"[PaymentPanel] Customer {data.customerName} leaves without paying! Review too low: {finalReview}");
-                
-                // Submit negative review
-                if (ShopManager.Instance != null)
-                {
-                    ShopManager.Instance.AddReview(finalReview, customerToProcess.GetPainMaxCount());
-                    // Add customer review for review panel
-                    int stars = GetStarsFromMood(GetMoodFromReview(finalReview));
-                    ShopManager.Instance.AddCustomerReview(stars);
-                }
-                
-                // Notify CashRegister FIRST (before Hide clears currentCustomer)
-                OnPaymentComplete(customerToProcess, false);
-                
-                customerToProcess.LeaveShop();
-                Hide();
-                return;
-            }
             
             // Process payment
             EconomyManager.Instance.AddMoney(totalAmount);
