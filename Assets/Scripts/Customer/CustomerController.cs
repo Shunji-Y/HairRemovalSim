@@ -194,6 +194,8 @@ namespace HairRemovalSim.Customer
             yield return null;
 
             bodyPart.Initialize();
+            int layer = LayerMask.NameToLayer("Customer");
+            bodyPart.gameObject.layer = layer;
             //foreach (HairRemovalSim.Core.BodyPart part in bodyParts)
             //{
             //    part.Initialize();
@@ -2490,15 +2492,18 @@ namespace HairRemovalSim.Customer
             Vector3 startPos = transform.position;
             Quaternion startRot = transform.rotation;
             Vector3 targetPos;
-            Quaternion targetRot = Quaternion.identity; // (0, 0, 0)
+            Quaternion targetRot;
             
             if (assignedBed != null && assignedBed.lieDownPoint != null)
             {
                 targetPos = assignedBed.lieDownPoint.position;
+                targetRot = assignedBed.lieDownPoint.rotation;
+
             }
             else
             {
                 targetPos = targetBed.position;
+                targetRot = targetBed.rotation;
             }
             
             //float duration = 0f;
@@ -2749,8 +2754,16 @@ namespace HairRemovalSim.Customer
             
             // Apply clothing visibility
             if (shirtObject != null) shirtObject.SetActive(!needsShirtRemoval);
-            if (pantsObject != null) pantsObject.SetActive(!needsPantsRemoval);
-            if (boxerObject != null) boxerObject.SetActive(needsPantsRemoval); // Show boxer when pants removed
+            if (shirtObject != pantsObject)
+            {
+                if (pantsObject != null) pantsObject.SetActive(!needsPantsRemoval);
+                if (boxerObject != null) boxerObject.SetActive(needsPantsRemoval); // Show boxer when pants removed
+            }
+            else
+            {
+                if (boxerObject != null) boxerObject.SetActive(true); // Show boxer when pants removed
+
+            }
             if (shoesObject != null) shoesObject.SetActive(false); // Always hide shoes when lying down
             
             Debug.Log($"[CustomerController] Clothing for treatment - Shirt: {!needsShirtRemoval}, Pants: {!needsPantsRemoval}, Boxer: {needsPantsRemoval}, Shoes: false");

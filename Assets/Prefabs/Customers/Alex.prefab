@@ -2802,6 +2802,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   data:
     customerName: 
+    rankData: {fileID: 0}
     skinTone: 0
     hairiness: 0
     wealth: 0
@@ -2959,7 +2960,7 @@ GameObject:
   - component: {fileID: 8775655094881092123}
   - component: {fileID: 1964875994343428931}
   - component: {fileID: 5254512410858334734}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: CC_Base_Body
   m_TagString: Untagged
   m_Icon: {fileID: 0}

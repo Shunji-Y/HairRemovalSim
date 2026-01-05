@@ -919,7 +919,7 @@ GameObject:
   - component: {fileID: 3223653444665747983}
   - component: {fileID: 9011415506086879438}
   - component: {fileID: 5395311456386654147}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: CC_Base_Body
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2270,7 +2270,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 16
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &4795006582007897701
 Transform:
   m_ObjectHideFlags: 0
@@ -4343,6 +4343,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   data:
     customerName: 
+    rankData: {fileID: 0}
     skinTone: 0
     hairiness: 0
     wealth: 0

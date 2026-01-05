@@ -187,6 +187,10 @@ Material:
         m_Texture: {fileID: 2800000, guid: a1de04264723ddc49b3460b57e4c69a6, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _WorldPositionMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _WrinkleDiffuseArray:
         m_Texture: {fileID: 18700000, guid: f61a31d8ab58e184380248a06d0a5bfb, type: 2}
         m_Scale: {x: 1, y: 1}
@@ -259,6 +263,7 @@ Material:
     - _DecalEnabled: 0
     - _DecalShape: 0
     - _DecalUVAngle: 0
+    - _DecalUseWorldSpace: 0
     - _DisplacementLevel: 0.5
     - _DisplacementStrength: 0
     - _EarScatterScale: 0.939
@@ -299,7 +304,7 @@ Material:
     - _NeckScatterScale: 1
     - _NeckSmoothnessMod: 0
     - _NormalBlendStrength: 0
-    - _NormalStrength: 1
+    - _NormalStrength: 2
     - _NostrilCavityAO: 2.5
     - _OcclusionStrength: 1
     - _QueueControl: 0
@@ -324,7 +329,7 @@ Material:
     - _SSSBlend: 0.6
     - _SSSDistortion: 0.5
     - _SSSTransmission: 5
-    - _SkinSpecularStrength: 0.2
+    - _SkinSpecularStrength: 0.1
     - _SmoothnessContrast: 1
     - _SmoothnessMax: 0.78936
     - _SmoothnessMin: 0.14999998
@@ -355,6 +360,9 @@ Material:
     - _DecalColor: {r: 0.30654088, g: 1, b: 0.2971698, a: 1}
     - _DecalUVCenter: {r: 0.5, g: 0.5, b: 0, a: 0}
     - _DecalUVSize: {r: 0.1, g: 0.1, b: 0, a: 0}
+    - _DecalWorldCenter: {r: 0, g: 0, b: 0, a: 0}
+    - _DecalWorldNormal: {r: 0, g: 1, b: 0, a: 0}
+    - _DecalWorldSize: {r: 0.05, g: 0.05, b: 0, a: 0}
     - _DiffuseColor: {r: 0.99999994, g: 0.99999994, b: 0.99999994, a: 1}
     - _EmissiveColor: {r: 0, g: 0, b: 0, a: 0}
     - _HairColor: {r: 0, g: 0, b: 0, a: 1}
@@ -366,7 +374,7 @@ Material:
     - _RequestedPartMasks4: {r: -1, g: -1, b: -1, a: -1}
     - _SkinSpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _SubsurfaceFalloff: {r: 0.7411765, g: 0.2627451, b: 0.21960784, a: 1}
-    - _TreatedSkinColor: {r: 1, g: 0.19999993, b: 0.19999993, a: 0.050980393}
+    - _TreatedSkinColor: {r: 1, g: 0.1999999, b: 0.1999999, a: 0.078431375}
     - _WrinkleValueSet12CL: {r: 0.0045156386, g: 0.0051165116, b: 0.0057956167, a: 0.00084397773}
     - _WrinkleValueSet12CR: {r: 0.0045156386, g: 0.0051165116, b: 0.0109679075, a: 0.00084664655}
     - _WrinkleValueSet1AL: {r: 0.00015010922, g: 0, b: 0.004095474, a: 0.004696347}

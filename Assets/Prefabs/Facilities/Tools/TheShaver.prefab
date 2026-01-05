@@ -107,7 +107,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemData: {fileID: 11400000, guid: 1f13f27250498a04cad9f8ec0062b34b, type: 2}
   toolType: 1
-  useInterval: 0
+  useInterval: 0.1
   overrideDurability: 0
   isUnbreakable: 1
   maxDurability: 3

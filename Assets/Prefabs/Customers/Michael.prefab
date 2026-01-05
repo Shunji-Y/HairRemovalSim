@@ -3214,6 +3214,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   data:
     customerName: 
+    rankData: {fileID: 0}
     skinTone: 0
     hairiness: 0
     wealth: 0
@@ -4386,8 +4387,8 @@ SkinnedMeshRenderer:
   m_Materials:
   - {fileID: 2100000, guid: 079f2a3322449664f957211504bca701, type: 2}
   - {fileID: 2100000, guid: 5a6403fb40c498344a1570745a5d1cd6, type: 2}
-  - {fileID: 2100000, guid: f25104d831e34c04da88f0ffc40a81be, type: 2}
-  - {fileID: 2100000, guid: 8653e3992ff1b87459577b957d82ed8f, type: 2}
+  - {fileID: 2100000, guid: 36b485d747308a244a3359015e32a546, type: 2}
+  - {fileID: 2100000, guid: 3458068bc9d21dc4eb3410bb50ff856b, type: 2}
   - {fileID: 2100000, guid: 40a108c747b6c7545a16dc548624665c, type: 2}
   - {fileID: 2100000, guid: 0309a7f6e24e4db46bd04231eb5868ec, type: 2}
   m_StaticBatchInfo:
