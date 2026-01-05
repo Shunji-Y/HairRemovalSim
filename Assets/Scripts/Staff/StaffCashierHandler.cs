@@ -100,7 +100,7 @@ namespace HairRemovalSim.Staff
         private IEnumerator ProcessCustomerCoroutine(CustomerController customer)
         {
             var rankData = staffController.StaffData?.profile?.rankData;
-            float processingTime = rankData?.processingTime ?? 10f;
+            float processingTime = rankData?.cashierProcessingTime ?? 10f;
             
             Debug.Log($"[StaffCashierHandler] {staffController.StaffData?.Name} processing payment for {customer.data?.customerName} for {processingTime}s");
             

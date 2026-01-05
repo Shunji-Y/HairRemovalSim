@@ -193,10 +193,13 @@ namespace HairRemovalSim.UI
             var partNames = currentCustomer.data.requestedBodyParts.ConvertAll(bp => bp.partName);
             Debug.Log($"[ReceptionManager] Hello {currentCustomer.data.customerName}! Requested plan: {currentCustomer.data.GetPlanDisplayName()}");
             
-            // Show reception panel
+            // Get station index for this reception
+            int stationIndex = ReceptionCounterManager.Instance?.GetReceptionIndex(this) ?? 0;
+            
+            // Show reception panel with station index
             if (ReceptionPanel.Instance != null)
             {
-                ReceptionPanel.Instance.Show(currentCustomer, OnReceptionConfirmed);
+                ReceptionPanel.Instance.Show(currentCustomer, OnReceptionConfirmed, stationIndex);
             }
             else
             {

@@ -125,20 +125,12 @@ namespace HairRemovalSim.UI
         /// Get slot index (alias for SyncSlotIndex)
         /// </summary>
         public int SlotIndex => syncSlotIndex;
-        /// Sync this slot's data to CheckoutStockSlotUI (Warehouse side)
+        /// Sync this slot's data to CheckoutStockSlotUI - DISABLED, now using Manager-based sync
         /// </summary>
         private void SyncToStockSlot()
         {
-            // Find the corresponding CheckoutStockSlotUI
-            var stockSlots = FindObjectsOfType<CheckoutStockSlotUI>(true);
-            foreach (var stockSlot in stockSlots)
-            {
-                if (stockSlot.SyncSlotIndex == syncSlotIndex)
-                {
-                    stockSlot.SetFromCheckout(itemId, quantity);
-                    break;
-                }
-            }
+            // Manager-based sync is now used. Panel saves to Manager on close.
+            // Individual slot sync is disabled to prevent conflicts.
         }
         
         /// <summary>

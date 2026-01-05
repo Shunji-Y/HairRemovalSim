@@ -66,6 +66,9 @@ namespace HairRemovalSim.UI
         private HashSet<string> requestedDetailedParts = new HashSet<string>();
         private bool useNewToggleSystem = false;
         
+        // Station binding for multi-station support
+        private int currentStationIndex = 0;
+        
         // Callbacks
         private System.Action<CustomerController, TreatmentBodyPart, TreatmentMachine, bool, int> onConfirm;
         
@@ -122,12 +125,21 @@ namespace HairRemovalSim.UI
         }
         
         /// <summary>
-        /// Show the reception panel for a customer
+        /// Show the reception panel for a customer (uses default station 0)
         /// </summary>
         public void Show(CustomerController customer, System.Action<CustomerController, TreatmentBodyPart, TreatmentMachine, bool, int> confirmCallback)
         {
+            Show(customer, confirmCallback, 0);
+        }
+        
+        /// <summary>
+        /// Show the reception panel for a customer at a specific station
+        /// </summary>
+        public void Show(CustomerController customer, System.Action<CustomerController, TreatmentBodyPart, TreatmentMachine, bool, int> confirmCallback, int stationIndex)
+        {
             currentCustomer = customer;
             onConfirm = confirmCallback;
+            currentStationIndex = stationIndex;
             
             if (panel != null) panel.SetActive(true);
             
@@ -146,8 +158,8 @@ namespace HairRemovalSim.UI
             // Update mood display
             UpdateMoodDisplay();
             
-            // Sync extra item slots with warehouse stock
-            SyncExtraItemSlots();
+            // Load extra item slots FROM manager (station-specific data)
+            LoadStockFromManager();
             
             // Initial price calculation
             RecalculatePrice();
@@ -176,6 +188,9 @@ namespace HairRemovalSim.UI
         {
             Debug.Log($"[ReceptionPanel] Cancelled for {currentCustomer?.data?.customerName ?? "NULL"}");
             
+            // Save stock data back to manager before closing
+            SaveStockToManager();
+            
             // Resume waiting timer from current value - reception was cancelled
             if (currentCustomer != null)
             {
@@ -197,6 +212,9 @@ namespace HairRemovalSim.UI
         /// </summary>
         public void Hide()
         {
+            // Save stock data back to manager (after item consumption)
+            SaveStockToManager();
+            
             // Just clear display without returning item to slot (item was used)
             if (extraItemDropTarget != null)
             {
@@ -434,12 +452,37 @@ namespace HairRemovalSim.UI
         }
         
         /// <summary>
-        /// Sync extra item slots with warehouse reception stock
+        /// Load stock data from ReceptionCounterManager for current station
         /// </summary>
-        private void SyncExtraItemSlots()
+        private void LoadStockFromManager()
         {
-            // This will be synced from ReceptionStockSlotUI via Warehouse
-            // For now, just refresh display
+            if (ReceptionCounterManager.Instance == null || extraItemSlots == null) return;
+            
+            for (int i = 0; i < extraItemSlots.Length; i++)
+            {
+                var data = ReceptionCounterManager.Instance.GetSlotData(currentStationIndex, i);
+                extraItemSlots[i].SetItem(data.itemId, data.quantity);
+            }
+            
+            Debug.Log($"[ReceptionPanel] Loaded stock for station {currentStationIndex}");
+        }
+        
+        /// <summary>
+        /// Save stock data to ReceptionCounterManager for current station
+        /// </summary>
+        private void SaveStockToManager()
+        {
+            if (ReceptionCounterManager.Instance == null || extraItemSlots == null) return;
+            
+            for (int i = 0; i < extraItemSlots.Length; i++)
+            {
+                ReceptionCounterManager.Instance.SetSlotData(
+                    currentStationIndex, i,
+                    extraItemSlots[i].ItemId,
+                    extraItemSlots[i].Quantity);
+            }
+            
+            Debug.Log($"[ReceptionPanel] Saved stock for station {currentStationIndex}");
         }
         
         /// <summary>

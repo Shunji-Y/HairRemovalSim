@@ -30,14 +30,49 @@ namespace HairRemovalSim.UI
         private string itemId;
         private int quantity;
         
+        // Station binding (which register this slot belongs to)
+        private int stationIndex = 0;
+        
         public string ItemId => itemId;
         public int Quantity => quantity;
         public bool IsEmpty => string.IsNullOrEmpty(itemId) || quantity <= 0;
         public int SyncSlotIndex => syncSlotIndex;
+        public int StationIndex => stationIndex;
         
         private void Start()
         {
             RefreshDisplay();
+        }
+        
+        /// <summary>
+        /// Initialize this slot for a specific station
+        /// </summary>
+        public void Initialize(int stationIdx, int slotIdx)
+        {
+            stationIndex = stationIdx;
+            syncSlotIndex = slotIdx;
+            LoadFromManager();
+        }
+        
+        /// <summary>
+        /// Load data from CashRegisterManager
+        /// </summary>
+        public void LoadFromManager()
+        {
+            if (CashRegisterManager.Instance == null) return;
+            var data = CashRegisterManager.Instance.GetSlotData(stationIndex, syncSlotIndex);
+            itemId = data.itemId;
+            quantity = data.quantity;
+            RefreshDisplay();
+        }
+        
+        /// <summary>
+        /// Save current data to CashRegisterManager
+        /// </summary>
+        public void SaveToManager()
+        {
+            if (CashRegisterManager.Instance == null) return;
+            CashRegisterManager.Instance.SetSlotData(stationIndex, syncSlotIndex, itemId, quantity);
         }
         
         /// <summary>
@@ -109,7 +144,8 @@ namespace HairRemovalSim.UI
             warehouseSource.RefreshFromWarehouse();
             RefreshDisplay();
             
-            // Sync with CheckoutItemSlotUI
+            // Save to manager and sync with CheckoutPanel
+            SaveToManager();
             SyncWithCheckoutPanel();
             
             Debug.Log($"[CheckoutStockSlotUI] Added {toMove}x {itemId}. Total: {quantity} (max: {maxStack})");
@@ -133,9 +169,11 @@ namespace HairRemovalSim.UI
                 source.itemId = null;
                 source.quantity = 0;
                 source.RefreshDisplay();
+                source.SaveToManager();
                 source.SyncWithCheckoutPanel();
                 
                 RefreshDisplay();
+                SaveToManager();
                 SyncWithCheckoutPanel();
                 
                 Debug.Log($"[CheckoutStockSlotUI] Moved {qty}x {dropItemId} from another slot");
@@ -153,9 +191,11 @@ namespace HairRemovalSim.UI
                 source.quantity = tempQty;
                 
                 source.RefreshDisplay();
+                source.SaveToManager();
                 source.SyncWithCheckoutPanel();
                 
                 RefreshDisplay();
+                SaveToManager();
                 SyncWithCheckoutPanel();
                 
                 Debug.Log($"[CheckoutStockSlotUI] Swapped items between slots");

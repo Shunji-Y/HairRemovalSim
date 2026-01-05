@@ -30,14 +30,49 @@ namespace HairRemovalSim.UI
         private string itemId;
         private int quantity;
         
+        // Station binding (which reception this slot belongs to)
+        private int stationIndex = 0;
+        
         public string ItemId => itemId;
         public int Quantity => quantity;
         public bool IsEmpty => string.IsNullOrEmpty(itemId) || quantity <= 0;
         public int SyncSlotIndex => syncSlotIndex;
+        public int StationIndex => stationIndex;
         
         private void Start()
         {
             RefreshDisplay();
+        }
+        
+        /// <summary>
+        /// Initialize this slot for a specific station
+        /// </summary>
+        public void Initialize(int stationIdx, int slotIdx)
+        {
+            stationIndex = stationIdx;
+            syncSlotIndex = slotIdx;
+            LoadFromManager();
+        }
+        
+        /// <summary>
+        /// Load data from ReceptionCounterManager
+        /// </summary>
+        public void LoadFromManager()
+        {
+            if (ReceptionCounterManager.Instance == null) return;
+            var data = ReceptionCounterManager.Instance.GetSlotData(stationIndex, syncSlotIndex);
+            itemId = data.itemId;
+            quantity = data.quantity;
+            RefreshDisplay();
+        }
+        
+        /// <summary>
+        /// Save current data to ReceptionCounterManager
+        /// </summary>
+        public void SaveToManager()
+        {
+            if (ReceptionCounterManager.Instance == null) return;
+            ReceptionCounterManager.Instance.SetSlotData(stationIndex, syncSlotIndex, itemId, quantity);
         }
         
         /// <summary>
@@ -109,7 +144,8 @@ namespace HairRemovalSim.UI
             warehouseSource.RefreshFromWarehouse();
             RefreshDisplay();
             
-            // Sync with ReceptionPanel ExtraItemSlots
+            // Save to manager and sync with ReceptionPanel
+            SaveToManager();
             SyncWithReceptionPanel();
             
             Debug.Log($"[ReceptionStockSlotUI] Added {toMove}x {itemId}. Total: {quantity} (max: {maxStack})");
@@ -133,9 +169,11 @@ namespace HairRemovalSim.UI
                 source.itemId = null;
                 source.quantity = 0;
                 source.RefreshDisplay();
+                source.SaveToManager();
                 source.SyncWithReceptionPanel();
                 
                 RefreshDisplay();
+                SaveToManager();
                 SyncWithReceptionPanel();
                 
                 Debug.Log($"[ReceptionStockSlotUI] Moved {qty}x {dropItemId} from another slot");
@@ -153,9 +191,11 @@ namespace HairRemovalSim.UI
                 source.quantity = tempQty;
                 
                 source.RefreshDisplay();
+                source.SaveToManager();
                 source.SyncWithReceptionPanel();
                 
                 RefreshDisplay();
+                SaveToManager();
                 SyncWithReceptionPanel();
                 
                 Debug.Log($"[ReceptionStockSlotUI] Swapped items between slots");

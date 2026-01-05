@@ -167,10 +167,13 @@ namespace HairRemovalSim.UI
         {
             if (currentCustomer == null) return;
             
-            // Open PaymentPanel instead of direct payment
+            // Get station index for this register
+            int stationIndex = CashRegisterManager.Instance?.GetRegisterIndex(this) ?? 0;
+            
+            // Open PaymentPanel with station index
             if (PaymentPanel.Instance != null)
             {
-                PaymentPanel.Instance.Show(currentCustomer);
+                PaymentPanel.Instance.Show(currentCustomer, stationIndex);
             }
             else
             {

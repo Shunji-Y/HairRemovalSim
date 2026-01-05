@@ -22,7 +22,11 @@ namespace HairRemovalSim.UI
         
         [Header("Reception Stock Section")]
         [SerializeField] private Transform receptionStockParent;
-        [Tooltip("Slot for anesthesia cream stock at reception")]
+        [SerializeField] private GameObject receptionStockGroupPrefab;
+        
+        [Header("Checkout Stock Section")]
+        [SerializeField] private Transform checkoutStockParent;
+        [SerializeField] private GameObject checkoutStockGroupPrefab;
 
         [Header("Category Icons")]
         [SerializeField] private Sprite faceLaserIcon;
@@ -48,6 +52,12 @@ namespace HairRemovalSim.UI
         // Slot UI instances
         private List<WarehouseSlotUI> warehouseSlots = new List<WarehouseSlotUI>();
         private List<ShelfCartUI> shelfCarts = new List<ShelfCartUI>();
+        
+        // Dynamic stock slot groups (one group per station)
+        private List<List<ReceptionStockSlotUI>> receptionStockGroups = new List<List<ReceptionStockSlotUI>>();
+        private List<List<CheckoutStockSlotUI>> checkoutStockGroups = new List<List<CheckoutStockSlotUI>>();
+        private List<GameObject> receptionStockGroupObjects = new List<GameObject>();
+        private List<GameObject> checkoutStockGroupObjects = new List<GameObject>();
         
         public static WarehousePanel Instance { get; private set; }
         public bool IsOpen => panel != null && panel.activeSelf;
@@ -92,8 +102,182 @@ namespace HairRemovalSim.UI
         {
             InitializeWarehouseGrid();
             InitializeShelfCarts();
+            InitializeReceptionStockGroups();
+            InitializeCheckoutStockGroups();
             Hide();
         }
+        
+        #region Dynamic Stock Group Generation
+        
+        /// <summary>
+        /// Initialize stock slot groups for each registered reception
+        /// </summary>
+        private void InitializeReceptionStockGroups()
+        {
+            // Clear existing groups
+            foreach (var obj in receptionStockGroupObjects)
+            {
+                if (obj != null) Destroy(obj);
+            }
+            receptionStockGroups.Clear();
+            receptionStockGroupObjects.Clear();
+            
+            if (receptionStockParent == null)
+            {
+                Debug.LogWarning("[WarehousePanel] receptionStockParent not assigned");
+                return;
+            }
+            
+            if (receptionStockGroupPrefab == null)
+            {
+                Debug.LogWarning("[WarehousePanel] receptionStockGroupPrefab not assigned - using existing slots in scene");
+                // Fallback: use existing slots in scene (for backward compatibility)
+                var existingSlots = receptionStockParent.GetComponentsInChildren<ReceptionStockSlotUI>(true);
+                if (existingSlots.Length > 0)
+                {
+                    var group = new List<ReceptionStockSlotUI>(existingSlots);
+                    for (int i = 0; i < existingSlots.Length; i++)
+                    {
+                        existingSlots[i].Initialize(0, i);
+                    }
+                    receptionStockGroups.Add(group);
+                }
+                return;
+            }
+            
+            int receptionCount = ReceptionCounterManager.Instance?.ReceptionCount ?? 0;
+            if (receptionCount == 0)
+            {
+                Debug.Log("[WarehousePanel] No receptions registered yet");
+                return;
+            }
+            
+            for (int stationIdx = 0; stationIdx < receptionCount; stationIdx++)
+            {
+                var groupObj = Instantiate(receptionStockGroupPrefab, receptionStockParent);
+                groupObj.name = $"ReceptionStock_{stationIdx}";
+                receptionStockGroupObjects.Add(groupObj);
+                
+                var slots = groupObj.GetComponentsInChildren<ReceptionStockSlotUI>(true);
+                var groupList = new List<ReceptionStockSlotUI>();
+                
+                for (int slotIdx = 0; slotIdx < slots.Length; slotIdx++)
+                {
+                    slots[slotIdx].Initialize(stationIdx, slotIdx);
+                    groupList.Add(slots[slotIdx]);
+                }
+                
+                receptionStockGroups.Add(groupList);
+                Debug.Log($"[WarehousePanel] Created reception stock group {stationIdx} with {slots.Length} slots");
+            }
+        }
+        
+        /// <summary>
+        /// Initialize stock slot groups for each registered cash register
+        /// </summary>
+        private void InitializeCheckoutStockGroups()
+        {
+            // Clear existing groups
+            foreach (var obj in checkoutStockGroupObjects)
+            {
+                if (obj != null) Destroy(obj);
+            }
+            checkoutStockGroups.Clear();
+            checkoutStockGroupObjects.Clear();
+            
+            if (checkoutStockParent == null)
+            {
+                Debug.LogWarning("[WarehousePanel] checkoutStockParent not assigned");
+                return;
+            }
+            
+            if (checkoutStockGroupPrefab == null)
+            {
+                Debug.LogWarning("[WarehousePanel] checkoutStockGroupPrefab not assigned - using existing slots in scene");
+                // Fallback: use existing slots in scene (for backward compatibility)
+                var existingSlots = checkoutStockParent.GetComponentsInChildren<CheckoutStockSlotUI>(true);
+                if (existingSlots.Length > 0)
+                {
+                    var group = new List<CheckoutStockSlotUI>(existingSlots);
+                    for (int i = 0; i < existingSlots.Length; i++)
+                    {
+                        existingSlots[i].Initialize(0, i);
+                    }
+                    checkoutStockGroups.Add(group);
+                }
+                return;
+            }
+            
+            int registerCount = CashRegisterManager.Instance?.RegisterCount ?? 0;
+            if (registerCount == 0)
+            {
+                Debug.Log("[WarehousePanel] No registers registered yet");
+                return;
+            }
+            
+            for (int stationIdx = 0; stationIdx < registerCount; stationIdx++)
+            {
+                var groupObj = Instantiate(checkoutStockGroupPrefab, checkoutStockParent);
+                groupObj.name = $"CheckoutStock_{stationIdx}";
+                checkoutStockGroupObjects.Add(groupObj);
+                
+                var slots = groupObj.GetComponentsInChildren<CheckoutStockSlotUI>(true);
+                var groupList = new List<CheckoutStockSlotUI>();
+                
+                for (int slotIdx = 0; slotIdx < slots.Length; slotIdx++)
+                {
+                    slots[slotIdx].Initialize(stationIdx, slotIdx);
+                    groupList.Add(slots[slotIdx]);
+                }
+                
+                checkoutStockGroups.Add(groupList);
+                Debug.Log($"[WarehousePanel] Created checkout stock group {stationIdx} with {slots.Length} slots");
+            }
+        }
+        
+        /// <summary>
+        /// Refresh stock groups (re-initialize if station count changed)
+        /// </summary>
+        private void RefreshStockGroups()
+        {
+            int receptionCount = ReceptionCounterManager.Instance?.ReceptionCount ?? 0;
+            int registerCount = CashRegisterManager.Instance?.RegisterCount ?? 0;
+            
+            // Re-initialize if counts don't match
+            if (receptionStockGroups.Count != receptionCount)
+            {
+                InitializeReceptionStockGroups();
+            }
+            else
+            {
+                // Just refresh existing slots from manager
+                foreach (var group in receptionStockGroups)
+                {
+                    foreach (var slot in group)
+                    {
+                        slot.LoadFromManager();
+                    }
+                }
+            }
+            
+            if (checkoutStockGroups.Count != registerCount)
+            {
+                InitializeCheckoutStockGroups();
+            }
+            else
+            {
+                // Just refresh existing slots from manager
+                foreach (var group in checkoutStockGroups)
+                {
+                    foreach (var slot in group)
+                    {
+                        slot.LoadFromManager();
+                    }
+                }
+            }
+        }
+        
+        #endregion
         
         /// <summary>
         /// Show the warehouse panel
@@ -110,6 +294,10 @@ namespace HairRemovalSim.UI
             
             // Re-initialize shelf carts to sync with current TreatmentShelf state
             InitializeShelfCarts();
+            
+            // Refresh stock groups (re-initialize if station count changed)
+            RefreshStockGroups();
+            
             RefreshAll();
             
             // Clear item detail to default empty state
@@ -259,18 +447,18 @@ namespace HairRemovalSim.UI
                 cart.RefreshFromShelf();
             }
             
-            // Sync checkout stock slots FROM checkout panel (to reflect changes made at register)
+            // Load checkout stock slots FROM Manager (station-specific data)
             var checkoutStockSlots = GetComponentsInChildren<CheckoutStockSlotUI>(true);
             foreach (var slot in checkoutStockSlots)
             {
-                slot.SyncFromCheckoutPanel();
+                slot.LoadFromManager();
             }
             
-            // Sync reception stock slots FROM reception panel (to reflect changes made at reception)
+            // Load reception stock slots FROM Manager (station-specific data)
             var receptionStockSlots = GetComponentsInChildren<ReceptionStockSlotUI>(true);
             foreach (var slot in receptionStockSlots)
             {
-                slot.SyncFromReceptionPanel();
+                slot.LoadFromManager();
             }
         }
         

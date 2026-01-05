@@ -65,9 +65,13 @@ namespace HairRemovalSim.Staff
         public float reviewStarVariance = 1f;
         
         [Header("Reception/Cashier")]
-        [Tooltip("Time to process customer at reception/cashier (seconds)")]
+        [Tooltip("Time to process customer at reception (seconds)")]
         [Min(1f)]
-        public float processingTime = 10f;
+        public float receptionProcessingTime = 10f;
+        
+        [Tooltip("Time to process customer at cashier (seconds)")]
+        [Min(1f)]
+        public float cashierProcessingTime = 10f;
         
         [Tooltip("Review coefficient (0.9 = 90%, 1.1 = 110%)")]
         [Range(0.5f, 1.5f)]

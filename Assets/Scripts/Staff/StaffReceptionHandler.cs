@@ -104,7 +104,7 @@ namespace HairRemovalSim.Staff
         private IEnumerator ProcessCustomerCoroutine(CustomerController customer)
         {
             var rankData = staffController.StaffData?.profile?.rankData;
-            float processingTime = rankData?.processingTime ?? 10f;
+            float processingTime = rankData?.receptionProcessingTime ?? 10f;
             
             Debug.Log($"[StaffReceptionHandler] {staffController.StaffData?.Name} processing {customer.data?.customerName} for {processingTime}s");
             

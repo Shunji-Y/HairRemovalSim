@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using HairRemovalSim.Customer;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.UI
 {
@@ -15,7 +16,11 @@ namespace HairRemovalSim.UI
         [Header("Debug")]
         [SerializeField] private List<ReceptionManager> receptions = new List<ReceptionManager>();
         
+        // Stock data for each reception station
+        private List<StationStockData> receptionStocks = new List<StationStockData>();
+        
         public int ReceptionCount => receptions.Count;
+        public List<ReceptionManager> Receptions => receptions;
         
         private void Awake()
         {
@@ -41,6 +46,7 @@ namespace HairRemovalSim.UI
             if (reception != null && !receptions.Contains(reception))
             {
                 receptions.Add(reception);
+                receptionStocks.Add(new StationStockData());
                 Debug.Log($"[ReceptionCounterManager] Registered {reception.name}. Total: {receptions.Count}");
             }
         }
@@ -50,11 +56,62 @@ namespace HairRemovalSim.UI
         /// </summary>
         public void UnregisterReception(ReceptionManager reception)
         {
-            if (receptions.Remove(reception))
+            int index = receptions.IndexOf(reception);
+            if (index >= 0)
             {
+                receptions.RemoveAt(index);
+                if (index < receptionStocks.Count)
+                    receptionStocks.RemoveAt(index);
                 Debug.Log($"[ReceptionCounterManager] Unregistered {reception.name}. Total: {receptions.Count}");
             }
         }
+        
+        #region Stock Data Access
+        
+        /// <summary>
+        /// Get stock data for a specific reception station
+        /// </summary>
+        public StationStockData GetStockData(int stationIndex)
+        {
+            if (stationIndex < 0 || stationIndex >= receptionStocks.Count)
+                return null;
+            return receptionStocks[stationIndex];
+        }
+        
+        /// <summary>
+        /// Get slot data for a specific station and slot
+        /// </summary>
+        public StockSlotData GetSlotData(int stationIndex, int slotIndex)
+        {
+            var stockData = GetStockData(stationIndex);
+            if (stockData == null) return default;
+            return stockData.GetSlot(slotIndex);
+        }
+        
+        /// <summary>
+        /// Set slot data for a specific station and slot
+        /// </summary>
+        public void SetSlotData(int stationIndex, int slotIndex, string itemId, int quantity)
+        {
+            var stockData = GetStockData(stationIndex);
+            if (stockData != null)
+            {
+                stockData.SetSlot(slotIndex, itemId, quantity);
+            }
+        }
+        
+        /// <summary>
+        /// Ensure stock data list matches receptions count
+        /// </summary>
+        public void SyncStockDataCount()
+        {
+            while (receptionStocks.Count < receptions.Count)
+                receptionStocks.Add(new StationStockData());
+            while (receptionStocks.Count > receptions.Count && receptionStocks.Count > 0)
+                receptionStocks.RemoveAt(receptionStocks.Count - 1);
+        }
+        
+        #endregion
         
         /// <summary>
         /// Get the reception with the shortest queue for customer routing

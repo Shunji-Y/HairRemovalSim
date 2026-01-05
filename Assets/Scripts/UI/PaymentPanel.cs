@@ -60,6 +60,9 @@ namespace HairRemovalSim.UI
         private int[] addedItemReviewBonuses = new int[MAX_UPSELL_SLOTS];
         private int activeSlotCount = 1;
         
+        // Station binding for multi-station support
+        private int currentStationIndex = 0;
+        
         // Mood levels and review ranges
         public enum MoodLevel
         {
@@ -94,13 +97,22 @@ namespace HairRemovalSim.UI
         }
         
         /// <summary>
-        /// Show payment panel for a customer
+        /// Show payment panel for a customer (uses default station 0)
         /// </summary>
         public void Show(CustomerController customer)
+        {
+            Show(customer, 0);
+        }
+        
+        /// <summary>
+        /// Show payment panel for a customer at a specific station
+        /// </summary>
+        public void Show(CustomerController customer, int stationIndex)
         {
             if (customer == null) return;
             
             currentCustomer = customer;
+            currentStationIndex = stationIndex;
             var data = customer.data;
             
             // Pause waiting timer - gauge stays visible until confirm
@@ -137,8 +149,8 @@ namespace HairRemovalSim.UI
                 Debug.LogWarning("[PaymentPanel] itemDropTargets is null! Please assign in Inspector.");
             }
             
-            // Note: addedItemIcons display is handled by PaymentItemDropTarget itself
-            // No need to clear icons here as ClearSlot() handles it
+            // Load checkout item slots FROM manager (station-specific data)
+            LoadStockFromManager();
             
             // Display total budget (plan price + additional budget)
             if (additionalBudgetText != null)
@@ -162,8 +174,6 @@ namespace HairRemovalSim.UI
             // Unlock cursor
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
-            
-
         }
         
         /// <summary>
@@ -187,7 +197,8 @@ namespace HairRemovalSim.UI
         /// </summary>
         public void Cancel()
         {
-
+            // Save stock data back to manager before closing
+            SaveStockToManager();
             
             // Resume waiting timer from current value - payment was cancelled
             if (currentCustomer != null)
@@ -213,6 +224,9 @@ namespace HairRemovalSim.UI
         /// </summary>
         public void Hide()
         {
+            // Save stock data back to manager (after item consumption)
+            SaveStockToManager();
+            
             if (panel != null)
                 panel.SetActive(false);
             
@@ -236,6 +250,40 @@ namespace HairRemovalSim.UI
             Cursor.visible = false;
             
             Debug.Log("[PaymentPanel] Hidden and cleared all payment info");
+        }
+        
+        /// <summary>
+        /// Load stock data from CashRegisterManager for current station
+        /// </summary>
+        private void LoadStockFromManager()
+        {
+            if (CashRegisterManager.Instance == null || checkoutItemSlots == null) return;
+            
+            for (int i = 0; i < checkoutItemSlots.Length; i++)
+            {
+                var data = CashRegisterManager.Instance.GetSlotData(currentStationIndex, i);
+                checkoutItemSlots[i].SetItemFromStock(data.itemId, data.quantity);
+            }
+            
+            Debug.Log($"[PaymentPanel] Loaded stock for station {currentStationIndex}");
+        }
+        
+        /// <summary>
+        /// Save stock data to CashRegisterManager for current station
+        /// </summary>
+        private void SaveStockToManager()
+        {
+            if (CashRegisterManager.Instance == null || checkoutItemSlots == null) return;
+            
+            for (int i = 0; i < checkoutItemSlots.Length; i++)
+            {
+                CashRegisterManager.Instance.SetSlotData(
+                    currentStationIndex, i,
+                    checkoutItemSlots[i].ItemId,
+                    checkoutItemSlots[i].Quantity);
+            }
+            
+            Debug.Log($"[PaymentPanel] Saved stock for station {currentStationIndex}");
         }
         
         /// <summary>

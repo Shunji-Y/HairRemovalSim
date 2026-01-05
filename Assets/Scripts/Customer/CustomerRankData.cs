@@ -56,11 +56,21 @@ namespace HairRemovalSim.Core
         public Staff.StaffRank? requiredStaffRank = null;
         
         [Header("Treatment Plan")]
-        [Tooltip("Body parts included in this rank's plan")]
-        public List<BodyPart> treatmentParts = new List<BodyPart>();
+        [Tooltip("Available plans for this rank (random selection from array)")]
+        public Customer.CustomerRequestPlan[] availablePlans;
         
         [Tooltip("Plan description key for localization")]
         public string planDescriptionKey;
+        
+        /// <summary>
+        /// Get a random plan from available plans
+        /// </summary>
+        public Customer.CustomerRequestPlan GetRandomPlan()
+        {
+            if (availablePlans == null || availablePlans.Length == 0)
+                return Customer.CustomerRequestPlan.Chest; // Fallback
+            return availablePlans[Random.Range(0, availablePlans.Length)];
+        }
         
         /// <summary>
         /// Check if this rank is unlocked for given star level and grade

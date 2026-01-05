@@ -682,9 +682,14 @@ namespace HairRemovalSim.Customer
                 {
                     data.requestPlan = testRequestPlan;
                 }
+                else if (data.rankData != null)
+                {
+                    // Use rank-based plan selection
+                    data.requestPlan = data.rankData.GetRandomPlan();
+                }
                 else
                 {
-                    // Select plan based on wealth level
+                    // Fallback to wealth-based selection
                     data.requestPlan = CustomerPlanHelper.GetRandomPlanForWealthLevel(data.wealth);
                 }
                 
