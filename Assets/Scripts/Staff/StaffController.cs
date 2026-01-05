@@ -60,6 +60,9 @@ namespace HairRemovalSim.Staff
         private BedController targetBedForDoor = null;
         [SerializeField] private float doorOpenDistance = 2f;
         
+        // Track active coroutines to prevent conflicts on rapid reassignment
+        private Coroutine exitBedCoroutine = null;
+        
         // Target station for rotation alignment
         private Transform targetStationPoint = null;
         
@@ -283,10 +286,17 @@ namespace HairRemovalSim.Staff
                 }
             }
             
+            // CRITICAL: Cancel any previous ExitBedWithDoor coroutine to prevent movement conflicts
+            if (exitBedCoroutine != null)
+            {
+                StopCoroutine(exitBedCoroutine);
+                exitBedCoroutine = null;
+            }
+            
             // If leaving a bed, handle door exit
             if (previousAssignment == StaffAssignment.Treatment && staffData.assignment != StaffAssignment.Treatment)
             {
-                StartCoroutine(ExitBedWithDoor());
+                exitBedCoroutine = StartCoroutine(ExitBedWithDoor());
             }
             else
             {
@@ -379,8 +389,58 @@ namespace HairRemovalSim.Staff
             switch (assignment)
             {
                 case StaffAssignment.Reception:
+                    // Get available reception from ReceptionCounterManager
+                    var receptionCounterManager = UI.ReceptionCounterManager.Instance;
+                    if (receptionCounterManager != null)
+                    {
+                        // Find a reception that doesn't have staff, or reuse existing assignment
+                        var receptionHandler = GetComponent<StaffReceptionHandler>();
+                        UI.ReceptionManager assignedReception = receptionHandler?.AssignedReception;
+                        
+                        if (assignedReception == null)
+                        {
+                            assignedReception = receptionCounterManager.GetUnstaffedReception();
+                            if (assignedReception == null && receptionCounterManager.ReceptionCount > 0)
+                            {
+                                // All receptions staffed - use first one
+                                assignedReception = receptionCounterManager.GetReceptionByIndex(0);
+                            }
+                        }
+                        
+                        if (assignedReception != null)
+                        {
+                            receptionHandler?.SetAssignedReception(assignedReception);
+                            return assignedReception.staffPoint ?? assignedReception.transform;
+                        }
+                    }
+                    // Fallback to legacy field
                     return receptionStationPoint;
                 case StaffAssignment.Cashier:
+                    // Get available register from CashRegisterManager
+                    var registerManager = UI.CashRegisterManager.Instance;
+                    if (registerManager != null)
+                    {
+                        // Find a register that doesn't have staff, or reuse existing assignment
+                        var cashierHandler = GetComponent<StaffCashierHandler>();
+                        UI.CashRegister assignedRegister = cashierHandler?.AssignedRegister;
+                        
+                        if (assignedRegister == null)
+                        {
+                            assignedRegister = registerManager.GetUnstaffedRegister();
+                            if (assignedRegister == null && registerManager.RegisterCount > 0)
+                            {
+                                // All registers staffed - use first one
+                                assignedRegister = registerManager.GetRegisterByIndex(0);
+                            }
+                        }
+                        
+                        if (assignedRegister != null)
+                        {
+                            cashierHandler?.SetAssignedRegister(assignedRegister);
+                            return assignedRegister.staffPoint ?? assignedRegister.transform;
+                        }
+                    }
+                    // Fallback to legacy field
                     return cashierStationPoint;
                 case StaffAssignment.Treatment:
                     // Get bed's staff point

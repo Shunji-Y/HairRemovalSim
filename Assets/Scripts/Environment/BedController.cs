@@ -278,10 +278,18 @@ namespace HairRemovalSim.Environment
             return false;
         }
 
-        public void AssignCustomer(CustomerController customer)
+        public bool AssignCustomer(CustomerController customer)
         {
+            // Prevent duplicate assignment
+            if (IsOccupied)
+            {
+                Debug.LogWarning($"[BedController] {name} is already occupied by {CurrentCustomer?.data?.customerName}. Cannot assign {customer?.data?.customerName}.");
+                return false;
+            }
+            
             CurrentCustomer = customer;
             IsOccupied = true;
+            return true;
         }
 
         public void ClearCustomer()

@@ -7,6 +7,10 @@ namespace HairRemovalSim.Customer
     {
         public string customerName;
         
+        [Header("Rank")]
+        [Tooltip("Customer's rank data (30-rank system)")]
+        public Core.CustomerRankData rankData; // The 30-rank system data
+        
         [Header("Appearance")]
         public SkinTone skinTone; // Enum: Pale, Fair, Medium, Dark, Black
         public HairinessLevel hairiness; // Enum: Low, Medium, High, Yeti

@@ -6,6 +6,18 @@ namespace HairRemovalSim.Customer
 {
     public class CustomerSpawner : MonoBehaviour
     {
+        public static CustomerSpawner Instance { get; private set; }
+        
+        /// <summary>
+        /// Number of currently active customers in the scene
+        /// </summary>
+        public int ActiveCustomerCount => activeCustomers.Count;
+        
+        private void Awake()
+        {
+            Instance = this;
+        }
+        
         [Header("Spawn Settings")]
         [Tooltip("List of customer prefabs to spawn randomly")]
         public List<GameObject> customerPrefabs = new List<GameObject>();
@@ -15,6 +27,9 @@ namespace HairRemovalSim.Customer
         public Transform cashRegisterPoint; // Post-treatment payment
         public UI.ReceptionManager receptionManager; // Reference to reception for queue registration
         public Core.BodyPartsDatabase bodyPartsDatabase; // UV-based body part system
+        
+        [Tooltip("Customer rank database for 30-rank system")]
+        public Core.CustomerRankDatabase customerRankDatabase; // 30-rank system
         
         public int maxCustomers = 3;
         
@@ -252,9 +267,9 @@ namespace HairRemovalSim.Customer
         public float GetCurrentSpawnInterval()
         {
             int expected = GetExpectedCustomers();
-            float interval = businessHoursSeconds / expected;
+            float interval = businessHoursSeconds / 216;// expected;
             // Clamp to reasonable range (min 5 seconds, max 300 seconds)
-            return Mathf.Clamp(interval, 5f, 300f);
+            return Mathf.Clamp(interval, 2.2f, 300f);
         }
         
         /// <summary>
@@ -397,7 +412,7 @@ namespace HairRemovalSim.Customer
             // Initialize maxCustomers from current grade
             if (ShopManager.Instance != null)
             {
-                maxCustomers = ShopManager.Instance.GetCurrentMaxSimultaneous();
+                maxCustomers = 75;// ShopManager.Instance.GetCurrentMaxSimultaneous();
                 Debug.Log($"[CustomerSpawner] Initialized maxCustomers to {maxCustomers} for grade {ShopManager.Instance.ShopGrade}");
             }
             
@@ -627,7 +642,31 @@ namespace HairRemovalSim.Customer
                 CustomerData data = new CustomerData();
                 data.customerName = useTestSettings ? "TestCustomer" : "Guest " + (++customerIdCounter);
                 data.hairiness = useTestSettings ? testHairinessLevel : (HairinessLevel)Random.Range(0, 4);
-                data.wealth = useTestSettings ? testWealthLevel : GetRandomCustomerWealthLevel();
+                
+                // Use 30-rank system if database is available
+                if (!useTestSettings && customerRankDatabase != null)
+                {
+                    int starRating = Core.ShopManager.Instance?.StarRating ?? 1;
+                    int shopGrade = Core.ShopManager.Instance?.ShopGrade ?? 1;
+                    
+                    var rankData = customerRankDatabase.GetRandomUnlockedRank(starRating, shopGrade);
+                    if (rankData != null)
+                    {
+                        data.rankData = rankData;
+                        data.wealth = (WealthLevel)(int)rankData.tier; // Convert CustomerTier to WealthLevel
+                        Debug.Log($"[CustomerSpawner] Spawning {rankData.rankName} (Star:{starRating}, Grade:{shopGrade})");
+                    }
+                    else
+                    {
+                        // Fallback to old system
+                        data.wealth = GetRandomCustomerWealthLevel();
+                        Debug.LogWarning($"[CustomerSpawner] No unlocked rank found, using fallback: {data.wealth}");
+                    }
+                }
+                else
+                {
+                    data.wealth = useTestSettings ? testWealthLevel : GetRandomCustomerWealthLevel();
+                }
                 
                 // Generate pain tolerance level
                 data.painTolerance = Random.Range(0f, 0.5f);
@@ -729,10 +768,13 @@ namespace HairRemovalSim.Customer
                 customer.isInitialized = true;
             }
             
-            // Now register with reception to get queue position
-            if (receptionManager != null)
+            // Now register with reception to get queue position (use shortest queue)
+            var receptionCounterManager = UI.ReceptionCounterManager.Instance;
+            UI.ReceptionManager targetReception = receptionCounterManager?.GetShortestQueueReception() ?? receptionManager;
+            
+            if (targetReception != null)
             {
-                Transform queuePos = receptionManager.RegisterCustomer(customer);
+                Transform queuePos = targetReception.RegisterCustomer(customer);
                 if (queuePos == null)
                 {
                     Debug.LogWarning($"[CustomerSpawner] Could not register {customer.data?.customerName} to queue, sending to reception");
@@ -741,7 +783,7 @@ namespace HairRemovalSim.Customer
             }
             else
             {
-                Debug.LogError("[CustomerSpawner] ReceptionManager reference not set! Customer going to reception point");
+                Debug.LogError("[CustomerSpawner] No receptionManager available! Customer going to reception point");
                 customer.GoToReception(receptionPoint);
             }
         }

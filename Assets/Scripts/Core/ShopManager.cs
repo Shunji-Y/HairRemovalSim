@@ -603,10 +603,10 @@ namespace HairRemovalSim.Core
                 ActivateShopModel(shopGrade);
             }
             
-            // 5. Move CashRegister to new position if specified
+            // 5. Move CashRegister to new position if specified (first register only)
             if (config.cashierPosition != null)
             {
-                var cashRegister = UI.CashRegister.Instance;
+                var cashRegister = UI.CashRegisterManager.Instance?.GetRegisterByIndex(0);
                 if (cashRegister != null)
                 {
                     cashRegister.transform.position = config.cashierPosition.position;

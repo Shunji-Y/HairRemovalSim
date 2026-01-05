@@ -26,12 +26,37 @@ namespace HairRemovalSim.Staff
         
         public bool IsProcessing => isProcessing;
         
+        /// <summary>
+        /// Get the assigned reception desk
+        /// </summary>
+        public UI.ReceptionManager AssignedReception => receptionManager;
+        
         private void Start()
         {
             if (staffController == null)
                 staffController = GetComponent<StaffController>();
-                
-            receptionManager = UI.ReceptionManager.Instance;
+        }
+        
+        /// <summary>
+        /// Set the assigned reception desk (called by StaffController)
+        /// </summary>
+        public void SetAssignedReception(UI.ReceptionManager reception)
+        {
+            // Clear assignment from previous reception
+            if (receptionManager != null && receptionManager.AssignedStaff == staffController)
+            {
+                receptionManager.AssignedStaff = null;
+            }
+            
+            receptionManager = reception;
+            
+            // Set assignment on new reception
+            if (receptionManager != null)
+            {
+                receptionManager.AssignedStaff = staffController;
+            }
+            
+            Debug.Log($"[StaffReceptionHandler] {staffController?.StaffData?.Name} assigned to {reception?.name ?? "no reception"}");
         }
         
         private void Update()
@@ -83,6 +108,28 @@ namespace HairRemovalSim.Staff
             
             Debug.Log($"[StaffReceptionHandler] {staffController.StaffData?.Name} processing {customer.data?.customerName} for {processingTime}s");
             
+            // Wait for customer to arrive at counter
+            Transform targetPoint = receptionManager != null ? receptionManager.receptionPoint : null;
+            if (targetPoint != null)
+            {
+                float arrivalThreshold = 1.5f; // Wait until close
+                float timeout = 20f; // Safety timeout
+                float elapsed = 0f;
+                
+                while (customer != null && Vector3.Distance(customer.transform.position, targetPoint.position) > arrivalThreshold)
+                {
+                    elapsed += Time.deltaTime;
+                    if (elapsed > timeout)
+                    {
+                        Debug.LogWarning($"[StaffReceptionHandler] Timed out waiting for {customer.data?.customerName} to arrive. Proceeding anyway.");
+                        break;
+                    }
+                    yield return null;
+                }
+            }
+
+            Debug.Log($"[StaffReceptionHandler] Customer arrived (or timed out). Starting process timer.");
+            
             // Wait for processing time
             yield return new WaitForSeconds(processingTime);
             
@@ -111,19 +158,10 @@ namespace HairRemovalSim.Staff
             // Finish processing first to reset timer (reception wait done)
             FinishProcessing();
             
-            // Find available bed and send customer
-            BedController availableBed = FindAvailableBed();
-            if (availableBed != null)
-            {
-                customer.GoToBed(availableBed);
-                Debug.Log($"[StaffReceptionHandler] {customer.data?.customerName} sent to bed by {staffController.StaffData?.Name}");
-            }
-            else
-            {
-                // No bed available - add to waiting list (StartWaiting will be called here)
-                receptionManager?.AddToWaitingList(customer);
-                Debug.Log($"[StaffReceptionHandler] No available bed, {customer.data?.customerName} added to waiting list");
-            }
+            // ALWAYS add to waiting list to respect FIFO order
+            // TrySendWaitingCustomerToBed will handle sending in correct order
+            receptionManager?.AddToWaitingList(customer);
+            Debug.Log($"[StaffReceptionHandler] {customer.data?.customerName} added to bed waiting list by {staffController.StaffData?.Name}");
             
             // Advance the reception queue to bring next customer to counter
             receptionManager?.AdvanceQueue();

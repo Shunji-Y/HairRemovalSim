@@ -706,11 +706,17 @@ namespace HairRemovalSim.UI
         /// </summary>
         private void OnPaymentComplete(CustomerController customer, bool paid)
         {
-            // Find CashRegister and notify
-            var cashRegister = FindObjectOfType<CashRegister>();
-            if (cashRegister != null)
+            // Notify all registers - the one with this customer will process it
+            var registerManager = CashRegisterManager.Instance;
+            if (registerManager != null)
             {
-                cashRegister.OnPaymentProcessed(customer);
+                foreach (var register in registerManager.GetAllRegisters())
+                {
+                    if (register != null)
+                    {
+                        register.OnPaymentProcessed(customer);
+                    }
+                }
             }
         }
         

@@ -25,13 +25,34 @@ namespace HairRemovalSim.Staff
         private Coroutine processingCoroutine;
         
         public bool IsProcessing => isProcessing;
+        public UI.CashRegister AssignedRegister => cashRegister;
         
         private void Start()
         {
             if (staffController == null)
                 staffController = GetComponent<StaffController>();
-                
-            cashRegister = FindObjectOfType<UI.CashRegister>();
+        }
+        
+        /// <summary>
+        /// Set the register this staff is assigned to
+        /// </summary>
+        public void SetAssignedRegister(UI.CashRegister register)
+        {
+            // Clear assignment from previous register
+            if (cashRegister != null && cashRegister.AssignedStaff == staffController)
+            {
+                cashRegister.AssignedStaff = null;
+            }
+            
+            cashRegister = register;
+            
+            // Set assignment on new register
+            if (cashRegister != null)
+            {
+                cashRegister.AssignedStaff = staffController;
+            }
+            
+            Debug.Log($"[StaffCashierHandler] {staffController?.StaffData?.Name} assigned to {register?.name ?? "no register"}");
         }
         
         private void Update()
@@ -82,6 +103,28 @@ namespace HairRemovalSim.Staff
             float processingTime = rankData?.processingTime ?? 10f;
             
             Debug.Log($"[StaffCashierHandler] {staffController.StaffData?.Name} processing payment for {customer.data?.customerName} for {processingTime}s");
+            
+            // Wait for customer to arrive at counter
+            Transform targetPoint = cashRegister != null ? cashRegister.cashierPoint : null;
+            if (targetPoint != null)
+            {
+                float arrivalThreshold = 1.5f; // Wait until close
+                float timeout = 20f; // Safety timeout
+                float elapsed = 0f;
+                
+                while (customer != null && Vector3.Distance(customer.transform.position, targetPoint.position) > arrivalThreshold)
+                {
+                    elapsed += Time.deltaTime;
+                    if (elapsed > timeout)
+                    {
+                        Debug.LogWarning($"[StaffCashierHandler] Timed out waiting for {customer.data?.customerName} to arrive. Proceeding anyway.");
+                        break;
+                    }
+                    yield return null;
+                }
+            }
+
+            Debug.Log($"[StaffCashierHandler] Customer arrived (or timed out). Starting process timer.");
             
             // Wait for processing time
             yield return new WaitForSeconds(processingTime);
@@ -315,7 +358,6 @@ namespace HairRemovalSim.Staff
             // Return customer to queue so player can interact
             if (currentCustomer != null)
             {
-                var cashRegister = UI.CashRegister.Instance;
                 if (cashRegister != null)
                 {
                     cashRegister.ReturnCustomerToQueue(currentCustomer);

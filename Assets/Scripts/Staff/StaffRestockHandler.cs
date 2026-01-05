@@ -376,8 +376,8 @@ namespace HairRemovalSim.Staff
             
             if (emptySlots.Count == 0) return null;
             
-            // Get restock point from CashRegister
-            Transform restockPoint = FindObjectOfType<CashRegister>()?.restockPoint;
+            // Get restock point from CashRegister (use first register)
+            Transform restockPoint = CashRegisterManager.Instance?.GetRegisterByIndex(0)?.restockPoint;
             
             return new RestockTarget
             {

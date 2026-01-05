@@ -204,6 +204,8 @@ namespace HairRemovalSim.Staff
         /// </summary>
         public bool IsPositionOccupied(StaffAssignment assignment, int bedIndex, HiredStaffData excludeStaff = null)
         {
+            // Count how many staff are already assigned to this position
+            int assignedCount = 0;
             foreach (var staff in hiredStaff)
             {
                 if (staff == excludeStaff) continue;
@@ -215,12 +217,39 @@ namespace HairRemovalSim.Staff
                     if (staff.assignedBedIndex == bedIndex)
                         return true;
                 }
+                else if (assignment == StaffAssignment.Cashier)
+                {
+                    // Count cashier staff
+                    assignedCount++;
+                }
+                else if (assignment == StaffAssignment.Reception)
+                {
+                    // Count reception staff
+                    assignedCount++;
+                }
                 else if (assignment != StaffAssignment.None)
                 {
-                    // Only one staff per non-treatment position
+                    // Only one staff per non-treatment/non-cashier/non-reception position
                     return true;
                 }
             }
+            
+            // For Cashier: check against register count
+            if (assignment == StaffAssignment.Cashier)
+            {
+                var registerManager = UI.CashRegisterManager.Instance;
+                int maxCashiers = registerManager?.RegisterCount ?? 1;
+                return assignedCount >= maxCashiers;
+            }
+            
+            // For Reception: check against reception counter count
+            if (assignment == StaffAssignment.Reception)
+            {
+                var receptionCounterManager = UI.ReceptionCounterManager.Instance;
+                int maxReceptionists = receptionCounterManager?.ReceptionCount ?? 1;
+                return assignedCount >= maxReceptionists;
+            }
+            
             return false;
         }
         

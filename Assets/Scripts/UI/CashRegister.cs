@@ -43,7 +43,8 @@ namespace HairRemovalSim.UI
             processedCustomers.Add(customer);
             
             // Check if this is the first customer AFTER enqueueing
-            bool isFirstCustomer = customerQueue.Count == 1;
+            // AND no one is currently being processed
+            bool isFirstCustomer = customerQueue.Count == 1 && currentCustomer == null;
             
             // Start waiting timer for cashier queue
             customer.StartWaiting();
@@ -296,24 +297,7 @@ namespace HairRemovalSim.UI
             }
         }
         
-        /// <summary>
-        /// Check if staff is assigned to cashier
-        /// </summary>
-        public bool HasStaffAssigned
-        {
-            get
-            {
-                var staffManager = Staff.StaffManager.Instance;
-                if (staffManager == null) return false;
-                
-                foreach (var staff in staffManager.GetHiredStaff())
-                {
-                    if (staff.isActive && staff.assignment == Staff.StaffAssignment.Cashier)
-                        return true;
-                }
-                return false;
-            }
-        }
+
         
         /// <summary>
         /// Dequeue customer for staff processing
@@ -326,7 +310,18 @@ namespace HairRemovalSim.UI
             
             if (customerQueue.Count == 0) return null;
             
+            // CRITICAL: Don't dequeue if already processing someone
+            if (currentCustomer != null)
+            {
+                Debug.Log($"[CashRegister] Cannot dequeue - already processing {currentCustomer.data?.customerName}");
+                return null;
+            }
+            
             var customer = customerQueue.Dequeue();
+            
+            // CRITICAL: Set currentCustomer to prevent UpdateQueuePositions from sending next customer
+            currentCustomer = customer;
+            
             processedCustomers.Remove(customer);
             
             // Customer is already at counter, no need to move them
@@ -344,6 +339,9 @@ namespace HairRemovalSim.UI
         /// </summary>
         public void AdvanceQueue()
         {
+            // CRITICAL: Clear current customer so next can be processed
+            currentCustomer = null;
+            
             UpdateQueuePositions();
         }
         
@@ -380,19 +378,43 @@ namespace HairRemovalSim.UI
         public int QueueCount => customerQueue.Count;
         
         /// <summary>
-        /// Singleton instance
+        /// Staff assigned to this register
         /// </summary>
-        public static CashRegister Instance { get; private set; }
+        public Staff.StaffController AssignedStaff { get; set; }
+        
+        /// <summary>
+        /// Check if staff is assigned to this register
+        /// </summary>
+        public bool HasStaffAssigned => AssignedStaff != null;
+        
+        /// <summary>
+        /// Check if this register can immediately serve a new customer
+        /// </summary>
+        public bool IsAvailable => currentCustomer == null;
         
         private void Awake()
         {
-            if (Instance == null)
+            // Register with CashRegisterManager (supports multiple registers)
+        }
+        
+        private void Start()
+        {
+            // Register with manager after it's initialized
+            if (CashRegisterManager.Instance != null)
             {
-                Instance = this;
+                CashRegisterManager.Instance.RegisterCashRegister(this);
             }
-            else if (Instance != this)
+            else
             {
-                Debug.LogWarning("[CashRegister] Multiple instances found!");
+                Debug.LogWarning($"[CashRegister] {name} could not find CashRegisterManager!");
+            }
+        }
+        
+        private void OnDestroy()
+        {
+            if (CashRegisterManager.Instance != null)
+            {
+                CashRegisterManager.Instance.UnregisterCashRegister(this);
             }
         }
     }
