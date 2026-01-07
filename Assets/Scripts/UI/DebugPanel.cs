@@ -298,7 +298,7 @@ namespace HairRemovalSim.UI
         
         private void AddReviewScore()
         {
-            AddReviewScoreInternal(1000);
+            AddReviewScoreInternal(100000);
             Debug.Log("[DebugPanel] Added +200 review score");
         }
         

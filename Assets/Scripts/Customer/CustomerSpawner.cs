@@ -134,7 +134,7 @@ namespace HairRemovalSim.Customer
             int baseMax = ShopManager.Instance?.GetCurrentMaxCustomers() ?? 18;
             
             // Apply day length coefficient (600 seconds = 1.0)
-            float dayLengthCoefficient = businessHoursSeconds / 600f;
+            float dayLengthCoefficient = businessHoursSeconds / GameManager.Instance.dayLengthSeconds;
             
             // Apply facility boost and day length coefficient
             return Mathf.RoundToInt(baseMax * (1f + _facilityBoost) * dayLengthCoefficient);
@@ -267,7 +267,7 @@ namespace HairRemovalSim.Customer
         public float GetCurrentSpawnInterval()
         {
             int expected = GetExpectedCustomers();
-            float interval = businessHoursSeconds / 216;// expected;
+            float interval = businessHoursSeconds /  expected; //216
             // Clamp to reasonable range (min 5 seconds, max 300 seconds)
             return Mathf.Clamp(interval, 2.2f, 300f);
         }
@@ -412,7 +412,7 @@ namespace HairRemovalSim.Customer
             // Initialize maxCustomers from current grade
             if (ShopManager.Instance != null)
             {
-                maxCustomers = 75;// ShopManager.Instance.GetCurrentMaxSimultaneous();
+                maxCustomers = ShopManager.Instance.GetCurrentMaxSimultaneous();
                 Debug.Log($"[CustomerSpawner] Initialized maxCustomers to {maxCustomers} for grade {ShopManager.Instance.ShopGrade}");
             }
             

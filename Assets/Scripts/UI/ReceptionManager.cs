@@ -160,6 +160,12 @@ namespace HairRemovalSim.UI
             if (currentCustomer != null)
             {
                 // Always pause waiting when opening UI (handles re-interact after cancel)
+                var dis = Vector3.Distance(currentCustomer.transform.position, transform.position);
+
+                if (dis > detectionRadius)
+                {
+                    return;
+                }
                 currentCustomer.PauseWaiting();
                 OpenReceptionUI();
             }

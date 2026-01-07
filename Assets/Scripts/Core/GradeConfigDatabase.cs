@@ -42,13 +42,13 @@ namespace HairRemovalSim.Core
         [Tooltip("Configuration for each grade level (index 0 = Grade 1/★1, etc.)")]
         [SerializeField] private GradeConfig[] gradeConfigs = new GradeConfig[]
         {
-            new GradeConfig { grade = 1, maxCustomers = 18, maxSimultaneous = 3, attractionCap = 100, reviewThreshold = 0, rent = 50, requiredStars = 1 },
-            new GradeConfig { grade = 2, maxCustomers = 36, maxSimultaneous = 4, attractionCap = 250, reviewThreshold = 1200, rent = 150, requiredStars = 2 },
-            new GradeConfig { grade = 3, maxCustomers = 79, maxSimultaneous = 8, attractionCap = 400, reviewThreshold = 4500, rent = 400, requiredStars = 3 },
-            new GradeConfig { grade = 4, maxCustomers = 124, maxSimultaneous = 11, attractionCap = 600, reviewThreshold = 22000, rent = 800, requiredStars = 4 },
-            new GradeConfig { grade = 5, maxCustomers = 172, maxSimultaneous = 15, attractionCap = 800, reviewThreshold = 50000, rent = 1200, requiredStars = 5 },
-            new GradeConfig { grade = 6, maxCustomers = 286, maxSimultaneous = 24, attractionCap = 1200, reviewThreshold = 140000, rent = 1800, requiredStars = 6 },
-            new GradeConfig { grade = 7, maxCustomers = 345, maxSimultaneous = 29, attractionCap = 1200, reviewThreshold = 400000, rent = 2500, requiredStars = 7 },
+            new GradeConfig { grade = 1, maxCustomers = 18, maxSimultaneous = 5, attractionCap = 100, reviewThreshold = 0, rent = 50, requiredStars = 1 },
+            new GradeConfig { grade = 2, maxCustomers = 36, maxSimultaneous = 9, attractionCap = 250, reviewThreshold = 1200, rent = 150, requiredStars = 2 },
+            new GradeConfig { grade = 3, maxCustomers = 79, maxSimultaneous = 18, attractionCap = 400, reviewThreshold = 4500, rent = 400, requiredStars = 3 },
+            new GradeConfig { grade = 4, maxCustomers = 124, maxSimultaneous = 28, attractionCap = 600, reviewThreshold = 22000, rent = 800, requiredStars = 4 },
+            new GradeConfig { grade = 5, maxCustomers = 172, maxSimultaneous = 40, attractionCap = 800, reviewThreshold = 50000, rent = 1200, requiredStars = 5 },
+            new GradeConfig { grade = 6, maxCustomers = 286, maxSimultaneous = 65, attractionCap = 1200, reviewThreshold = 140000, rent = 1800, requiredStars = 6 },
+            new GradeConfig { grade = 7, maxCustomers = 345, maxSimultaneous = 65, attractionCap = 1200, reviewThreshold = 400000, rent = 2500, requiredStars = 7 },
         };
         
         /// <summary>

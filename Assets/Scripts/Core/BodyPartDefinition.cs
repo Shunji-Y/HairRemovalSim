@@ -28,8 +28,93 @@ namespace HairRemovalSim.Core
         [Tooltip("プレビュー背景に表示する画像（UVレイアウトやテクスチャ）。オプション。")]
         public Texture2D previewTexture;
         
+        // Bitmap cache for fast UV lookup (64x64 grid)
+        private const int CACHE_SIZE = 64;
+        private bool[] uvBitmapCache;
+        private bool isCacheInitialized = false;
+        
         /// <summary>
-        /// UV座標がこの部位に含まれるか判定
+        /// Initialize the UV bitmap cache for fast lookup.
+        /// Call this once before using ContainsUVCached().
+        /// </summary>
+        public void InitializeCache()
+        {
+            if (isCacheInitialized) return;
+            
+            uvBitmapCache = new bool[CACHE_SIZE * CACHE_SIZE];
+            
+            for (int y = 0; y < CACHE_SIZE; y++)
+            {
+                for (int x = 0; x < CACHE_SIZE; x++)
+                {
+                    Vector2 uv = new Vector2((float)x / CACHE_SIZE, (float)y / CACHE_SIZE);
+                    bool contains = false;
+                    
+                    foreach (var region in uvRegions)
+                    {
+                        if (region.rect.Contains(uv))
+                        {
+                            contains = true;
+                            break;
+                        }
+                    }
+                    
+                    uvBitmapCache[y * CACHE_SIZE + x] = contains;
+                }
+            }
+            
+            isCacheInitialized = true;
+        }
+        
+        /// <summary>
+        /// Fast cached UV lookup. Call InitializeCache() first.
+        /// </summary>
+        public bool ContainsUVCached(Vector2 uv)
+        {
+            if (!isCacheInitialized)
+            {
+                // Fallback to slow path if not initialized
+                return ContainsUV(uv);
+            }
+            
+            // Inline clamp to avoid Mathf.Clamp function call overhead
+            int x = (int)(uv.x * CACHE_SIZE);
+            int y = (int)(uv.y * CACHE_SIZE);
+            x = x < 0 ? 0 : (x >= CACHE_SIZE ? CACHE_SIZE - 1 : x);
+            y = y < 0 ? 0 : (y >= CACHE_SIZE ? CACHE_SIZE - 1 : y);
+            return uvBitmapCache[y * CACHE_SIZE + x];
+        }
+        
+        /// <summary>
+        /// Fast cached UV lookup using pixel coordinates directly (avoids float-to-int conversion).
+        /// </summary>
+        public bool ContainsPixel(int pixelX, int pixelY, int textureSize)
+        {
+            if (!isCacheInitialized)
+            {
+                Vector2 uv = new Vector2((float)pixelX / textureSize, (float)pixelY / textureSize);
+                return ContainsUV(uv);
+            }
+            
+            // Map pixel coordinates to cache coordinates with inline clamp
+            int cacheX = pixelX * CACHE_SIZE / textureSize;
+            int cacheY = pixelY * CACHE_SIZE / textureSize;
+            cacheX = cacheX < 0 ? 0 : (cacheX >= CACHE_SIZE ? CACHE_SIZE - 1 : cacheX);
+            cacheY = cacheY < 0 ? 0 : (cacheY >= CACHE_SIZE ? CACHE_SIZE - 1 : cacheY);
+            return uvBitmapCache[cacheY * CACHE_SIZE + cacheX];
+        }
+        
+        /// <summary>
+        /// Invalidate cache (call when uvRegions are modified at runtime)
+        /// </summary>
+        public void InvalidateCache()
+        {
+            isCacheInitialized = false;
+            uvBitmapCache = null;
+        }
+        
+        /// <summary>
+        /// UV座標がこの部位に含まれるか判定（オリジナル - 低速だが正確）
         /// </summary>
         public bool ContainsUV(Vector2 uv)
         {

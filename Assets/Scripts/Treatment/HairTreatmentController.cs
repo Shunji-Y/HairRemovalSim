@@ -43,6 +43,13 @@ namespace HairRemovalSim.Treatment
         private Dictionary<string, float> perPartCompletion = new Dictionary<string, float>();
         private HashSet<string> completedParts = new HashSet<string>();
         
+        // Cached textures for CountWhitePixels to avoid per-frame allocations
+        private const int PIXEL_COUNT_SIZE = 64;
+        private Texture2D cachedMaskTex;
+        private Texture2D cachedHairGrowthTex;
+        private Color32[] cachedMaskPixels;
+        private Color32[] cachedHairPixels;
+        
         // Event fired when an individual body part completes (partName)
         public event Action<string> OnPartCompleted;
 
@@ -152,6 +159,12 @@ namespace HairRemovalSim.Treatment
             perPartCompletion.Clear();
             completedParts.Clear();
             
+            // Initialize UV bitmap cache for each part (performance optimization)
+            foreach (var part in targetBodyParts)
+            {
+                part.InitializeCache();
+            }
+            
             // Calculate initial pixels for each target part
             foreach (var part in targetBodyParts)
             {
@@ -197,6 +210,9 @@ namespace HairRemovalSim.Treatment
                 {
                     // Add to targetBodyParts for proper per-part tracking
                     targetBodyParts.Add(partDef);
+                    
+                    // Initialize UV bitmap cache (performance optimization)
+                    partDef.InitializeCache();
                     
                     // Calculate initial pixels for this part
                     int partPixels = CountWhitePixelsForPart(partDef);
@@ -669,6 +685,16 @@ namespace HairRemovalSim.Treatment
         {
             int totalHairPixels = 0;
             
+            // Ensure cached textures exist
+            if (cachedMaskTex == null)
+            {
+                cachedMaskTex = new Texture2D(PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE, TextureFormat.ARGB32, false);
+            }
+            if (cachedHairGrowthTex == null)
+            {
+                cachedHairGrowthTex = new Texture2D(PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE, TextureFormat.ARGB32, false);
+            }
+            
             for (int matIndex = 0; matIndex < maskTextures.Length; matIndex++)
             {
                 var mask = maskTextures[matIndex];
@@ -682,55 +708,59 @@ namespace HairRemovalSim.Treatment
                 Texture hairGrowthTex = targetMaterials[matIndex].GetTexture("_HairGrowthMask");
                 if (hairGrowthTex == null) continue;
                 
-                // Create small temporary textures for reading
-                int smallSize = 64;
-                
-                RenderTexture smallMaskRT = RenderTexture.GetTemporary(smallSize, smallSize, 0, RenderTextureFormat.ARGB32);
+                // Use temporary RenderTextures (pooled by Unity)
+                RenderTexture smallMaskRT = RenderTexture.GetTemporary(PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE, 0, RenderTextureFormat.ARGB32);
                 Graphics.Blit(mask, smallMaskRT);
-                Texture2D maskTex = new Texture2D(smallSize, smallSize, TextureFormat.ARGB32, false);
                 RenderTexture.active = smallMaskRT;
-                maskTex.ReadPixels(new Rect(0, 0, smallSize, smallSize), 0, 0);
-                maskTex.Apply();
+                cachedMaskTex.ReadPixels(new Rect(0, 0, PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE), 0, 0);
+                cachedMaskTex.Apply();
                 
-                RenderTexture smallHairRT = RenderTexture.GetTemporary(smallSize, smallSize, 0, RenderTextureFormat.ARGB32);
+                RenderTexture smallHairRT = RenderTexture.GetTemporary(PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE, 0, RenderTextureFormat.ARGB32);
                 Graphics.Blit(hairGrowthTex, smallHairRT);
-                Texture2D hairGrowthTex2D = new Texture2D(smallSize, smallSize, TextureFormat.ARGB32, false);
                 RenderTexture.active = smallHairRT;
-                hairGrowthTex2D.ReadPixels(new Rect(0, 0, smallSize, smallSize), 0, 0);
-                hairGrowthTex2D.Apply();
+                cachedHairGrowthTex.ReadPixels(new Rect(0, 0, PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE), 0, 0);
+                cachedHairGrowthTex.Apply();
                 RenderTexture.active = null;
                 
-                Color[] maskPixels = maskTex.GetPixels();
-                Color[] hairPixels = hairGrowthTex2D.GetPixels();
+                // Get pixels into cached arrays - GetPixels32 is faster than GetPixels
+                cachedMaskPixels = cachedMaskTex.GetPixels32();
+                cachedHairPixels = cachedHairGrowthTex.GetPixels32();
                 
-                for (int i = 0; i < maskPixels.Length; i++)
+                int pixelCount = cachedMaskPixels.Length;
+                int partCount = targetBodyParts.Count;
+                
+                for (int i = 0; i < pixelCount; i++)
                 {
-                    bool hasHair = hairPixels[i].r > 0.1f;
-                    bool notRemoved = maskPixels[i].r > 0.5f;
+                    // Using byte comparison (0-255) instead of float (0-1)
+                    // 0.1f * 255 ≈ 25, 0.5f * 255 ≈ 127
+                    byte hairR = cachedHairPixels[i].r;
+                    byte maskR = cachedMaskPixels[i].r;
                     
-                    if (!hasHair || !notRemoved) continue;
+                    if (hairR <= 25 || maskR <= 127) continue;
                     
-                    // Calculate UV from pixel index
-                    int x = i % smallSize;
-                    int y = i / smallSize;
-                    Vector2 uv = new Vector2((float)x / smallSize, (float)y / smallSize);
+                    // Calculate pixel coordinates from index
+                    int x = i % PIXEL_COUNT_SIZE;
+                    int y = i / PIXEL_COUNT_SIZE;
                     
                     // Check if UV is in any target body part's region
                     bool isInTargetArea = false;
                     
-                    if (targetBodyParts.Count == 0)
+                    if (partCount == 0)
                     {
                         // No target parts specified = count all (backwards compatibility)
                         isInTargetArea = true;
                     }
                     else
                     {
-                        foreach (var part in targetBodyParts)
+                        // Use for loop instead of foreach to avoid enumerator allocation
+                        for (int p = 0; p < partCount; p++)
                         {
+                            var part = targetBodyParts[p];
                             // Only check parts that match this material/submesh
                             if (part.materialIndex == matIndex)
                             {
-                                if (part.ContainsUV(uv))
+                                // Use cached bitmap lookup for performance
+                                if (part.ContainsPixel(x, y, PIXEL_COUNT_SIZE))
                                 {
                                     isInTargetArea = true;
                                     break;
@@ -745,8 +775,6 @@ namespace HairRemovalSim.Treatment
                     }
                 }
                 
-                Destroy(maskTex);
-                Destroy(hairGrowthTex2D);
                 RenderTexture.ReleaseTemporary(smallMaskRT);
                 RenderTexture.ReleaseTemporary(smallHairRT);
             }
@@ -772,45 +800,52 @@ namespace HairRemovalSim.Treatment
             Texture hairGrowthTex = targetMaterials[matIndex].GetTexture("_HairGrowthMask");
             if (hairGrowthTex == null) return 0;
             
-            int smallSize = 64;
+            // Ensure cached textures exist
+            if (cachedMaskTex == null)
+            {
+                cachedMaskTex = new Texture2D(PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE, TextureFormat.ARGB32, false);
+            }
+            if (cachedHairGrowthTex == null)
+            {
+                cachedHairGrowthTex = new Texture2D(PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE, TextureFormat.ARGB32, false);
+            }
             
-            RenderTexture smallMaskRT = RenderTexture.GetTemporary(smallSize, smallSize, 0, RenderTextureFormat.ARGB32);
+            RenderTexture smallMaskRT = RenderTexture.GetTemporary(PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE, 0, RenderTextureFormat.ARGB32);
             Graphics.Blit(mask, smallMaskRT);
-            Texture2D maskTex = new Texture2D(smallSize, smallSize, TextureFormat.ARGB32, false);
             RenderTexture.active = smallMaskRT;
-            maskTex.ReadPixels(new Rect(0, 0, smallSize, smallSize), 0, 0);
-            maskTex.Apply();
+            cachedMaskTex.ReadPixels(new Rect(0, 0, PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE), 0, 0);
+            cachedMaskTex.Apply();
             
-            RenderTexture smallHairRT = RenderTexture.GetTemporary(smallSize, smallSize, 0, RenderTextureFormat.ARGB32);
+            RenderTexture smallHairRT = RenderTexture.GetTemporary(PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE, 0, RenderTextureFormat.ARGB32);
             Graphics.Blit(hairGrowthTex, smallHairRT);
-            Texture2D hairGrowthTex2D = new Texture2D(smallSize, smallSize, TextureFormat.ARGB32, false);
             RenderTexture.active = smallHairRT;
-            hairGrowthTex2D.ReadPixels(new Rect(0, 0, smallSize, smallSize), 0, 0);
-            hairGrowthTex2D.Apply();
+            cachedHairGrowthTex.ReadPixels(new Rect(0, 0, PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE), 0, 0);
+            cachedHairGrowthTex.Apply();
             RenderTexture.active = null;
             
-            Color[] maskPixels = maskTex.GetPixels();
-            Color[] hairPixels = hairGrowthTex2D.GetPixels();
+            cachedMaskPixels = cachedMaskTex.GetPixels32();
+            cachedHairPixels = cachedHairGrowthTex.GetPixels32();
             
-            for (int i = 0; i < maskPixels.Length; i++)
+            int pixelCount = cachedMaskPixels.Length;
+            
+            for (int i = 0; i < pixelCount; i++)
             {
-                bool hasHair = hairPixels[i].r > 0.1f;
-                bool notRemoved = maskPixels[i].r > 0.5f;
+                // Using byte comparison (0-255) instead of float (0-1)
+                byte hairR = cachedHairPixels[i].r;
+                byte maskR = cachedMaskPixels[i].r;
                 
-                if (!hasHair || !notRemoved) continue;
+                if (hairR <= 25 || maskR <= 127) continue;
                 
-                int x = i % smallSize;
-                int y = i / smallSize;
-                Vector2 uv = new Vector2((float)x / smallSize, (float)y / smallSize);
+                int x = i % PIXEL_COUNT_SIZE;
+                int y = i / PIXEL_COUNT_SIZE;
                 
-                if (part.ContainsUV(uv))
+                // Use cached bitmap lookup for performance
+                if (part.ContainsPixel(x, y, PIXEL_COUNT_SIZE))
                 {
                     partPixels++;
                 }
             }
             
-            Destroy(maskTex);
-            Destroy(hairGrowthTex2D);
             RenderTexture.ReleaseTemporary(smallMaskRT);
             RenderTexture.ReleaseTemporary(smallHairRT);
             
@@ -931,6 +966,18 @@ namespace HairRemovalSim.Treatment
                 {
                     if (mask != null) mask.Release();
                 }
+            }
+            
+            // Cleanup cached textures
+            if (cachedMaskTex != null)
+            {
+                Destroy(cachedMaskTex);
+                cachedMaskTex = null;
+            }
+            if (cachedHairGrowthTex != null)
+            {
+                Destroy(cachedHairGrowthTex);
+                cachedHairGrowthTex = null;
             }
         }
     }

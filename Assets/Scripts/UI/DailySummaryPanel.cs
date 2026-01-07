@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System;
 using System.Text;
 using System.Collections.Generic;
 using HairRemovalSim.Core;
@@ -59,6 +60,12 @@ namespace HairRemovalSim.UI
         public static DailySummaryPanel Instance { get; private set; }
         
         public bool IsShowing => panelRoot != null && panelRoot.activeSelf;
+        
+        /// <summary>
+        /// Event fired when fade to black completes (screen is fully black)
+        /// Use this for player position reset, etc.
+        /// </summary>
+        public event Action OnFadeToBlackComplete;
         
         private void Awake()
         {
@@ -755,6 +762,9 @@ namespace HairRemovalSim.UI
                     }
                     fadeImage.color = new Color(originalColor.r, originalColor.g, originalColor.b, 1f);
                 }
+                
+                // Fire event when screen is fully black (for player position reset, etc.)
+                OnFadeToBlackComplete?.Invoke();
                 
                 // 2. Wait 1 second (User request: "1秒待ってから")
                 yield return new WaitForSeconds(1.0f);

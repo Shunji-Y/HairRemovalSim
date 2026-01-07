@@ -103,7 +103,7 @@ namespace HairRemovalSim.Environment
                     {
                         if (path.status != UnityEngine.AI.NavMeshPathStatus.PathComplete)
                         {
-                            Debug.LogError($"[Chair] {name} is NOT REACHABLE from Manager! PathStatus: {path.status}. It might be on an isolated NavMesh island.");
+                           // Debug.LogError($"[Chair] {name} is NOT REACHABLE from Manager! PathStatus: {path.status}. It might be on an isolated NavMesh island.");
                         }
                     }
                 }

@@ -2,13 +2,34 @@ using UnityEngine;
 using HairRemovalSim.Core;
 using HairRemovalSim.Interaction;
 using HairRemovalSim.Player;
+using System.Collections;
 
 namespace HairRemovalSim.Environment
 {
     public class DoorController : MonoBehaviour, IInteractable
     {
+        [Header("Door Settings")]
+        [Tooltip("The door object to rotate")]
+        public Transform doorTransform;
+        
+        [Tooltip("Rotation when door is closed (Y-axis)")]
+        public float closedRotationY = 0f;
+        
+        [Tooltip("Rotation when door is open (Y-axis)")]
+        public float openRotationY = 90f;
+        
+        [Tooltip("Door animation speed")]
+        public float doorAnimationSpeed = 2f;
+        
+        [Header("Player Reset Settings")]
+        [Tooltip("Position to reset player after daily summary")]
+        public Transform playerResetPosition;
+        
         // OutlineHighlighter is now managed automatically by InteractionController
         // Just add OutlineHighlighter component to the door object in Unity
+        
+        private bool isDoorOpen = false;
+        private Coroutine doorAnimationCoroutine;
 
         private void Awake()
         {
@@ -16,6 +37,29 @@ namespace HairRemovalSim.Environment
             if (GetComponent<Effects.OutlineHighlighter>() == null)
             {
                 gameObject.AddComponent<Effects.OutlineHighlighter>();
+            }
+        }
+        
+        private void Start()
+        {
+            // Subscribe to fade complete event for player reset (when screen is black)
+            if (UI.DailySummaryPanel.Instance != null)
+            {
+                UI.DailySummaryPanel.Instance.OnFadeToBlackComplete += OnFadeToBlackComplete;
+            }
+            
+            // Set initial door state (closed)
+            if (doorTransform != null)
+            {
+                doorTransform.localRotation = Quaternion.Euler(0, closedRotationY, 0);
+            }
+        }
+        
+        private void OnDestroy()
+        {
+            if (UI.DailySummaryPanel.Instance != null)
+            {
+                UI.DailySummaryPanel.Instance.OnFadeToBlackComplete -= OnFadeToBlackComplete;
             }
         }
 
@@ -36,7 +80,8 @@ namespace HairRemovalSim.Environment
                 GameManager.Instance.OpenShop();
                 Debug.Log("Door Interacted: Opening Shop!");
                 
-                // Optional: Play door open animation/sound
+                // Open the door
+                OpenDoor();
             }
             else if (GameManager.Instance.CurrentState == GameManager.GameState.Night)
             {
@@ -48,6 +93,9 @@ namespace HairRemovalSim.Environment
                     // TODO: Show UI message to player
                     return;
                 }
+                
+                // Close the door
+                CloseDoor();
                 
                 // Show daily summary panel instead of directly going to next day
                 if (UI.DailySummaryPanel.Instance != null)
@@ -64,6 +112,99 @@ namespace HairRemovalSim.Environment
                     GameManager.Instance.StartNextDay();
                     Debug.Log("Door Interacted: Going Home / Next Day (no summary panel)");
                 }
+            }
+        }
+        
+        /// <summary>
+        /// Open the door with animation
+        /// </summary>
+        public void OpenDoor()
+        {
+            if (doorTransform == null) return;
+            
+            isDoorOpen = true;
+            if (doorAnimationCoroutine != null)
+            {
+                StopCoroutine(doorAnimationCoroutine);
+            }
+            doorAnimationCoroutine = StartCoroutine(AnimateDoor(openRotationY));
+            Debug.Log("[DoorController] Opening door");
+        }
+        
+        /// <summary>
+        /// Close the door with animation
+        /// </summary>
+        public void CloseDoor()
+        {
+            if (doorTransform == null) return;
+            
+            isDoorOpen = false;
+            if (doorAnimationCoroutine != null)
+            {
+                StopCoroutine(doorAnimationCoroutine);
+            }
+            doorAnimationCoroutine = StartCoroutine(AnimateDoor(closedRotationY));
+            Debug.Log("[DoorController] Closing door");
+        }
+        
+        private IEnumerator AnimateDoor(float targetRotationY)
+        {
+            Quaternion startRotation = doorTransform.localRotation;
+            Quaternion targetRotation = Quaternion.Euler(0, targetRotationY, 0);
+            
+            float elapsed = 0f;
+            float duration = 1f / doorAnimationSpeed;
+            
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0, 1, elapsed / duration);
+                doorTransform.localRotation = Quaternion.Slerp(startRotation, targetRotation, t);
+                yield return null;
+            }
+            
+            doorTransform.localRotation = targetRotation;
+            doorAnimationCoroutine = null;
+        }
+        
+        /// <summary>
+        /// Called when screen fades to black (for player position reset)
+        /// </summary>
+        private void OnFadeToBlackComplete()
+        {
+            ResetPlayerPosition();
+        }
+        
+        /// <summary>
+        /// Reset player to the designated position
+        /// </summary>
+        public void ResetPlayerPosition()
+        {
+            if (playerResetPosition == null)
+            {
+                Debug.LogWarning("[DoorController] Player reset position not set!");
+                return;
+            }
+            
+            var playerController = FindObjectOfType<PlayerController>();
+            if (playerController != null)
+            {
+                // Disable CharacterController temporarily to allow position change
+                var characterController = playerController.GetComponent<CharacterController>();
+                if (characterController != null)
+                {
+                    characterController.enabled = false;
+                }
+                
+                playerController.transform.position = playerResetPosition.position;
+                playerController.transform.rotation = playerResetPosition.rotation;
+                
+                if (characterController != null)
+                {
+                    characterController.enabled = true;
+                }
+                
+                Debug.Log($"[DoorController] Player reset to position: {playerResetPosition.position}");
             }
         }
 

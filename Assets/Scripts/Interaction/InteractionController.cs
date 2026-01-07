@@ -99,11 +99,17 @@ namespace HairRemovalSim.Player
                 OutlineHighlighter highlighter = hit.collider.GetComponent<OutlineHighlighter>();
                 if (highlighter != currentHighlighter)
                 {
-                    // Unhighlight previous
-                    currentHighlighter?.Unhighlight();
+                    // Unhighlight previous (use explicit null check for Unity destroyed objects)
+                    if (currentHighlighter != null)
+                    {
+                        currentHighlighter.Unhighlight();
+                    }
                     // Highlight new
                     currentHighlighter = highlighter;
-                    currentHighlighter?.Highlight();
+                    if (currentHighlighter != null)
+                    {
+                        currentHighlighter.Highlight();
+                    }
                 }
                 
                 // Handle IInteractable

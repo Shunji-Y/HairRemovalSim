@@ -569,7 +569,18 @@ namespace HairRemovalSim.Core
                 config.expansionRoom.SetActive(true);
                 Debug.Log($"[ShopManager] Activated expansion room: {config.expansionRoom.name}");
             }
-            
+
+            if(config.additiveCashier != null)
+            {
+                config.additiveCashier.SetActive(true);
+            }
+
+            if (config.additiveReception != null)
+            {
+                config.additiveReception.SetActive(true);
+            }
+
+
             // 2. Hide walls
             if (config.wallsToHide != null)
             {
@@ -602,7 +613,17 @@ namespace HairRemovalSim.Core
             {
                 ActivateShopModel(shopGrade);
             }
-            
+
+            if (config.receptionPosition != null)
+            {
+                var reception = UI.ReceptionCounterManager.Instance?.GetReceptionByIndex(0);
+                if(reception != null)
+                {
+                    reception.transform.position = config.receptionPosition.position;
+                    reception.transform.rotation = config.receptionPosition.rotation;
+                }
+            }
+
             // 5. Move CashRegister to new position if specified (first register only)
             if (config.cashierPosition != null)
             {
@@ -615,6 +636,8 @@ namespace HairRemovalSim.Core
                 }
             }
             
+
+
             // Note: NavMesh is handled via NavMeshObstacle on walls (Carve enabled)
             // No runtime NavMesh rebuild needed
             
