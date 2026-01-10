@@ -16,6 +16,12 @@ namespace HairRemovalSim.UI
         public TextMeshProUGUI overallProgressText;
         public GameObject panelRoot;
         public PainGauge painGauge; // Pain gauge UI
+        
+        [Header("Effect Item Icon")]
+        [Tooltip("Image to display applied reception item icon (optional)")]
+        public Image effectItemIcon;
+        [Tooltip("Text to display applied reception item name (optional)")]
+        public TextMeshProUGUI effectItemNameText;
 
         private TreatmentSession currentSession;
         private HairTreatmentController treatmentController;
@@ -31,6 +37,9 @@ namespace HairRemovalSim.UI
             {
                 painGauge.SetCustomer(session.Customer);
             }
+            
+            // Setup effect item icon (display applied reception item)
+            SetupEffectItemIcon(session.Customer);
             
             // Clear existing entries
             foreach (Transform child in bodyPartListContainer)
@@ -82,6 +91,38 @@ namespace HairRemovalSim.UI
 
             UpdateUI();
             panelRoot.SetActive(false); // Start hidden, proximity detection will show it
+        }
+        
+        /// <summary>
+        /// Setup the effect item icon based on customer's applied reception item
+        /// </summary>
+        private void SetupEffectItemIcon(CustomerController customer)
+        {
+            // Hide by default
+            if (effectItemIcon != null) effectItemIcon.gameObject.SetActive(false);
+            if (effectItemNameText != null) effectItemNameText.gameObject.SetActive(false);
+            
+            if (customer != null && customer.AppliedReceptionItem != null)
+            {
+                var item = customer.AppliedReceptionItem;
+                
+                // Show icon if available
+                if (effectItemIcon != null && item.icon != null)
+                {
+                    effectItemIcon.sprite = item.icon;
+                    effectItemIcon.gameObject.SetActive(true);
+                }
+                
+                // Show localized name if available
+                if (effectItemNameText != null)
+                {
+                    string localizedName = item.GetLocalizedName();
+                    effectItemNameText.text = localizedName;
+                    effectItemNameText.gameObject.SetActive(true);
+                }
+                
+                Debug.Log($"[TreatmentPanel] Displaying effect item: {item.itemId}");
+            }
         }
         
         private void CreateEntry(string displayName, string partKey)
@@ -166,6 +207,16 @@ namespace HairRemovalSim.UI
             currentSession = null;
             treatmentController = null;
             partSliders.Clear();
+            
+            // Hide effect item icon and text
+            if (effectItemIcon != null)
+            {
+                effectItemIcon.gameObject.SetActive(false);
+            }
+            if (effectItemNameText != null)
+            {
+                effectItemNameText.gameObject.SetActive(false);
+            }
         }
     }
 }

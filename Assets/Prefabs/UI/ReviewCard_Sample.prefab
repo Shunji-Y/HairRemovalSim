@@ -67,8 +67,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: So Smooth! No Pain!
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: fed0c6eae8e7c90459dd71d2c6810aaa, type: 2}
-  m_sharedMaterial: {fileID: 7404194452147568023, guid: fed0c6eae8e7c90459dd71d2c6810aaa, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 847db9c0d898b59408d3abe9e338f044, type: 2}
+  m_sharedMaterial: {fileID: 5701558026258777487, guid: 847db9c0d898b59408d3abe9e338f044, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -263,8 +263,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: "<Color=yellow>\u2605\u2605\u2605\u2605\u2605 "
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: fed0c6eae8e7c90459dd71d2c6810aaa, type: 2}
-  m_sharedMaterial: {fileID: 7404194452147568023, guid: fed0c6eae8e7c90459dd71d2c6810aaa, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 847db9c0d898b59408d3abe9e338f044, type: 2}
+  m_sharedMaterial: {fileID: 5701558026258777487, guid: 847db9c0d898b59408d3abe9e338f044, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -840,8 +840,8 @@ MonoBehaviour:
   m_text: Best decision ever. The staff was super gentle and the new laser machine
     is magic! Highly recommend the full leg course.
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 08c30347cee1b93478155c6850a19845, type: 2}
-  m_sharedMaterial: {fileID: 7404194452147568023, guid: 08c30347cee1b93478155c6850a19845, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 847db9c0d898b59408d3abe9e338f044, type: 2}
+  m_sharedMaterial: {fileID: 5701558026258777487, guid: 847db9c0d898b59408d3abe9e338f044, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

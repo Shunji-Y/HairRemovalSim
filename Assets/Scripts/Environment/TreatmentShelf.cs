@@ -157,12 +157,12 @@ namespace HairRemovalSim.Environment
                     float x = originOffsetX + col * (slotWidth + columnGap);
                     float y = bottomRowY + row * rowHeight;
                     float z = originOffsetZ;
-                    slotObj.transform.localPosition = new Vector3(x, y, z);
+                    slotObj.transform.localPosition = new Vector3(x, y+0.075f, z);
                     slotObj.transform.localRotation = Quaternion.identity;
                     
                     // Add box collider
                     BoxCollider collider = slotObj.AddComponent<BoxCollider>();
-                    collider.size = new Vector3(slotWidth, 0.05f, slotDepth);
+                    collider.size = new Vector3(slotWidth, 0.15f, slotDepth);
                     collider.isTrigger = false;
                     
                     // Add unified interactable

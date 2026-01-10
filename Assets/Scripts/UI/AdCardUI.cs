@@ -113,11 +113,15 @@ namespace HairRemovalSim.UI
             // Effect
             if (effectText != null)
             {
-                string effect = $"+{adData.attractionBoost:F0}";
+                string effect = $"{L?.Get("ads.attraction_rate_card")}" + $"+{adData.attractionBoost:F0}\n";
                 if (adData.vipCoefficientBoost > 0)
-                    effect += $" | VIP +{adData.vipCoefficientBoost:F0}";
+                    effect += $"{L?.Get("ads.vip_card")}" + $" {adData.vipCoefficientBoost:F0}\n";
+                string dayLabel = adData.durationDays == 1
+                  ? (L?.Get("advertising.day") ?? "day")
+                   : (L?.Get("advertising.days") ?? "days");
+                effect += $"{L?.Get("ads.duration_card")}"+ $"{adData.durationDays}" + dayLabel + "\n";
                 if (adData.decayPerDay > 0)
-                    effect += $" | -{adData.decayPerDay:F0}/d";
+                    effect += $"{L?.Get("ads.days_card")}" + $" -{adData.decayPerDay:F0}/d";
                 effectText.text = effect;
             }
             

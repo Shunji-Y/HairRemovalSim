@@ -67,8 +67,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: "Rank: A \u2605\u2605\u2605"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 08c30347cee1b93478155c6850a19845, type: 2}
-  m_sharedMaterial: {fileID: 7404194452147568023, guid: 08c30347cee1b93478155c6850a19845, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 847db9c0d898b59408d3abe9e338f044, type: 2}
+  m_sharedMaterial: {fileID: 5701558026258777487, guid: 847db9c0d898b59408d3abe9e338f044, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -204,8 +204,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Yuki Tanaka
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 08c30347cee1b93478155c6850a19845, type: 2}
-  m_sharedMaterial: {fileID: 7404194452147568023, guid: 08c30347cee1b93478155c6850a19845, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 847db9c0d898b59408d3abe9e338f044, type: 2}
+  m_sharedMaterial: {fileID: 5701558026258777487, guid: 847db9c0d898b59408d3abe9e338f044, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -478,8 +478,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: HIRE
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 08c30347cee1b93478155c6850a19845, type: 2}
-  m_sharedMaterial: {fileID: 7404194452147568023, guid: 08c30347cee1b93478155c6850a19845, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 847db9c0d898b59408d3abe9e338f044, type: 2}
+  m_sharedMaterial: {fileID: 5701558026258777487, guid: 847db9c0d898b59408d3abe9e338f044, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

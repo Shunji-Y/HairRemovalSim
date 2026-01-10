@@ -276,25 +276,37 @@ namespace HairRemovalSim.UI
                 }
             }
             
-            // If this slot is empty or has same item, merge
+            // If this slot is empty or has same item, merge (with max stack limit)
             if (IsEmpty || currentItemId == dropItemId)
             {
-                // Clear source first
+                // Get max stack limit
+                int maxStack = dropItemData?.maxStackOnShelf ?? 99;
+                int currentQty = IsEmpty ? 0 : currentQuantity;
+                int space = maxStack - currentQty;
+                int toMove = Mathf.Min(qty, space);
+                
+                if (toMove <= 0)
+                {
+                    Debug.Log($"[ShelfSlotUI] Slot is full (max {maxStack})");
+                    return;
+                }
+                
+                // Remove only the amount we can move from source
                 if (source.LinkedShelf != null)
                 {
-                    source.LinkedShelf.RemoveFromSlot(source.Row, source.Col, qty);
+                    source.LinkedShelf.RemoveFromSlot(source.Row, source.Col, toMove);
                 }
                 
                 // Add to this slot
                 if (linkedShelf != null)
                 {
-                    linkedShelf.PlaceItem(row, col, dropItemId, qty);
+                    linkedShelf.PlaceItem(row, col, dropItemId, toMove);
                 }
                 
                 source.RefreshFromShelf();
                 RefreshFromShelf();
                 
-                Debug.Log($"[ShelfSlotUI] Moved {qty}x {dropItemId} from another shelf slot");
+                Debug.Log($"[ShelfSlotUI] Moved {toMove}x {dropItemId} from another shelf slot (max stack: {maxStack})");
             }
             // If different item, swap
             else

@@ -149,22 +149,36 @@ namespace HairRemovalSim.Environment
                 iconTransform.gameObject.SetActive(visible);
             }
         }
-        
+
         /// <summary>
         /// Clean this debris
         /// </summary>
         public void Clean()
         {
-   
-
-            StartCoroutine(FadeDecal());
-            // Notify manager (manager handles deactivation/pooling)
-   
-
+            Debug.Log($"[HairDebrisDecal] Clean() - Before shake - Position: {PlayerController.Instance.transform.position}");
 
             SoundManager.Instance.PlaySFX("Clean");
-            PlayerController.Instance.transform.DOShakePosition(1, 0.02f, 60, 45);
+            PlayerController.Instance.transform.DOKill();
 
+            // Disable CharacterController during shake to prevent position override
+            var characterController = PlayerController.Instance.GetComponent<CharacterController>();
+            if (characterController != null)
+            {
+                characterController.enabled = false;
+            }
+            
+            PlayerController.Instance.transform.DOShakePosition(1, 0.02f, 60, 45)
+                .OnComplete(() =>
+                {
+                    // Re-enable CharacterController after shake
+                    if (characterController != null)
+                    {
+                        characterController.enabled = true;
+                    }
+                });
+            
+            StartCoroutine(FadeDecal());
+            // Notify manager (manager handles deactivation/pooling)
         }
 
 

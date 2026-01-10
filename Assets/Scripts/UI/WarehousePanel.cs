@@ -87,6 +87,7 @@ namespace HairRemovalSim.UI
                 WarehouseManager.Instance.OnSlotChanged += OnWarehouseSlotChanged;
                 WarehouseManager.Instance.OnWarehouseUpdated += RefreshWarehouseGrid;
             }
+            // Note: Tutorial trigger is in Show() method to avoid firing on initial scene load
         }
         
         private void OnDisable()
@@ -305,6 +306,9 @@ namespace HairRemovalSim.UI
             
             // Pause game / show cursor
             Cursor.lockState = CursorLockMode.None;
+            
+            // Tutorial trigger for item movement (moved from OnEnable to avoid initial load issue)
+            Core.TutorialManager.Instance?.TryShowTutorial("tut_item_move");
             Cursor.visible = true;
             Time.timeScale = 0f;
         }

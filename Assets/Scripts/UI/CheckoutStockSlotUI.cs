@@ -159,15 +159,33 @@ namespace HairRemovalSim.UI
             string dropItemId = source.ItemId;
             int qty = source.Quantity;
             
-            // If this slot is empty or has same item, merge
+            // If this slot is empty or has same item, merge (with max stack limit)
             if (IsEmpty || itemId == dropItemId)
             {
-                itemId = dropItemId;
-                quantity += qty;
+                // Get max stack limit
+                var itemData = ItemDataRegistry.Instance?.GetItem(dropItemId);
+                int maxStack = itemData?.maxStackOnShelf ?? 99;
                 
-                // Clear source
-                source.itemId = null;
-                source.quantity = 0;
+                int currentQty = IsEmpty ? 0 : quantity;
+                int space = maxStack - currentQty;
+                int toMove = Mathf.Min(qty, space);
+                
+                if (toMove <= 0)
+                {
+                    Debug.Log($"[CheckoutStockSlotUI] Slot is full (max {maxStack})");
+                    return;
+                }
+                
+                itemId = dropItemId;
+                quantity = currentQty + toMove;
+                
+                // Update source
+                source.quantity -= toMove;
+                if (source.quantity <= 0)
+                {
+                    source.itemId = null;
+                    source.quantity = 0;
+                }
                 source.RefreshDisplay();
                 source.SaveToManager();
                 source.SyncWithCheckoutPanel();
@@ -176,7 +194,7 @@ namespace HairRemovalSim.UI
                 SaveToManager();
                 SyncWithCheckoutPanel();
                 
-                Debug.Log($"[CheckoutStockSlotUI] Moved {qty}x {dropItemId} from another slot");
+                Debug.Log($"[CheckoutStockSlotUI] Moved {toMove}x {dropItemId} from another slot (max stack: {maxStack})");
             }
             // If different item, swap
             else

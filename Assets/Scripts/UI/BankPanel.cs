@@ -80,6 +80,9 @@ namespace HairRemovalSim.UI
             
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            
+            // Complete tut_bank_open when panel is opened
+            Core.TutorialManager.Instance?.CompleteByAction("bank_panel_opened");
         }
         
         private void Update()

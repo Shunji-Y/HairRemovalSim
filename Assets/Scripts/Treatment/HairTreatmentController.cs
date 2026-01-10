@@ -628,7 +628,7 @@ namespace HairRemovalSim.Treatment
                     if(part.partName.Contains("Armpit"))
                     {
                         Debug.Log(partPercentage);
-                        threshold = 95f;
+                        threshold = 91.4f;
                     }
                     // Round up to 100% when reaching 99.5% or higher
                     if (partPercentage >= threshold)

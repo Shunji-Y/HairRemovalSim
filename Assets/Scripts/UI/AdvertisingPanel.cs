@@ -69,6 +69,12 @@ namespace HairRemovalSim.UI
             
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            
+            // Complete tut_ad_open when panel is opened
+            Core.TutorialManager.Instance?.CompleteByAction("ad_panel_opened");
+            
+            // Tutorial trigger for advertising
+            Core.TutorialManager.Instance?.TryShowTutorial("tut_ad_about");
         }
         
         private void OnDisable()
@@ -81,6 +87,9 @@ namespace HairRemovalSim.UI
             
             if (ShopManager.Instance != null)
                 ShopManager.Instance.OnShopUpgraded -= OnShopUpgraded;
+            
+            // Complete tut_ad_about when panel is closed  
+            Core.TutorialManager.Instance?.CompleteByAction("ad_panel_closed");
         }
         
         private void OnShopUpgraded(int newGrade)

@@ -415,6 +415,13 @@ namespace HairRemovalSim.Staff
                 UI.PopupNotificationManager.Instance.ShowAngryLeave(50);
             }
             
+            // Show message for staff miss
+            UI.MessageBoxManager.Instance?.ShowDirectMessage(
+                LocalizationManager.Instance.Get("msg.staff_fail") ?? "スタッフがミスしてお客様が帰ってしまった！", 
+                UI.MessageType.Complaint, 
+                false, 
+                "msg.staff_fail");
+            
             // Release bed first
             if (assignedBed != null)
             {

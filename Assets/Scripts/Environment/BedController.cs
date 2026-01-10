@@ -2,6 +2,7 @@ using UnityEngine;
 using HairRemovalSim.Customer;
 using System.Collections;
 using HairRemovalSim.Core;
+using NUnit.Framework.Interfaces;
 
 namespace HairRemovalSim.Environment
 {
@@ -68,6 +69,10 @@ namespace HairRemovalSim.Environment
         [Tooltip("Position offset for treatment progress UI relative to bed")]
         public Vector3 treatmentUIOffset = new Vector3(0, 2f, 0);
         
+        [Header("Bed Lighting")]
+        [Tooltip("Light that turns on at 17:00 and off in the morning")]
+        public Light bedLight;
+        
         /// <summary>
         /// Get the linked StaffTreatmentHandler (if any staff is assigned to this bed)
         /// </summary>
@@ -111,6 +116,15 @@ namespace HairRemovalSim.Environment
             ShopManager.Instance.Beds.Add(this);
             // Sort beds by name so Bed1 comes before Bed2, etc.
             ShopManager.Instance.Beds.Sort((a, b) => string.Compare(a.name, b.name, System.StringComparison.OrdinalIgnoreCase));
+            
+            // Subscribe to time updates for light control
+            GameEvents.OnTimeUpdated += OnTimeUpdated;
+            
+            // Initialize light state (off by default)
+            if (bedLight != null)
+            {
+                bedLight.enabled = false;
+            }
         }
         
         private void OnDestroy()
@@ -129,6 +143,29 @@ namespace HairRemovalSim.Environment
             
             // Remove from ShopManager list
             ShopManager.Instance?.Beds?.Remove(this);
+            
+            // Unsubscribe from time updates
+            GameEvents.OnTimeUpdated -= OnTimeUpdated;
+        }
+        
+        /// <summary>
+        /// Handle time updates - toggle light at 17:00
+        /// </summary>
+        private void OnTimeUpdated(float normalizedTime)
+        {
+            if (bedLight == null) return;
+            
+            // normalizedTime: 0.0 = 10:00, 1.0 = 19:00
+            // 17:00 corresponds to (17-10)/(19-10) = 7/9 ≈ 0.778
+            const float lightOnThreshold = 7f / 9f; // 17:00
+            
+            bool shouldBeOn = normalizedTime >= lightOnThreshold;
+            
+            if (bedLight.enabled != shouldBeOn)
+            {
+                bedLight.enabled = shouldBeOn;
+                Debug.Log($"[BedController] {name} light {(shouldBeOn ? "ON" : "OFF")} at time {normalizedTime:F2}");
+            }
         }
         
         private void OnSingleDoorClosed()
@@ -394,14 +431,20 @@ namespace HairRemovalSim.Environment
                 {
                     CloseDoors();
                     
+                    // Dismiss "customer waiting at bed" message
+                    UI.MessageBoxManager.Instance?.DismissMessage("msg.customer_waiting_at_bed");
+                    
                     // Pause customer waiting timer - gauge stays visible while player is at bed
                     if (CurrentCustomer != null)
                     {
                         CurrentCustomer.PauseWaiting();
                         CurrentCustomer.OnLieDownComplete();
+                        TutorialManager.Instance.TriggerEvent("treatment_start");
+
                     }
                 }
-                
+
+
                 OnPlayerEntered?.Invoke(this);
             }
         }
@@ -423,6 +466,12 @@ namespace HairRemovalSim.Environment
                 
                 // Return equipped laser to LaserBody if player has one
                 ReturnEquippedLaserToBody(other.gameObject);
+
+
+                if (CurrentCustomer != null)
+                {
+                    TutorialManager.Instance.CompleteByAction("treatment_end");
+                }
                 
                 OnPlayerExited?.Invoke(this);
             }

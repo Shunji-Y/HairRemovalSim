@@ -110,7 +110,7 @@ MonoBehaviour:
   currentDurability: 0
   painMultiplier: 10
   decalShape: 1
-  decalWidth: 0.05
+  decalWidth: 0.04
   decalHeight: 0.08
   followDecalPosition: 1
   decalTrackingDistance: 0

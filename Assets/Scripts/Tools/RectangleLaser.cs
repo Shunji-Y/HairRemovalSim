@@ -322,6 +322,11 @@ namespace HairRemovalSim.Tools
                 PerformRemoval();
                 lastUseTime = Time.time;
                 
+                if(itemData.toolType == TreatmentToolType.Shaver)
+                {
+                    TutorialManager.Instance.TriggerEvent("UseLaserEvent");
+                }
+
                 // Start loop sound
                 if (SoundManager.Instance != null && !string.IsNullOrEmpty(loopSoundId))
                 {
@@ -408,6 +413,21 @@ namespace HairRemovalSim.Tools
                         if (itemData != null && !itemData.CanTreatBodyPart(partDef.partName))
                         {
                             Debug.Log($"[RectangleLaser] Cannot treat '{partDef.partName}' with {itemData.targetArea} tool");
+                            
+                            // Show warning message based on tool type
+                            if (itemData.targetArea == ToolTargetArea.Face)
+                            {
+                                // Face laser trying to treat body
+                                string msg = LocalizationManager.Instance.Get("msg.laser_face_only");
+                                UI.MessageBoxManager.Instance?.ShowDirectMessage(msg, UI.MessageType.Warning);
+                            }
+                            else if (itemData.targetArea == ToolTargetArea.Body)
+                            {
+                                // Body laser trying to treat face
+                                string msg = LocalizationManager.Instance.Get("msg.laser_body_only");
+                                UI.MessageBoxManager.Instance?.ShowDirectMessage(msg, UI.MessageType.Warning);
+                            }
+                            
                             return;
                         }
                     }

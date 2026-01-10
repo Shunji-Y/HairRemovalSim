@@ -14,6 +14,11 @@ namespace HairRemovalSim.Core
 
         public GameState CurrentState { get; private set; }
         public int DayCount { get; private set; } = 1;
+        public int CurrentDay => DayCount; // Alias for SaveManager
+        
+        // Events for TutorialManager and other systems
+        public event System.Action<int> OnDayStarted;
+        public event System.Action<int> OnDayEnded;
 
         [Header("Settings")]
         [Tooltip("Length of one game day in real seconds (e.g., 600 = 10 mins)")]
@@ -80,6 +85,7 @@ namespace HairRemovalSim.Core
                 AdvertisingManager.Instance.ProcessDayStart();
             }
             
+
             // Refresh payment panel
             bool hasLoans = LoanManager.Instance != null && LoanManager.Instance.HasPaymentsDue();
             bool hasRent = RentManager.Instance != null && RentManager.Instance.HasPendingPayment(DayCount);
@@ -87,6 +93,25 @@ namespace HairRemovalSim.Core
             if (hasLoans || hasRent)
             {
                 UI.PaymentListPanel.Instance?.RefreshDisplay();
+            }
+
+            // Tutorial triggers based on day
+            if (DayCount == 1)
+            {
+                // Day 1: Salon open tutorial
+                TutorialManager.Instance?.TryShowTutorial("tut_salon_open");
+            }
+            else
+            {
+                // Day 2+: Good morning message (persistent until door is used)
+                MessageBoxManager.Instance?.ShowMessage("msg.good_morning", MessageType.Info, true, "msg_good_morning");
+                
+                if (DayCount == 2)
+                {
+                    // Day 2: Bank and Ad tutorials
+                    TutorialManager.Instance?.TryShowTutorial("tut_bank_open");
+                    TutorialManager.Instance?.TryShowTutorial("tut_ad_open");
+                }
             }
         }
 
@@ -103,6 +128,9 @@ namespace HairRemovalSim.Core
             Debug.Log($"Shop Opened! Day {DayCount} Started (9:00 AM).");
             
             GameEvents.TriggerShopOpened();
+            
+            // Notify tutorial and other systems
+            OnDayStarted?.Invoke(DayCount);
         }
 
         private void UpdateDayTimer()
@@ -122,11 +150,30 @@ namespace HairRemovalSim.Core
             Debug.Log("Day Ended (19:00 PM). Entering Management Phase.");
             
             GameEvents.TriggerShopClosed();
-            // TODO: Open Management UI
+            
+            // Tutorial triggers based on day
+            if (DayCount == 1)
+            {
+                // Day 1: Cleaning and day end tutorials
+                TutorialManager.Instance?.TryShowTutorial("tut_day_end");
+
+                TutorialManager.Instance?.TryShowTutorial("tut_cleaning");
+            }
+            else
+            {
+                // Day 2+: Day end message (persistent until DailySummaryPanel shows)
+                MessageBoxManager.Instance?.ShowMessage("msg.day_end", MessageType.Info, true, "msg_day_end");
+            }
+            
+            // Notify tutorial and other systems
+            OnDayEnded?.Invoke(DayCount);
         }
 
         public void StartNextDay()
         {
+            // Clear any lingering messages from previous day
+        //    UI.MessageBoxManager.Instance?.ClearAllMessages();
+            
             DayCount++;
             
             // Deliver pending orders from previous day
@@ -134,8 +181,18 @@ namespace HairRemovalSim.Core
             {
                 Store.InventoryManager.Instance.ProcessPendingOrders();
             }
-            
+
+
             StartPreparation();
+        }
+        
+        /// <summary>
+        /// Set day count (for save/load)
+        /// </summary>
+        public void SetDay(int day)
+        {
+            DayCount = Mathf.Max(1, day);
+            Debug.Log($"[GameManager] Day set to {DayCount}");
         }
         
         // Helper to get current time as 0.0 - 1.0

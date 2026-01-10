@@ -85,6 +85,24 @@ namespace HairRemovalSim.Store
             PopulateStore();
             HideTooltip();
             RefreshCartDisplay();
+            
+            // Complete tut_store_open when panel is opened
+            Core.TutorialManager.Instance?.CompleteByAction("store_panel_opened");
+            
+            // Tutorial trigger for item shop
+            Core.TutorialManager.Instance?.TryShowTutorial("tut_item_about");
+        }
+        
+        private void OnDisable()
+        {
+            // Complete tutorial when panel is closed
+            Core.TutorialManager.Instance?.CompleteByAction("store_panel_closed");
+            
+            // Day 1 specific: trigger review check tutorial
+            if (Core.GameManager.Instance?.DayCount == 1)
+            {
+                Core.TutorialManager.Instance?.TryShowTutorial("tut_review_check");
+            }
         }
         
         /// <summary>
@@ -190,17 +208,17 @@ namespace HairRemovalSim.Store
             
             if (item.CanPlaceAtReception)
             {
-                categoryName = "Reception";
+                categoryName = LocalizationManager.Instance.Get("ui.reception");
                 categorySprite = receptionIcon;
             }
             else if (item.CanUseAtCheckout)
             {
-                categoryName = "Checkout";
+                categoryName = LocalizationManager.Instance.Get("ui.checkout");
                 categorySprite = checkoutIcon;
             }
             else if (item.CanPlaceOnShelf)
             {
-                categoryName = "Shelf";
+                categoryName = LocalizationManager.Instance.Get("ui.shelf");
                 categorySprite = shelfIcon;
             }
             

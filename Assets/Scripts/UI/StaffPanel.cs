@@ -71,6 +71,18 @@ namespace HairRemovalSim.UI
             
             RefreshAll();
             ShowTab(true); // Default to hire tab
+            
+            // Complete tut_staff_open when panel is opened
+            Core.TutorialManager.Instance?.CompleteByAction("staff_panel_opened");
+            
+            // Tutorial trigger for staff hiring
+            Core.TutorialManager.Instance?.TryShowTutorial("tut_staff_about");
+        }
+        
+        private void OnDisable()
+        {
+            // Complete tut_staff_about when panel is closed
+            Core.TutorialManager.Instance?.CompleteByAction("staff_panel_closed");
         }
         
         /// <summary>
@@ -113,15 +125,15 @@ namespace HairRemovalSim.UI
         
         private void UpdateInfoDisplay()
         {
-            int shopGrade = ShopManager.Instance?.ShopGrade ?? 1;
+            int starRating = ShopManager.Instance?.StarRating ?? 1;
             int currentCount = StaffManager.Instance?.HiredStaffCount ?? 0;
-            int maxCount = StaffCandidateGenerator.Instance?.HiringConfig?.GetMaxStaffForGrade(shopGrade) ?? 0;
+            int maxCount = StaffCandidateGenerator.Instance?.HiringConfig?.GetMaxStaffForStarRating(starRating) ?? 0;
             
             if (staffCountText != null)
                 staffCountText.text = L?.Get("ui.staff_count", currentCount, maxCount) ?? $"Staff: {currentCount}/{maxCount}";
             
             if (gradeInfoText != null)
-                gradeInfoText.text = L?.Get("ui.shop_grade", shopGrade) ?? $"Grade {shopGrade}";
+                gradeInfoText.text = L?.Get("ui.star_rating", starRating) ?? $"★{starRating}";
         }
         
         /// <summary>

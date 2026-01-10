@@ -62,6 +62,9 @@ namespace HairRemovalSim.UI
             
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            
+            // Tutorial trigger for payment
+            Core.TutorialManager.Instance?.TryShowTutorial("tut_payment_about");
         }
         
         private void OnDisable()
@@ -70,6 +73,9 @@ namespace HairRemovalSim.UI
                 L.OnLocaleChanged -= RefreshDisplay;
             // Don't hide cursor here - PCUIManager handles cursor visibility
             // when switching between PC apps or closing PC
+            
+            // Complete tut_payment_about when panel is closed
+            Core.TutorialManager.Instance?.CompleteByAction("payment_list_closed");
         }
         
         public void RefreshDisplay()

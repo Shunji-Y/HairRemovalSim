@@ -184,6 +184,8 @@ namespace HairRemovalSim.Treatment
                     // Check if all target body parts are complete
                     if (session.AreAllPartsComplete())
                     {
+                        TutorialManager.Instance.TriggerEvent("FirstTreatmentEnd");
+
                         Debug.Log($"[TreatmentManager] Treatment complete for {session.Customer.data.customerName}! All parts done. Customer will now go to reception.");
                         
                         // Trigger customer to leave bed and go to reception

@@ -57,7 +57,9 @@ namespace HairRemovalSim.UI
         [Header("Tooltip")]
         [SerializeField] private ItemTooltipUI itemTooltip;
         public ItemTooltipUI Tooltip => itemTooltip;
-        
+
+        [SerializeField] GameObject crosshair;
+
         // Current state
         private CustomerController currentCustomer;
         private TreatmentBodyPart selectedParts = TreatmentBodyPart.None;
@@ -65,6 +67,9 @@ namespace HairRemovalSim.UI
         private HashSet<string> selectedDetailedParts = new HashSet<string>();
         private HashSet<string> requestedDetailedParts = new HashSet<string>();
         private bool useNewToggleSystem = false;
+        
+        // Flag to track if item tutorial was shown
+        private bool itemTutorialShown = false;
         
         // Station binding for multi-station support
         private int currentStationIndex = 0;
@@ -142,7 +147,8 @@ namespace HairRemovalSim.UI
             currentStationIndex = stationIndex;
             
             if (panel != null) panel.SetActive(true);
-            
+            crosshair.SetActive(false);
+
             // Reset selections
             ResetSelections();
             
@@ -179,6 +185,23 @@ namespace HairRemovalSim.UI
             // Show cursor (don't pause game)
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            
+            // Reset item tutorial flag
+            itemTutorialShown = false;
+            
+            // Tutorial trigger: show when panel opens AND items exist in slots
+            if (extraItemSlots != null)
+            {
+                foreach (var slot in extraItemSlots)
+                {
+                    if (slot != null && !slot.IsEmpty)
+                    {
+                        Core.TutorialManager.Instance?.TryShowTutorial("tut_reception_item");
+                        itemTutorialShown = true;
+                        break;
+                    }
+                }
+            }
         }
         
         /// <summary>
@@ -201,10 +224,24 @@ namespace HairRemovalSim.UI
             
             if (panel != null) panel.SetActive(false);
             currentCustomer = null;
+            crosshair.SetActive(true);
+
+
+            // Clear camera override
+            if (Player.PlayerController.Instance != null)
+            {
+                Player.PlayerController.Instance.ClearCameraOverride();
+            }
             
             // Hide cursor
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
+            
+            // Complete tut_reception_item when panel is closed (only if tutorial was shown)
+            if (itemTutorialShown)
+            {
+                Core.TutorialManager.Instance?.CompleteByAction("reception_panel_closed");
+            }
         }
         
         /// <summary>
@@ -223,10 +260,24 @@ namespace HairRemovalSim.UI
             
             if (panel != null) panel.SetActive(false);
             currentCustomer = null;
+            crosshair.SetActive(true);
+
+
+            // Clear camera override
+            if (Player.PlayerController.Instance != null)
+            {
+                Player.PlayerController.Instance.ClearCameraOverride();
+            }
             
             // Hide cursor
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
+            
+            // Complete tut_reception_item when panel is closed (only if tutorial was shown)
+            if (itemTutorialShown)
+            {
+                Core.TutorialManager.Instance?.CompleteByAction("reception_panel_closed");
+            }
         }
         
         private void ResetSelections()
@@ -403,7 +454,8 @@ namespace HairRemovalSim.UI
                     upsellSucceeded = roll <= successRate;
                     
                     Debug.Log($"[ReceptionPanel] Upsell attempt: {extraItemId}, Rate: {successRate:P0}, Roll: {roll:F2}, Success: {upsellSucceeded}");
-                    
+
+
                     if (upsellSucceeded)
                     {
                         // Success: apply effects (budget NOT consumed at reception, only at checkout)
@@ -415,6 +467,13 @@ namespace HairRemovalSim.UI
                         int penalty = currentCustomer.CalculateUpsellFailurePenalty(successRate);
                         data.reviewPenalty += penalty;
                         Debug.Log($"[ReceptionPanel] Upsell failed! Review penalty: {penalty}");
+                        
+                        // Show message for upsell failure
+                        MessageBoxManager.Instance?.ShowDirectMessage(
+                            Core.LocalizationManager.Instance.Get("msg.upsell_fail") ?? "アップセルに失敗した！", 
+                            MessageType.Warning, 
+                            false, 
+                            "msg.upsell_fail");
                     }
                 }
                 else if (itemData != null)
@@ -436,7 +495,10 @@ namespace HairRemovalSim.UI
             // Only include upsell price if upsell succeeded
             int basePlanPrice = CustomerPlanHelper.GetPlanPrice(data.requestPlan);
             data.confirmedPrice = basePlanPrice + (upsellSucceeded ? upsellPrice : 0);
-            
+
+            TutorialManager.Instance.CompleteByAction("ReceptionFirst");
+
+
             Debug.Log($"[ReceptionPanel] Confirmed - Parts: {selectedParts}, Price: ${data.confirmedPrice} (upsell: {upsellSucceeded})");
             
             // Show popup notification for upsell result (only if there was an upsell item)
@@ -625,6 +687,16 @@ namespace HairRemovalSim.UI
             
             // Consume one item
             selected.slot.UseOne();
+            
+            // CRITICAL: Save to Manager immediately (staff doesn't open/close panel)
+            if (ReceptionCounterManager.Instance != null)
+            {
+                int slotIndex = selected.slot.SyncSlotIndex;
+                ReceptionCounterManager.Instance.SetSlotData(
+                    currentStationIndex, slotIndex,
+                    selected.slot.ItemId,
+                    selected.slot.Quantity);
+            }
             
             Debug.Log($"[ReceptionPanel] Staff selected item: {selected.itemData.itemId}, price: ${selected.itemData.upsellPrice}, successRate: {selected.successRate:P0}");
             

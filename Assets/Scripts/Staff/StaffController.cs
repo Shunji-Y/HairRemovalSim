@@ -270,9 +270,14 @@ namespace HairRemovalSim.Staff
             if (previousAssignment == StaffAssignment.Reception)
             {
                 var receptionHandler = GetComponent<StaffReceptionHandler>();
-                if (receptionHandler != null && receptionHandler.IsProcessing)
+                if (receptionHandler != null)
                 {
-                    receptionHandler.CancelReception();
+                    if (receptionHandler.IsProcessing)
+                    {
+                        receptionHandler.CancelReception();
+                    }
+                    // CRITICAL: Clear assigned reception when leaving reception duty
+                    receptionHandler.SetAssignedReception(null);
                 }
             }
             
@@ -280,9 +285,14 @@ namespace HairRemovalSim.Staff
             if (previousAssignment == StaffAssignment.Cashier)
             {
                 var cashierHandler = GetComponent<StaffCashierHandler>();
-                if (cashierHandler != null && cashierHandler.IsProcessing)
+                if (cashierHandler != null)
                 {
-                    cashierHandler.CancelCheckout();
+                    if (cashierHandler.IsProcessing)
+                    {
+                        cashierHandler.CancelCheckout();
+                    }
+                    // CRITICAL: Clear assigned register when leaving cashier duty
+                    cashierHandler.SetAssignedRegister(null);
                 }
             }
             

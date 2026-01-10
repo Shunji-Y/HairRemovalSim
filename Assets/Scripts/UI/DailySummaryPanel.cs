@@ -32,6 +32,7 @@ namespace HairRemovalSim.UI
         [SerializeField] private TMP_Text averageReviewText;
         [SerializeField] private TMP_Text pendingOrdersText;
         [SerializeField] private TMP_Text gradeText;
+        [SerializeField] private TMP_Text possesionText;
         
         [Header("Graph (for future implementation)")]
         [SerializeField] private RectTransform graphContainer;
@@ -187,13 +188,14 @@ namespace HairRemovalSim.UI
             vlg.childControlWidth = true;
             
             // Create stat rows
-            revenueText = CreateStatRow(statsContainer.transform, "¥", "売り上げ", "¥0", Color.yellow).Item2;
-            expensesText = CreateStatRow(statsContainer.transform, "↓", "損失", "¥0", Color.red).Item2;
-            profitText = CreateStatRow(statsContainer.transform, "↑", "純利益", "¥0", profitPositiveColor, true).Item2;
-            
+            revenueText = CreateStatRow(statsContainer.transform, "$", "売り上げ", "$0", Color.yellow).Item2;
+            expensesText = CreateStatRow(statsContainer.transform, "↓", "損失", "$0", Color.red).Item2;
+            profitText = CreateStatRow(statsContainer.transform, "↑", "純利益", "$0", profitPositiveColor, true).Item2;
+            possesionText = CreateStatRow(statsContainer.transform, "↑", "所持金", "$0", Color.white).Item2;
+
             CreateSeparator(statsContainer.transform);
             
-            loanText = CreateStatRow(statsContainer.transform, "🏛", "ローン残債", "¥0", Color.white).Item2;
+            loanText = CreateStatRow(statsContainer.transform, "🏛", "ローン残債", "$0", Color.white).Item2;
             customersText = CreateStatRow(statsContainer.transform, "👤", "来店客数", "0", Color.white).Item2;
             angryCustomersText = CreateStatRow(statsContainer.transform, "😠", "怒って帰った客数", "0", Color.red).Item2;
             debrisText = CreateStatRow(statsContainer.transform, "🗑", "残りデブリ数", "0", Color.white).Item2;
@@ -207,6 +209,9 @@ namespace HairRemovalSim.UI
             
             pendingOrdersText = CreateStatRow(statsContainer.transform, "📦", "翌日届くアイテム", "なし", Color.white).Item2;
             gradeText = CreateStatRow(statsContainer.transform, "👑", "ショップグレード", "1", Color.yellow).Item2;
+
+
+            
             
             // === RIGHT PANEL: Sales Trend Graph ===
             var rightPanel = CreatePanel("RightPanel", panelRoot.transform, new Vector2(420, 480));
@@ -451,6 +456,9 @@ namespace HairRemovalSim.UI
         /// </summary>
         public void Show()
         {
+            // Dismiss the day end message when summary is shown
+            MessageBoxManager.Instance?.DismissMessage("msg_day_end");
+            
             StartCoroutine(ShowRoutine());
         }
         
@@ -523,6 +531,11 @@ namespace HairRemovalSim.UI
                 int profit = stats?.TodayProfit ?? 0;
                 profitText.text = $"${profit:N0}";
                 profitText.color = profit >= 0 ? profitPositiveColor : profitNegativeColor;
+            }
+
+            if(possesionText != null)
+            {
+                possesionText.text = $"${EconomyManager.Instance.CurrentMoney:N0}";
             }
             
             // Loan

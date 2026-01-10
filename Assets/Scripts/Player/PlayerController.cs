@@ -85,11 +85,151 @@ namespace HairRemovalSim.Player
             currentZoomLevel = 0f; // Start zoomed out
             UpdateCameraTransform();
         }
+        
+        // Player position override for station interactions
+        private bool isPositionOverrideActive = false;
+        private Vector3 originalPlayerPosition;
+        private Quaternion originalPlayerRotation;
+        private float originalXRotation;
+        private Coroutine positionOverrideCoroutine;
+        
+        [Header("Station Interaction")]
+        [Tooltip("Duration for smooth camera/player movement to station")]
+        public float stationMoveDuration = 0.3f;
+        
+        /// <summary>
+        /// Move player to a fixed position (for station interactions like reception/cashier)
+        /// </summary>
+        public void SetCameraOverride(Vector3 position, Quaternion rotation)
+        {
+            if (!isPositionOverrideActive)
+            {
+                // Save original state
+                originalPlayerPosition = transform.position;
+                originalPlayerRotation = transform.rotation;
+                originalXRotation = xRotation;
+            }
+            
+            isPositionOverrideActive = true;
+            
+            // Stop any existing movement
+            if (positionOverrideCoroutine != null)
+            {
+                StopCoroutine(positionOverrideCoroutine);
+            }
+            
+            // Start smooth movement
+            positionOverrideCoroutine = StartCoroutine(SmoothMoveToPosition(position, rotation));
+        }
+        
+        /// <summary>
+        /// Clear position override and return player to original position
+        /// </summary>
+        public void ClearCameraOverride()
+        {
+            if (!isPositionOverrideActive) return;
+            
+            isPositionOverrideActive = false;
+            
+            // Stop any existing movement
+            if (positionOverrideCoroutine != null)
+            {
+                StopCoroutine(positionOverrideCoroutine);
+            }
+            
+            // Start smooth camera angle reset (player stays in place)
+            positionOverrideCoroutine = StartCoroutine(SmoothResetCameraAngle());
+        }
+        
+        private System.Collections.IEnumerator SmoothMoveToPosition(Vector3 targetPosition, Quaternion targetRotation, bool isReturning = false)
+        {
+            // Disable CharacterController during movement
+            if (characterController != null)
+            {
+                characterController.enabled = false;
+            }
+            
+            Vector3 startPosition = transform.position;
+            Quaternion startRotation = transform.rotation;
+            float startXRotation = xRotation;
+            
+            // Calculate target X rotation
+            float targetXRotation = targetRotation.eulerAngles.x;
+            if (targetXRotation > 180) targetXRotation -= 360;
+            
+            // Only use Y rotation for player body
+            Quaternion targetBodyRotation = Quaternion.Euler(0, targetRotation.eulerAngles.y, 0);
+            
+            float elapsed = 0f;
+            while (elapsed < stationMoveDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / stationMoveDuration);
+                
+                transform.position = Vector3.Lerp(startPosition, targetPosition, t);
+                transform.rotation = Quaternion.Slerp(startRotation, targetBodyRotation, t);
+                xRotation = Mathf.Lerp(startXRotation, targetXRotation, t);
+                
+                UpdateCameraTransform();
+                yield return null;
+            }
+
+            targetPosition.y = transform.position.y;
+
+            // Ensure final position is exact
+            transform.position = targetPosition;
+            transform.rotation = targetBodyRotation;
+            xRotation = targetXRotation;
+            UpdateCameraTransform();
+            
+            // Re-enable CharacterController
+            if (characterController != null)
+            {
+                characterController.enabled = true;
+            }
+            
+            positionOverrideCoroutine = null;
+            Debug.Log($"[PlayerController] Player smoothly moved to {targetPosition}");
+        }
+        
+        /// <summary>
+        /// Smoothly reset camera angle to default (0 = looking forward), player stays in place
+        /// </summary>
+        private System.Collections.IEnumerator SmoothResetCameraAngle()
+        {
+            float startXRotation = xRotation;
+            float targetXRotation = 0f; // Look forward
+            
+            float elapsed = 0f;
+            while (elapsed < stationMoveDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / stationMoveDuration);
+                
+                xRotation = Mathf.Lerp(startXRotation, targetXRotation, t);
+                UpdateCameraTransform();
+                yield return null;
+            }
+            
+            xRotation = targetXRotation;
+            UpdateCameraTransform();
+            
+            positionOverrideCoroutine = null;
+            Debug.Log("[PlayerController] Camera angle reset, player stayed in place");
+        }
+        
+        /// <summary>
+        /// Check if position override is currently active
+        /// </summary>
+        public bool IsCameraOverrideActive => isPositionOverrideActive;
 
         private void Update()
         {
             // Only control player if not in a UI menu or Treatment Mode
             if (Cursor.visible || !canMove) return;
+            
+            // Skip normal camera control when override is active
+            if (isPositionOverrideActive) return;
 
             HandleLook();
             HandleMovement();
@@ -310,6 +450,9 @@ namespace HairRemovalSim.Player
 
         private void HandleMovement()
         {
+            // Skip if CharacterController is disabled (e.g., during DOTween shake)
+            if (characterController == null || !characterController.enabled) return;
+            
             Vector2 moveInput = moveAction.ReadValue<Vector2>();
             
             float x = moveInput.x;

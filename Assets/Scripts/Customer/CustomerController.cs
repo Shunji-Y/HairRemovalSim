@@ -54,9 +54,16 @@ namespace HairRemovalSim.Customer
         private float waitTimer = 0f;
         private float maxWaitTime = 30f;
         private bool isWaiting = false; // True if waiting timer should run
+        private bool hasShownWaitWarning = false; // Track if 80% warning was shown
         
         [Header("Applied Effects")]
         private EffectContext appliedEffects; // Effects applied from reception items
+        private Core.ItemData appliedReceptionItem; // Item applied at reception (for icon display)
+        
+        /// <summary>
+        /// Get the reception item applied to this customer (for TreatmentPanel icon display)
+        /// </summary>
+        public Core.ItemData AppliedReceptionItem => appliedReceptionItem;
 
         private CustomerState currentState;
         public CustomerState CurrentState => currentState; // Public read-only access
@@ -352,21 +359,29 @@ namespace HairRemovalSim.Customer
         }
         
         /// <summary>
-        /// Calculate upsell success rate based on total price vs total budget
-        /// Formula: Clamp(2 - (totalPrice / totalBudget), 0, 1)
-        /// where totalPrice = treatment price + upsell price
-        /// and totalBudget = treatment price + additional budget
+        /// Calculate upsell success rate based on total spending vs total budget
+        /// Formula: Clamp(2 - (totalSpending / totalBudget), 0, 1)
+        /// where totalSpending = already spent (confirmedPrice) + new upsell price
+        /// and totalBudget = plan price + additional budget (customer's fixed budget)
         /// </summary>
         public float CalculateUpsellSuccessRate(int itemPrice)
         {
+            // Customer's fixed total budget (plan price + additional budget)
             int planPrice = data != null ? CustomerPlanHelper.GetPlanPrice(data.requestPlan) : 0;
             int totalBudget = planPrice + additionalBudget;
-            int totalPrice = planPrice + itemPrice;
+            
+            // Already spent at reception (confirmedPrice includes reception upsells)
+            int alreadySpent = data != null && data.confirmedPrice > 0 
+                ? data.confirmedPrice 
+                : planPrice;
+            
+            // Total spending if this upsell succeeds
+            int totalSpending = alreadySpent + itemPrice;
             
             if (totalBudget <= 0) return 0f;
             if (itemPrice <= 0) return 1f;
             
-            float rate = 2f - ((float)totalPrice / totalBudget);
+            float rate = 2f - ((float)totalSpending / totalBudget);
             return Mathf.Clamp01(rate);
         }
         
@@ -422,6 +437,7 @@ namespace HairRemovalSim.Customer
             
             // Reset applied effects from reception items
             appliedEffects = null;
+            appliedReceptionItem = null;
             
             // Reset HairTreatmentControllers for pool reuse
             var treatmentControllers = GetComponentsInChildren<HairTreatmentController>();
@@ -762,13 +778,15 @@ namespace HairRemovalSim.Customer
         /// <summary>
         /// Navigate to counter point (reception/cashier) - stands, does not sit
         /// </summary>
-        public void GoToCounterPoint(Transform counterPos)
+        /// <param name="counterPos">Target position</param>
+        /// <param name="onArrival">Optional callback when customer arrives</param>
+        public void GoToCounterPoint(Transform counterPos, System.Action onArrival = null)
         {
             if (movementCoroutine != null) StopCoroutine(movementCoroutine);
-            movementCoroutine = StartCoroutine(GoToCounterPointRoutine(counterPos));
+            movementCoroutine = StartCoroutine(GoToCounterPointRoutine(counterPos, onArrival));
         }
 
-        private System.Collections.IEnumerator GoToCounterPointRoutine(Transform counterPos)
+        private System.Collections.IEnumerator GoToCounterPointRoutine(Transform counterPos, System.Action onArrival = null)
         {
             if (agent != null && counterPos != null)
             {
@@ -785,17 +803,19 @@ namespace HairRemovalSim.Customer
                 currentState = CustomerState.Waiting;
                 agent.SetDestination(counterPos.position);
                 
-                // Rotate to match point but don't sit
-                queueArrivalCoroutine = StartCoroutine(WaitForQueueArrivalAndRotate(counterPos, false));
+                // Rotate to match point but don't sit, call onArrival when done
+                queueArrivalCoroutine = StartCoroutine(WaitForQueueArrivalAndRotate(counterPos, false, onArrival));
             }
         }
         
 
         
+        
         /// <summary>
         /// Wait for arrival at queue position, smoothly rotate, and optionally sit
         /// </summary>
-        private System.Collections.IEnumerator WaitForQueueArrivalAndRotate(Transform queuePos, bool shouldSit = true)
+        /// <param name="onArrival">Optional callback when customer arrives and is aligned</param>
+        private System.Collections.IEnumerator WaitForQueueArrivalAndRotate(Transform queuePos, bool shouldSit = true, System.Action onArrival = null)
         {
             if (agent == null || queuePos == null) yield break;
             
@@ -931,6 +951,9 @@ namespace HairRemovalSim.Customer
             {
                 // If not sitting (queueing), we are already aligned by AlignToSeatRoutine
             }
+            
+            // Call arrival callback if provided
+            onArrival?.Invoke();
         }
         
         /// <summary>
@@ -1508,7 +1531,8 @@ namespace HairRemovalSim.Customer
             
             // Force mark all requested parts as completed to hide any remaining hair (98% threshold issue)
             ForceCompleteAllRequestedParts();
-            
+
+
             // Mark as completed
             IsCompleted = true; 
             currentState = CustomerState.Completed;
@@ -1970,6 +1994,13 @@ namespace HairRemovalSim.Customer
                         UI.PopupNotificationManager.Instance.ShowAngryLeave(50);
                     }
                     
+                    // Show message box for treatment failure
+                    UI.MessageBoxManager.Instance?.ShowDirectMessage(
+                        LocalizationManager.Instance.Get("msg.treatment_fail") ?? "お客様が痛みに耐えられず帰ってしまった！", 
+                        UI.MessageType.Complaint, 
+                        false, 
+                        "msg.treatment_fail");
+                    
                     // Release bed first
                     if (assignedBed != null)
                     {
@@ -2030,6 +2061,7 @@ namespace HairRemovalSim.Customer
             maxWaitTime = baseMaxTime * (1f + boostPercent);
             
             isWaiting = true;
+            hasShownWaitWarning = false; // Reset warning flag
             Debug.Log($"[CustomerController] {data?.customerName} started waiting (max: {maxWaitTime:F1}s, boost: {boostPercent:P0})");
         }
         
@@ -2113,6 +2145,13 @@ namespace HairRemovalSim.Customer
             
             Debug.Log($"[CustomerController] {data?.customerName} waited too long and is leaving angry!");
             
+            // Show message box for wait timeout
+            UI.MessageBoxManager.Instance?.ShowDirectMessage(
+                LocalizationManager.Instance.Get("msg.wait_timeout") ?? "お客様が待ちきれずに帰ってしまった！", 
+                UI.MessageType.Complaint, 
+                false, 
+                "msg.wait_timeout");
+            
             // Clear from ReceptionManager queue and waiting list
             if (UI.ReceptionManager.Instance != null)
             {
@@ -2184,6 +2223,12 @@ namespace HairRemovalSim.Customer
             
             // Apply all effects from the item
             EffectHelper.ApplyEffects(item, appliedEffects);
+            
+            // Store item reference if it has effects (for TreatmentPanel icon display)
+            if (item.effects != null && item.effects.Count > 0)
+            {
+                appliedReceptionItem = item;
+            }
             
             // Add review bonus to persistent data
             if (item.reviewBonus != 0)
@@ -2460,6 +2505,34 @@ namespace HairRemovalSim.Customer
         {
             Debug.Log($"[CustomerController] ArriveAtBed() CALLED! targetBed={targetBed}");
             if (targetBed == null) return;
+            
+            // Check if staff is assigned to this bed
+            if (assignedBed != null && Core.ShopManager.Instance != null && Staff.StaffManager.Instance != null)
+            {
+                int bedIndex = Core.ShopManager.Instance.Beds.IndexOf(assignedBed);
+                if (bedIndex >= 0)
+                {
+                    // Check if any staff is assigned to this bed (Treatment role, specific bed index)
+                    bool isStaffAssigned = Staff.StaffManager.Instance.IsPositionOccupied(Staff.StaffAssignment.Treatment, bedIndex);
+                    
+                    if (!isStaffAssigned)
+                    {
+                        // No staff assigned! Show warning.
+                        // Format: "Customer waiting at bed {0}"
+                        string msg = LocalizationManager.Instance.Get("msg.customer_waiting_at_bed", bedIndex + 1);
+                        if (string.IsNullOrEmpty(msg) || msg.Contains("not found"))
+                        {
+                            msg = $"お客様がベッド{bedIndex + 1}で施術を待っています";
+                        }
+                        
+                        UI.MessageBoxManager.Instance?.ShowDirectMessage(
+                            msg, 
+                            UI.MessageType.Warning,
+                            false,
+                            "msg.customer_waiting_at_bed");
+                    }
+                }
+            }
 
             // Disable agent for manual positioning
             if (agent != null) agent.enabled = false;
@@ -2613,6 +2686,18 @@ namespace HairRemovalSim.Customer
             if (isWaiting)
             {
                 waitTimer += Time.deltaTime;
+                
+                // Show warning at 80% wait time
+                if (!hasShownWaitWarning && maxWaitTime > 0f && waitTimer >= maxWaitTime * 0.8f)
+                {
+                    hasShownWaitWarning = true;
+                    UI.MessageBoxManager.Instance?.ShowDirectMessage(
+                        LocalizationManager.Instance.Get("msg.wait_warning") ?? "お客様が待たされすぎてイライラしている！", 
+                        UI.MessageType.Warning, 
+                        false, 
+                        "msg.wait_warning");
+                }
+                
                 if (waitTimer >= maxWaitTime)
                 {
                     OnWaitTimeExpired();

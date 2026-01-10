@@ -77,6 +77,10 @@ namespace HairRemovalSim.UI
             
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            
+            // Complete tut_upgrade_open when panel is opened (not used, tut_upgrade_open is auto-dismiss)
+            // Tutorial trigger for upgrade
+            Core.TutorialManager.Instance?.TryShowTutorial("tut_upgrade_about");
         }
         
         private void OnDisable()
@@ -85,6 +89,9 @@ namespace HairRemovalSim.UI
                 L.OnLocaleChanged -= RefreshDisplay;
             
             GameEvents.OnMoneyChanged -= OnMoneyChanged;
+            
+            // Complete tut_upgrade_about when panel is closed
+            Core.TutorialManager.Instance?.CompleteByAction("upgrade_panel_closed");
         }
         
         private void OnMoneyChanged(int newMoney)

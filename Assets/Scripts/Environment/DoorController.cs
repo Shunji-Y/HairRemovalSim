@@ -3,6 +3,7 @@ using HairRemovalSim.Core;
 using HairRemovalSim.Interaction;
 using HairRemovalSim.Player;
 using System.Collections;
+using HairRemovalSim.UI;
 
 namespace HairRemovalSim.Environment
 {
@@ -77,14 +78,32 @@ namespace HairRemovalSim.Environment
         {
             if (GameManager.Instance.CurrentState == GameManager.GameState.Preparation)
             {
+                // Dismiss good morning message when opening shop
+                MessageBoxManager.Instance?.DismissMessage("msg_good_morning");
+                
+                // Complete salon open tutorial (first door interact)
+                Core.TutorialManager.Instance?.CompleteByAction("door_first_interact");
+                
                 GameManager.Instance.OpenShop();
                 Debug.Log("Door Interacted: Opening Shop!");
-                
+
+                MessageBoxManager.Instance.ShowDirectMessage(
+                    LocalizationManager.Instance.Get("msg.salon_opened") ?? "サロンをオープンしました!", 
+                    MessageType.Info,
+                    false,
+                    "msg.salon_opened");
+
                 // Open the door
                 OpenDoor();
             }
             else if (GameManager.Instance.CurrentState == GameManager.GameState.Night)
             {
+                // Dismiss day end message when going home
+                MessageBoxManager.Instance?.DismissMessage("msg_day_end");
+                
+                // Complete day end tutorial (night door interact)
+                Core.TutorialManager.Instance?.CompleteByAction("door_night_interact");
+                
                 // Check if customers are still in the shop
                 var spawner = FindObjectOfType<Customer.CustomerSpawner>();
                 if (spawner != null && spawner.GetActiveCustomerCount() > 0)

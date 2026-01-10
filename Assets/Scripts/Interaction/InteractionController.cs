@@ -282,6 +282,19 @@ namespace HairRemovalSim.Player
             // Update UI
             if (EquippedToolUI.Instance != null) EquippedToolUI.Instance.SetRightHandUI(tool);
             
+            // Tutorial trigger for laser equipment
+            if (tool is Tools.RectangleLaser && tool.itemData != null)
+            {
+                if (tool.itemData.targetArea == Core.ToolTargetArea.Face)
+                {
+                    Core.TutorialManager.Instance?.TryShowTutorial("tut_face_laser");
+                }
+                else if (tool.itemData.targetArea == Core.ToolTargetArea.Body)
+                {
+                    Core.TutorialManager.Instance?.TryShowTutorial("tut_body_laser");
+                }
+            }
+            
             Debug.Log($"Equipped (Right Hand): {tool.toolName}");
         }
         

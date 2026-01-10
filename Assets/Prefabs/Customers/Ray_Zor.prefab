@@ -1411,7 +1411,7 @@ MonoBehaviour:
   obstacleRadius: 0.15
   obstacleHeight: 2
   obstacleCenter: {x: 0, y: 1, z: 0}
-  defaultMaxWaitTime: 120000
+  defaultMaxWaitTime: 120
   waitTimeGauge: {fileID: 493819634401221666}
   assignedBed: {fileID: 0}
   isInitialized: 0

@@ -50,6 +50,9 @@ namespace HairRemovalSim.Staff
             if (cashRegister != null)
             {
                 cashRegister.AssignedStaff = staffController;
+                
+                // Dismiss waiting message since staff is now handling
+                UI.MessageBoxManager.Instance?.DismissMessage("wait_cashier");
             }
             
             Debug.Log($"[StaffCashierHandler] {staffController?.StaffData?.Name} assigned to {register?.name ?? "no register"}");
@@ -183,6 +186,13 @@ namespace HairRemovalSim.Staff
             {
                 UI.PopupNotificationManager.Instance.ShowAngryLeave(50);
             }
+            
+            // Show message for staff miss
+            UI.MessageBoxManager.Instance?.ShowDirectMessage(
+                LocalizationManager.Instance.Get("msg.staff_fail") ?? "スタッフがミスしてお客様が帰ってしまった！", 
+                UI.MessageType.Complaint, 
+                false, 
+                "msg.staff_fail");
             
             customer.LeaveShop();
         }

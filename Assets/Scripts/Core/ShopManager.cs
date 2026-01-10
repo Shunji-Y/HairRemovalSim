@@ -275,6 +275,22 @@ namespace HairRemovalSim.Core
             {
                 Debug.Log($"[ShopManager] Star rating changed: ★{previousStars} → ★{StarRating}");
                 OnStarRatingChanged?.Invoke(previousStars, StarRating);
+                
+                // Show star level up message with actual star rating
+                string starMessage = LocalizationManager.Instance?.Get("msg.star_level_up", StarRating) 
+                    ?? $"星レベルが{StarRating}になりました！";
+                UI.MessageBoxManager.Instance?.ShowDirectMessage(starMessage, UI.MessageType.LevelUp);
+                
+                // Trigger milestone tutorials
+                if (StarRating == 3)
+                    TutorialManager.Instance?.TryShowTutorial("tut_toolshop_open");
+                else if (StarRating == 4)
+                    TutorialManager.Instance?.TryShowTutorial("tut_staff_open");
+                else if (StarRating == 5)
+                    TutorialManager.Instance?.TryShowTutorial("tut_upgrade_open");
+                
+                // Check if additional staff can now be hired
+                CheckAdditionalStaffAvailable(previousStars, StarRating);
             }
         }
         
@@ -293,6 +309,46 @@ namespace HairRemovalSim.Core
             {
                 Debug.Log($"[ShopManager] Star rating changed: ★{previousStars} → ★{StarRating}");
                 OnStarRatingChanged?.Invoke(previousStars, StarRating);
+                
+                // Show star level up message with actual star rating
+                string starMessage = LocalizationManager.Instance?.Get("msg.star_level_up", StarRating) 
+                    ?? $"星レベルが{StarRating}になりました！";
+                UI.MessageBoxManager.Instance?.ShowDirectMessage(starMessage, UI.MessageType.LevelUp);
+                
+                // Trigger milestone tutorials
+                if (StarRating == 3)
+                    TutorialManager.Instance?.TryShowTutorial("tut_toolshop_open");
+                else if (StarRating == 4)
+                    TutorialManager.Instance?.TryShowTutorial("tut_staff_open");
+                else if (StarRating == 5)
+                    TutorialManager.Instance?.TryShowTutorial("tut_upgrade_open");
+                
+                // Check if additional staff can now be hired
+                CheckAdditionalStaffAvailable(previousStars, StarRating);
+            }
+        }
+        
+        /// <summary>
+        /// Check if additional staff can be hired after star rating change
+        /// </summary>
+        private void CheckAdditionalStaffAvailable(int oldStars, int newStars)
+        {
+            var hiringConfig = Staff.StaffCandidateGenerator.Instance?.HiringConfig;
+            if (hiringConfig == null) return;
+            
+            int oldMax = hiringConfig.GetMaxStaffForStarRating(oldStars);
+            int newMax = hiringConfig.GetMaxStaffForStarRating(newStars);
+            
+            if (newMax > oldMax)
+            {
+                string msg = LocalizationManager.Instance.Get("msg.staff_limit_up") ?? "スタッフを{0}人まで雇えるようになりました！";
+                msg = string.Format(msg, newMax);
+                
+                UI.MessageBoxManager.Instance?.ShowDirectMessage(
+                    msg, 
+                    UI.MessageType.Info, 
+                    false, 
+                    "msg.staff_limit_up");
             }
         }
         
@@ -327,6 +383,21 @@ namespace HairRemovalSim.Core
             staffCount = 0;
             _reviewPercentBoost = 0f;
             Debug.Log("[ShopManager] Shop reset to initial state");
+        }
+        
+        /// <summary>
+        /// Alias for SaveManager compatibility
+        /// </summary>
+        public int CurrentGrade => shopGrade;
+        
+        /// <summary>
+        /// Set shop grade directly (for save/load)
+        /// </summary>
+        public void SetGrade(int grade)
+        {
+            shopGrade = Mathf.Clamp(grade, 1, 6);
+            ActivateShopModel(shopGrade);
+            Debug.Log($"[ShopManager] Grade set to {shopGrade}");
         }
         
         #region Treatment Shelf System

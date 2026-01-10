@@ -23,6 +23,11 @@ namespace HairRemovalSim.UI
         [SerializeField] private Color dirtyColor = new Color(0.8f, 0.4f, 0.2f);
         [SerializeField] private Color cleanColor = new Color(0.2f, 0.8f, 0.4f);
         
+        // Flag to track if cleaning was actually needed (debris existed)
+        private bool wasCleaningNeeded = false;
+        // Flag to prevent tutorial from triggering multiple times
+        private bool cleaningTutorialTriggered = false;
+        
         private void Start()
         {
             // Subscribe to debris manager events
@@ -35,8 +40,8 @@ namespace HairRemovalSim.UI
             GameEvents.OnShopOpened += OnShopOpened;
             GameEvents.OnShopClosed += OnShopClosed;
             
-            // Initial state
-            UpdateProgress(1f);
+            // Initial state (don't trigger tutorials on startup)
+            UpdateProgressInternal(1f, false);
             
             // Hide by default
             if (panelRoot != null)
@@ -91,7 +96,16 @@ namespace HairRemovalSim.UI
             // Update with current progress
             if (HairDebrisManager.Instance != null)
             {
-                UpdateProgress(HairDebrisManager.Instance.GetCleaningProgress());
+                float progress = HairDebrisManager.Instance.GetCleaningProgress();
+                
+                // Track if cleaning is actually needed (debris exists = progress < 1)
+                if (progress < 1f)
+                {
+                    wasCleaningNeeded = true;
+                }
+                
+                // Don't trigger tutorials on initial Show, only on actual cleaning progress
+                UpdateProgressInternal(progress, false);
                 UpdateRemainingCount();
             }
         }
@@ -107,7 +121,18 @@ namespace HairRemovalSim.UI
             }
         }
         
+        /// <summary>
+        /// Called by HairDebrisManager when cleaning progress changes
+        /// </summary>
         private void UpdateProgress(float progress)
+        {
+            UpdateProgressInternal(progress, true);
+        }
+        
+        /// <summary>
+        /// Internal progress update with tutorial trigger control
+        /// </summary>
+        private void UpdateProgressInternal(float progress, bool allowTutorialTrigger)
         {
             if (progressSlider != null)
             {
@@ -122,6 +147,19 @@ namespace HairRemovalSim.UI
             if (fillImage != null)
             {
                 fillImage.color = Color.Lerp(dirtyColor, cleanColor, progress);
+            }
+            
+            // Tutorial trigger when cleaning is 100% complete (Day 1 only)
+            // Only trigger if: cleaning was needed, player actually cleaned, and not already triggered
+            if (allowTutorialTrigger && progress >= 1f && GameManager.Instance?.DayCount == 1 
+                && wasCleaningNeeded && !cleaningTutorialTriggered)
+            {
+                cleaningTutorialTriggered = true;
+                
+                // Complete tut_cleaning tutorial
+                Core.TutorialManager.Instance?.CompleteByAction("cleaning_complete");
+                // Show store open tutorial
+                Core.TutorialManager.Instance?.TryShowTutorial("tut_store_open");
             }
             
             UpdateRemainingCount();

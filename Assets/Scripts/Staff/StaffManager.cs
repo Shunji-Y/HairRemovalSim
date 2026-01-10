@@ -189,6 +189,12 @@ namespace HairRemovalSim.Staff
             staffData.assignment = assignment;
             staffData.assignedBedIndex = assignment == StaffAssignment.Treatment ? bedIndex : -1;
             
+            // Dismiss bed waiting message when staff is assigned to treatment
+            if (assignment == StaffAssignment.Treatment)
+            {
+                UI.MessageBoxManager.Instance?.DismissMessage("msg.customer_waiting_at_bed");
+            }
+            
             // Update controller if active
             if (staffData.controller != null)
             {

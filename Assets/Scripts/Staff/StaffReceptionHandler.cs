@@ -2,6 +2,8 @@ using UnityEngine;
 using System.Collections;
 using HairRemovalSim.Customer;
 using HairRemovalSim.Environment;
+using UnityEngine.Localization.Tables;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.Staff
 {
@@ -54,6 +56,9 @@ namespace HairRemovalSim.Staff
             if (receptionManager != null)
             {
                 receptionManager.AssignedStaff = staffController;
+                
+                // Dismiss waiting message since staff is now handling
+                UI.MessageBoxManager.Instance?.DismissMessage("wait_reception");
             }
             
             Debug.Log($"[StaffReceptionHandler] {staffController?.StaffData?.Name} assigned to {reception?.name ?? "no reception"}");
@@ -191,6 +196,13 @@ namespace HairRemovalSim.Staff
             {
                 UI.PopupNotificationManager.Instance.ShowAngryLeave(50);
             }
+            
+            // Show message for staff miss
+            UI.MessageBoxManager.Instance?.ShowDirectMessage(
+                LocalizationManager.Instance.Get("msg.staff_fail") ?? "スタッフがミスしてお客様が帰ってしまった！", 
+                UI.MessageType.Complaint, 
+                false, 
+                "msg.staff_fail");
             
             customer.LeaveShop();
         }

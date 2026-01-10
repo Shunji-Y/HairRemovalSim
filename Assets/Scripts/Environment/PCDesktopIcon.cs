@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.Environment
 {
@@ -13,6 +14,7 @@ namespace HairRemovalSim.Environment
         [Header("Settings")]
         [SerializeField] private PCUIManager.AppType appType;
         [SerializeField] private string appName = "App";
+        string localizedAppName;
         
         [Header("References")]
         [SerializeField] private PCUIManager uiManager;
@@ -22,8 +24,13 @@ namespace HairRemovalSim.Environment
         [Header("Hover Effect")]
         [SerializeField] private Color normalColor = Color.white;
         [SerializeField] private Color hoverColor = new Color(0.8f, 0.9f, 1f);
+        [SerializeField] private Color lockedColor = new Color(0.4f, 0.4f, 0.4f, 0.5f);
+        
+        [Header("Lock Display")]
+        [SerializeField] private GameObject lockOverlay; // Optional: overlay image for locked state
         
         private Button button;
+        private bool isLocked = false;
         
         private void Awake()
         {
@@ -32,7 +39,8 @@ namespace HairRemovalSim.Environment
             
             if (nameText != null)
             {
-                nameText.text = appName;
+                localizedAppName = LocalizationManager.Instance.Get(appName);
+                nameText.text = localizedAppName;
             }
         }
         
@@ -46,6 +54,8 @@ namespace HairRemovalSim.Environment
         
         private void OnClick()
         {
+            if (isLocked) return;
+            
             if (uiManager != null)
             {
                 uiManager.OpenApp(appType);
@@ -54,6 +64,8 @@ namespace HairRemovalSim.Environment
         
         public void OnPointerEnter(PointerEventData eventData)
         {
+            if (isLocked) return;
+            
             if (iconImage != null)
             {
                 iconImage.color = hoverColor;
@@ -64,7 +76,36 @@ namespace HairRemovalSim.Environment
         {
             if (iconImage != null)
             {
-                iconImage.color = normalColor;
+                iconImage.color = isLocked ? lockedColor : normalColor;
+            }
+        }
+        
+        /// <summary>
+        /// Set locked state (grayed out, non-clickable)
+        /// </summary>
+        public void SetLocked(bool locked)
+        {
+            isLocked = locked;
+            
+            if (button != null)
+            {
+                button.interactable = !locked;
+            }
+            
+            if (iconImage != null)
+            {
+                iconImage.color = locked ? lockedColor : normalColor;
+            }
+
+            if (nameText != null)
+            {
+                var lockText = LocalizationManager.Instance.Get("ui.lock");
+                nameText.text = locked ? lockText :  localizedAppName;
+            }
+            
+            if (lockOverlay != null)
+            {
+                lockOverlay.SetActive(locked);
             }
         }
         

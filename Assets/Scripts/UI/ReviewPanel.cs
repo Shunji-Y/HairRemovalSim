@@ -63,6 +63,9 @@ namespace HairRemovalSim.UI
                 ShopManager.Instance.OnReviewAdded -= OnReviewAdded;
             if (L != null)
                 L.OnLocaleChanged -= RefreshDisplay;
+            
+            // Complete tut_review_check when panel is closed
+            Core.TutorialManager.Instance?.CompleteByAction("review_panel_closed");
         }
         
         public void Show()

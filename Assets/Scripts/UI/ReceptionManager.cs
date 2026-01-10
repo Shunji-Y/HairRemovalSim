@@ -88,6 +88,10 @@ namespace HairRemovalSim.UI
         [Tooltip("Position where customer stands when being served")]
         public Transform receptionPoint;
         
+        [Header("Camera")]
+        [Tooltip("Camera position when interacting with this reception")]
+        public Transform cameraPosition;
+        
         
         
         private System.Collections.Generic.Queue<CustomerController> customerQueue = new System.Collections.Generic.Queue<CustomerController>();
@@ -117,11 +121,21 @@ namespace HairRemovalSim.UI
             // Start waiting timer for reception queue
             customer.StartWaiting();
             
+            // Callback to show notification when customer arrives
+            System.Action onArrival = () => 
+            {
+                // Don't show if panel is already open or staff is handling
+                if (ReceptionPanel.Instance?.IsOpen == true) return;
+                if (HasStaffAssigned) return;
+                
+                MessageBoxManager.Instance?.ShowMessage("msg.wait_reception", MessageType.Warning,true,"wait_reception");
+            };
+            
             // First customer goes directly to reception counter (if receptionPoint exists)
             if (isFirstCustomer && receptionPoint != null)
             {
                 Debug.Log($"[ReceptionManager] {customer.data.customerName} going directly to reception counter");
-                customer.GoToCounterPoint(receptionPoint);
+                customer.GoToCounterPoint(receptionPoint, onArrival);
                 return receptionPoint;
             }
             
@@ -131,12 +145,13 @@ namespace HairRemovalSim.UI
             {
                 Debug.Log($"[ReceptionManager] {customer.data.customerName} going to chair {chair.name}");
                 customer.GoToChair(chair);
+                // Note: Chair arrival doesn't need notification (they're waiting, not ready for service)
                 return chair.SeatPosition;
             }
             
             // No chair available - go to counter position
             Debug.LogWarning($"[ReceptionManager] {customer.data.customerName} no chair available, standing at reception");
-            customer.GoToCounterPoint(transform);
+            customer.GoToCounterPoint(transform, onArrival);
             return transform;
         }
 
@@ -167,10 +182,15 @@ namespace HairRemovalSim.UI
                     return;
                 }
                 currentCustomer.PauseWaiting();
+
+                MessageBoxManager.Instance.DismissMessage("wait_reception");
+                TutorialManager.Instance.TriggerEvent("ReceptionFirst");
+
                 OpenReceptionUI();
             }
             else
             {
+
                 Debug.Log("[ReceptionManager] No customers waiting in queue");
             }
         }
@@ -196,6 +216,9 @@ namespace HairRemovalSim.UI
         {
             if (currentCustomer == null) return;
             
+            // Move camera to fixed position
+            MoveCameraToPosition();
+            
             var partNames = currentCustomer.data.requestedBodyParts.ConvertAll(bp => bp.partName);
             Debug.Log($"[ReceptionManager] Hello {currentCustomer.data.customerName}! Requested plan: {currentCustomer.data.GetPlanDisplayName()}");
             
@@ -211,6 +234,20 @@ namespace HairRemovalSim.UI
             {
                 Debug.LogWarning("[ReceptionManager] ReceptionPanel not found! Auto-assigning to bed.");
                 AssignToAvailableBed();
+            }
+        }
+        
+        /// <summary>
+        /// Move camera to the designated position for this station
+        /// </summary>
+        private void MoveCameraToPosition()
+        {
+            if (cameraPosition == null) return;
+            
+            var playerController = FindObjectOfType<PlayerController>();
+            if (playerController != null)
+            {
+                playerController.SetCameraOverride(cameraPosition.position, cameraPosition.rotation);
             }
         }
         

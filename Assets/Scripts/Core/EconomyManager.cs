@@ -48,5 +48,29 @@ namespace HairRemovalSim.Core
             CurrentDebt += amount;
             GameEvents.TriggerMoneyChanged(CurrentMoney);
         }
+        
+        /// <summary>
+        /// Alias for save/load compatibility
+        /// </summary>
+        public int LoanRemaining => CurrentDebt;
+        
+        /// <summary>
+        /// Set money directly (for save/load)
+        /// </summary>
+        public void SetMoney(int amount)
+        {
+            CurrentMoney = Mathf.Max(0, amount);
+            GameEvents.TriggerMoneyChanged(CurrentMoney);
+            Debug.Log($"[EconomyManager] Money set to {CurrentMoney}");
+        }
+        
+        /// <summary>
+        /// Set loan directly (for save/load)
+        /// </summary>
+        public void SetLoan(int amount)
+        {
+            CurrentDebt = Mathf.Max(0, amount);
+            Debug.Log($"[EconomyManager] Debt set to {CurrentDebt}");
+        }
     }
 }

@@ -59,6 +59,11 @@ namespace HairRemovalSim.UI
         private int[] addedItemPrices = new int[MAX_UPSELL_SLOTS];
         private int[] addedItemReviewBonuses = new int[MAX_UPSELL_SLOTS];
         private int activeSlotCount = 1;
+
+        [SerializeField] GameObject crosshair;
+        
+        // Flag to track if item tutorial was shown
+        private bool itemTutorialShown = false;
         
         // Station binding for multi-station support
         private int currentStationIndex = 0;
@@ -114,7 +119,9 @@ namespace HairRemovalSim.UI
             currentCustomer = customer;
             currentStationIndex = stationIndex;
             var data = customer.data;
-            
+
+            crosshair.SetActive(false);
+
             // Pause waiting timer - gauge stays visible until confirm
             customer.PauseWaiting();
             
@@ -174,6 +181,23 @@ namespace HairRemovalSim.UI
             // Unlock cursor
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            
+            // Reset item tutorial flag
+            itemTutorialShown = false;
+            
+            // Tutorial trigger: show when panel opens AND items exist in checkout slots
+            if (checkoutItemSlots != null)
+            {
+                foreach (var slot in checkoutItemSlots)
+                {
+                    if (slot != null && !slot.IsEmpty)
+                    {
+                        Core.TutorialManager.Instance?.TryShowTutorial("tut_cashier_item");
+                        itemTutorialShown = true;
+                        break;
+                    }
+                }
+            }
         }
         
         /// <summary>
@@ -210,9 +234,16 @@ namespace HairRemovalSim.UI
             
             if (panel != null)
                 panel.SetActive(false);
-            
+            crosshair.SetActive(true);
+
             // Do NOT clear currentCustomer - they're still at the register!
             // CashRegister.currentCustomer also remains
+            
+            // Clear camera override
+            if (Player.PlayerController.Instance != null)
+            {
+                Player.PlayerController.Instance.ClearCameraOverride();
+            }
             
             // Re-lock cursor
             Cursor.lockState = CursorLockMode.Locked;
@@ -229,7 +260,7 @@ namespace HairRemovalSim.UI
             
             if (panel != null)
                 panel.SetActive(false);
-            
+            crosshair?.SetActive(true);
             // Clear all payment info for next customer
             currentCustomer = null;
             treatmentFee = 0;
@@ -249,7 +280,19 @@ namespace HairRemovalSim.UI
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
             
+            // Clear camera override
+            if (Player.PlayerController.Instance != null)
+            {
+                Player.PlayerController.Instance.ClearCameraOverride();
+            }
+            
             Debug.Log("[PaymentPanel] Hidden and cleared all payment info");
+            
+            // Complete tut_cashier_item when panel is closed (only if tutorial was shown)
+            if (itemTutorialShown)
+            {
+                Core.TutorialManager.Instance?.CompleteByAction("payment_panel_closed");
+            }
         }
         
         /// <summary>
@@ -339,8 +382,7 @@ namespace HairRemovalSim.UI
             
             // Subtract accumulated penalties and add bonuses
             int totalReview = baseReview - data.reviewPenalty + data.reviewBonus;
-            Debug.Log(data.reviewBonus);
-            
+
             // Note: item review bonuses are now added in OnConfirmPayment after success check
             
             // Apply debris penalty (1 debris = -1 point)
@@ -664,6 +706,13 @@ namespace HairRemovalSim.UI
                         // Return failed item to checkout stock
                         ReturnItemToCheckoutStock(addedItemIds[slotIndex]);
                         
+                        // Show message for upsell failure
+                        MessageBoxManager.Instance?.ShowDirectMessage(
+                            Core.LocalizationManager.Instance.Get("msg.upsell_fail") ?? "高すぎる商品を提案してしまった！", 
+                            MessageType.Complaint, 
+                            false, 
+                            "msg.upsell_fail");
+                        
                         Debug.Log($"[PaymentPanel] Slot {slotIndex} upsell failed! Penalty: {penalty}, item returned to stock");
                     }
                 }
@@ -688,7 +737,8 @@ namespace HairRemovalSim.UI
             
             // Process payment
             EconomyManager.Instance.AddMoney(totalAmount);
-            
+            TutorialManager.Instance.CompleteByAction("CashierFirst");
+
             // Submit review
             if (ShopManager.Instance != null)
             {
@@ -891,6 +941,16 @@ namespace HairRemovalSim.UI
             
             // Consume one item
             selected.slot.RemoveOne();
+            
+            // CRITICAL: Save to Manager immediately (staff doesn't open/close panel)
+            if (CashRegisterManager.Instance != null)
+            {
+                int slotIndex = selected.slot.SyncSlotIndex;
+                CashRegisterManager.Instance.SetSlotData(
+                    currentStationIndex, slotIndex,
+                    selected.slot.ItemId,
+                    selected.slot.Quantity);
+            }
             
             Debug.Log($"[PaymentPanel] Staff selected checkout item: {selected.itemData.itemId}, price: ${selected.itemData.upsellPrice}, successRate: {selected.successRate:P0}");
             

@@ -22,6 +22,10 @@ namespace HairRemovalSim.UI
         [Tooltip("Position where customer stands when being served")]
         public Transform cashierPoint;
         
+        [Header("Camera")]
+        [Tooltip("Camera position when interacting with this register")]
+        public Transform cameraPosition;
+        
         private System.Collections.Generic.Queue<CustomerController> customerQueue = new System.Collections.Generic.Queue<CustomerController>();
         private CustomerController currentCustomer = null;
         private CustomerController customerAtRegister;
@@ -49,11 +53,21 @@ namespace HairRemovalSim.UI
             // Start waiting timer for cashier queue
             customer.StartWaiting();
             
+            // Callback to show notification when customer arrives
+            System.Action onArrival = () => 
+            {
+                // Don't show if panel is already open or staff is handling
+                if (PaymentPanel.Instance?.IsOpen == true) return;
+                if (HasStaffAssigned) return;
+                
+                MessageBoxManager.Instance?.ShowMessage("msg.wait_cashier", MessageType.Warning,true,"wait_cashier");
+            };
+            
             // First customer goes directly to cashier counter
             if (isFirstCustomer && cashierPoint != null)
             {
                 Debug.Log($"[CashRegister] {customer.data.customerName} going directly to cashier counter");
-                customer.GoToCounterPoint(cashierPoint);
+                customer.GoToCounterPoint(cashierPoint, onArrival);
                 return cashierPoint;
             }
             
@@ -63,12 +77,13 @@ namespace HairRemovalSim.UI
             {
                 Debug.Log($"[CashRegister] {customer.data.customerName} going to chair {chair.name}");
                 customer.GoToChair(chair);
+                // Note: Chair arrival doesn't need notification
                 return chair.SeatPosition;
             }
             
             // No chair available - go to counter position
             Debug.LogWarning($"[CashRegister] {customer.data.customerName} no chair available, standing at register");
-            customer.GoToCounterPoint(transform);
+            customer.GoToCounterPoint(transform, onArrival);
             return transform;
         }
         
@@ -141,6 +156,8 @@ namespace HairRemovalSim.UI
                 {
                     return;
                 }
+                MessageBoxManager.Instance.DismissMessage("wait_cashier");
+                TutorialManager.Instance.TriggerEvent("CashierFirst");
                 ProcessPayment();
             }
             else
@@ -167,6 +184,9 @@ namespace HairRemovalSim.UI
         {
             if (currentCustomer == null) return;
             
+            // Move camera to fixed position
+            MoveCameraToPosition();
+            
             // Get station index for this register
             int stationIndex = CashRegisterManager.Instance?.GetRegisterIndex(this) ?? 0;
             
@@ -188,6 +208,20 @@ namespace HairRemovalSim.UI
                 processedCustomers.Remove(currentCustomer);
                 currentCustomer = null;
                 ProcessNextCustomer();
+            }
+        }
+        
+        /// <summary>
+        /// Move camera to the designated position for this station
+        /// </summary>
+        private void MoveCameraToPosition()
+        {
+            if (cameraPosition == null) return;
+            
+            var playerController = FindObjectOfType<PlayerController>();
+            if (playerController != null)
+            {
+                playerController.SetCameraOverride(cameraPosition.position, cameraPosition.rotation);
             }
         }
         

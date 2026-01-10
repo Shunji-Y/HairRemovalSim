@@ -65,6 +65,12 @@ namespace HairRemovalSim.UI
                 targetFillAmount = actualFill;
             }
             
+            // Tutorial trigger: when pain first exceeds 50%
+            if (actualFill >= 0.5f)
+            {
+                Core.TutorialManager.Instance?.TryShowTutorial("tut_pain_gauge");
+            }
+            
             // Smooth fill animation
             if (fillImage != null)
             {

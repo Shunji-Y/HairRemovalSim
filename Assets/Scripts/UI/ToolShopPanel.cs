@@ -133,6 +133,12 @@ namespace HairRemovalSim.UI
                 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            
+            // Complete tut_toolshop_open when panel is opened
+            Core.TutorialManager.Instance?.CompleteByAction("toolshop_panel_opened");
+            
+            // Tutorial trigger for tool shop
+            Core.TutorialManager.Instance?.TryShowTutorial("tut_toolshop_about");
         }
         
         private void OnDisable()
@@ -144,6 +150,9 @@ namespace HairRemovalSim.UI
                 ShopManager.Instance.OnShopUpgraded -= OnShopUpgraded;
             
             CloseSellMode();
+            
+            // Complete tut_toolshop_about when panel is closed
+            Core.TutorialManager.Instance?.CompleteByAction("toolshop_panel_closed");
         }
         
         private void OnShopUpgraded(int newGrade)

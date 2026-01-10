@@ -114,10 +114,10 @@ namespace HairRemovalSim.UI
             var config = StaffCandidateGenerator.Instance?.HiringConfig;
             if (config == null) return false;
             
-            int shopGrade = Core.ShopManager.Instance?.ShopGrade ?? 1;
+            int starRating = Core.ShopManager.Instance?.StarRating ?? 1;
             int currentStaff = StaffManager.Instance?.HiredStaffCount ?? 0;
             
-            return config.CanHireMore(currentStaff, shopGrade);
+            return config.CanHireMore(currentStaff, starRating);
         }
         
         private void OnHireButtonClicked()
