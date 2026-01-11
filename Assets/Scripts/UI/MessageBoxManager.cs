@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 using HairRemovalSim.Core;
+using DG.Tweening;
 
 namespace HairRemovalSim.UI
 {
@@ -82,9 +83,19 @@ namespace HairRemovalSim.UI
         [SerializeField] private Color complaintColor = new Color(0.957f, 0.263f, 0.212f); // #F44336
         [SerializeField] private Color levelUpColor = new Color(0.0f, 0.749f, 1.0f); // #00BFFF 水色
         
-        [Header("Audio")]
-        [SerializeField] private AudioClip messageSound;
-        [SerializeField] private AudioSource audioSource;
+        [Header("Audio - SoundManager IDs")]
+        [SerializeField] private string warningSound = "sfx_warning";
+        [SerializeField] private string buzzerSound = "sfx_buzzer";
+        [SerializeField] private string tutorialSound = "sfx_tutorial";
+        [SerializeField] private string levelUpSound = "sfx_levelup";
+        
+        [Header("Info Icon")]
+        [SerializeField] private Image infoIcon;
+        [SerializeField] private float iconBlinkDuration = 0.5f;
+        [SerializeField] private float iconMinAlpha = 0.3f;
+        [SerializeField] private float iconMaxAlpha = 1.0f;
+        
+        private DG.Tweening.Tweener iconBlinkTween;
         
         // Active messages (newest at index 0)
         private List<MessageBoxUI> activeMessages = new List<MessageBoxUI>();
@@ -201,11 +212,14 @@ namespace HairRemovalSim.UI
             Color color = GetColorForType(data.type);
             
             // Setup the message UI
-            msgUI.Setup(data.id, timeStr, message, color, data.isBold, data.persistent, data.playSound);
+            msgUI.Setup(data.id, timeStr, message, color, data.isBold, data.persistent, data.playSound, data.type);
             
             // Add to active list (at beginning = top)
             activeMessages.Insert(0, msgUI);
             msgUI.transform.SetAsFirstSibling();
+            
+            // Update tutorial icon visibility
+            UpdateTutorialIcon();
             
             // Track ID
             if (!string.IsNullOrEmpty(data.id))
@@ -223,10 +237,10 @@ namespace HairRemovalSim.UI
             // Show panel and reset timer
             ShowPanel();
             
-            // Play sound
-            if (data.playSound && messageSound != null && audioSource != null)
+            // Play sound via SoundManager based on message type
+            if (data.playSound)
             {
-                audioSource.PlayOneShot(messageSound);
+                PlaySoundForType(data.type);
             }
             
             Debug.Log($"[MessageBoxManager] Showing message: {message}");
@@ -339,6 +353,9 @@ namespace HairRemovalSim.UI
             msgUI.gameObject.SetActive(false);
             messagePool.Enqueue(msgUI);
             
+            // Update tutorial icon visibility
+            UpdateTutorialIcon();
+            
             // Only hide panel if no messages remain at all
             if (activeMessages.Count == 0 && panel != null)
             {
@@ -400,6 +417,103 @@ namespace HairRemovalSim.UI
                 MessageType.LevelUp => levelUpColor,
                 _ => infoColor
             };
+        }
+        
+        /// <summary>
+        /// Play sound based on message type via SoundManager
+        /// </summary>
+        private void PlaySoundForType(MessageType type)
+        {
+            if (SoundManager.Instance == null) return;
+            
+            string soundId = type switch
+            {
+                MessageType.Warning => warningSound,
+                MessageType.Complaint => buzzerSound,
+                MessageType.Tutorial => tutorialSound,
+                MessageType.LevelUp => levelUpSound,
+                _ => null // Info = no sound
+            };
+            
+            if (!string.IsNullOrEmpty(soundId))
+            {
+                SoundManager.Instance.PlaySFX(soundId);
+            }
+        }
+        
+        /// <summary>
+        /// Update tutorial icon visibility based on whether any tutorial messages exist
+        /// </summary>
+        private void UpdateTutorialIcon()
+        {
+            if (infoIcon == null) return;
+            
+            // Check if any active message is a tutorial
+            bool hasTutorialMessage = false;
+            foreach (var msg in activeMessages)
+            {
+                if (msg.MessageType == MessageType.Tutorial)
+                {
+                    hasTutorialMessage = true;
+                    break;
+                }
+            }
+            
+            if (hasTutorialMessage)
+            {
+                // Show icon and start blinking if not already
+                if (!infoIcon.gameObject.activeSelf)
+                {
+                    infoIcon.gameObject.SetActive(true);
+                    StartIconBlinking();
+                }
+            }
+            else
+            {
+                // Hide icon and stop blinking
+                StopIconBlinking();
+                infoIcon.gameObject.SetActive(false);
+            }
+        }
+        
+        /// <summary>
+        /// Start blinking the info icon
+        /// </summary>
+        private void StartIconBlinking()
+        {
+            if (infoIcon == null) return;
+            
+            StopIconBlinking();
+            
+            // Set initial alpha
+            Color color = infoIcon.color;
+            color.a = iconMaxAlpha;
+            infoIcon.color = color;
+            
+            // Create looping fade animation
+            iconBlinkTween = infoIcon.DOFade(iconMinAlpha, iconBlinkDuration)
+                .SetLoops(-1, DG.Tweening.LoopType.Yoyo)
+                .SetEase(DG.Tweening.Ease.InOutSine);
+        }
+        
+        /// <summary>
+        /// Stop blinking the info icon
+        /// </summary>
+        private void StopIconBlinking()
+        {
+            if (iconBlinkTween != null && iconBlinkTween.IsActive())
+            {
+                iconBlinkTween.Kill();
+                iconBlinkTween = null;
+            }
+            
+            // Reset to full alpha
+            if (infoIcon != null)
+            {
+                Color color = infoIcon.color;
+                color.a = iconMaxAlpha;
+                infoIcon.color = color;
+            }
         }
         
         private string GetCurrentTimeString()

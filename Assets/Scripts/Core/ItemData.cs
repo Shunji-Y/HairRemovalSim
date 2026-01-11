@@ -96,7 +96,7 @@ namespace HairRemovalSim.Core
         // 【特殊効果】Special Effects
         // ==========================================
         [Header("【特殊効果】")]
-        [Tooltip("List of special effects (pain reduction, attraction boost, etc.)")]
+        [Tooltip("List of special effects (pain reduction, boost, etc.)")]
         public List<EffectData> effects = new List<EffectData>();
         
         // ==========================================

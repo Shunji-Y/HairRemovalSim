@@ -2835,7 +2835,7 @@ namespace HairRemovalSim.Customer
                 TreatmentBodyPart.Abs | TreatmentBodyPart.Back | TreatmentBodyPart.Armpits)) != 0;
             
             // Check if lower body treatment is needed (Legs)
-            bool needsPantsRemoval = (parts & TreatmentBodyPart.Legs) != 0;
+            bool needsPantsRemoval = (parts & TreatmentBodyPart.Legs | TreatmentBodyPart.Abs) != 0;
             
             // Apply clothing visibility
             if (shirtObject != null) shirtObject.SetActive(!needsShirtRemoval);

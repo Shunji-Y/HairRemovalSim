@@ -1,3 +1,5 @@
+using HairRemovalSim.Core;
+
 namespace HairRemovalSim.Customer
 {
     /// <summary>
@@ -147,18 +149,28 @@ namespace HairRemovalSim.Customer
         /// </summary>
         public static string GetRequiredPartsDisplay(CustomerRequestPlan plan)
         {
-            TreatmentBodyPart required = GetRequiredParts(plan);
-            var parts = new System.Collections.Generic.List<string>();
-            
-            if ((required & TreatmentBodyPart.Arms) != 0) parts.Add("Arms");
-            if ((required & TreatmentBodyPart.Armpits) != 0) parts.Add("Armpits");
-            if ((required & TreatmentBodyPart.Legs) != 0) parts.Add("Legs");
-            if ((required & TreatmentBodyPart.Chest) != 0) parts.Add("Chest");
-            if ((required & TreatmentBodyPart.Abs) != 0) parts.Add("Abs");
-            if ((required & TreatmentBodyPart.Beard) != 0) parts.Add("Beard");
-            if ((required & TreatmentBodyPart.Back) != 0) parts.Add("Back");
-            
-            return parts.Count > 0 ? string.Join(", ", parts) : "None";
+            //TreatmentBodyPart required = GetRequiredParts(plan);
+            //var parts = new System.Collections.Generic.List<string>();
+
+            //if ((required & TreatmentBodyPart.Arms) != 0) parts.Add("plan.arms");
+            //if ((required & TreatmentBodyPart.Armpits) != 0) parts.Add("plan.armpits");
+            //if ((required & TreatmentBodyPart.Legs) != 0) parts.Add("plan.legs");
+            //if ((required & TreatmentBodyPart.Chest) != 0) parts.Add("plan.chest");
+            //if ((required & TreatmentBodyPart.Abs) != 0) parts.Add("plan.abs");
+            //if ((required & TreatmentBodyPart.Beard) != 0) parts.Add("plan.beard");
+            //if ((required & TreatmentBodyPart.Back) != 0) parts.Add("plan.back");
+
+            //for (int i =0; i<parts.Count; i++)
+            //{
+            //    parts[i] = LocalizationManager.Instance.Get(parts[i]);
+
+            //}
+
+
+            //return parts.Count > 0 ? string.Join(", ", parts) : "None";
+
+            var planName = GetPlanDisplayName(plan);
+            return LocalizationManager.Instance.Get(planName);
         }
         
         /// <summary>

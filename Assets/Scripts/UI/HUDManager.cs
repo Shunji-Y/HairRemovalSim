@@ -22,6 +22,7 @@ namespace HairRemovalSim.UI
             GameEvents.OnMoneyChanged += UpdateMoney;
             GameEvents.OnTimeUpdated += HandleTimeUpdate;
             GameEvents.OnDayChanged += UpdateDay;
+
         }
 
         private void OnDisable()
@@ -81,7 +82,7 @@ namespace HairRemovalSim.UI
         {
             if (moneyText != null)
             {
-                moneyText.text = $"Money: ${amount:N0}";
+                moneyText.text = $"${amount:N0}";
             }
         }
 

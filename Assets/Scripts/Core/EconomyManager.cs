@@ -5,7 +5,7 @@ namespace HairRemovalSim.Core
 {
     public class EconomyManager : Singleton<EconomyManager>
     {
-        public int CurrentMoney { get; private set; } = 1000; // Starting money
+        public int CurrentMoney { get; private set; } = 500; // Starting money
         public int CurrentDebt { get; private set; } = 0;
         
         // Event for daily stats tracking (positive = revenue, negative = expense)
@@ -20,6 +20,11 @@ namespace HairRemovalSim.Core
 
         // No need to override Awake if just calling base, but Singleton handles it.
         // If we want to keep it simple, we can rely on base.Awake.
+
+        private void Start()
+        {
+            OnMoneyChanged?.Invoke(CurrentMoney);
+        }
 
         public void AddMoney(int amount)
         {

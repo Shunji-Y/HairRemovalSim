@@ -173,7 +173,7 @@ namespace HairRemovalSim.UI
             // Display total budget (plan price + additional budget)
             if (additionalBudgetText != null && customer != null)
             {
-                additionalBudgetText.text = $"${customer.GetTotalBudget()}";
+                additionalBudgetText.text =LocalizationManager.Instance.Get("ui.budget") +" :\n" + $"${customer.GetTotalBudget()}";
             }
             
             // Hide success rate (no item dropped yet)
@@ -313,12 +313,12 @@ namespace HairRemovalSim.UI
         {
             if (currentCustomer == null) return;
             var data = currentCustomer.data;
-            
+
             if (targetText != null)
-                targetText.text = CustomerPlanHelper.GetRequiredPartsDisplay(data.requestPlan);
+                targetText.text = LocalizationManager.Instance.Get("plan.requested_part")+"\n" + CustomerPlanHelper.GetRequiredPartsDisplay(data.requestPlan);
             
             if (toleranceText != null)
-                toleranceText.text = data.painToleranceLevel.ToString();
+                toleranceText.text =LocalizationManager.Instance.Get("ui.tolerance") +" :\n" + LocalizationManager.Instance.Get("ui.tolerance_level_" +data.painToleranceLevel.ToString());
         }
         
         private void OnPartToggled(TreatmentBodyPart part, bool isOn)

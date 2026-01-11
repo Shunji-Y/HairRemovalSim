@@ -24,10 +24,12 @@ namespace HairRemovalSim.UI
         private string messageId;
         private bool isPersistent;
         private string dismissAction;
+        private MessageType messageType;
         
         public string MessageId => messageId;
         public bool IsPersistent => isPersistent;
         public string DismissAction => dismissAction;
+        public MessageType MessageType => messageType;
         
         private void Awake()
         {
@@ -45,10 +47,11 @@ namespace HairRemovalSim.UI
         /// <summary>
         /// Setup the message display
         /// </summary>
-        public void Setup(string id, string time, string message, Color textColor, bool bold, bool persistent, bool playSound)
+        public void Setup(string id, string time, string message, Color textColor, bool bold, bool persistent, bool playSound, MessageType type = MessageType.Info)
         {
             messageId = id;
             isPersistent = persistent;
+            messageType = type;
             
             // Time display
             if (timeText != null)
@@ -86,7 +89,6 @@ namespace HairRemovalSim.UI
             }
             
             // Force layout rebuild for ContentSizeFitter
-            // Use Canvas.ForceUpdateCanvases() instead of coroutine (works on inactive objects)
             Canvas.ForceUpdateCanvases();
             
             if (messageText != null)

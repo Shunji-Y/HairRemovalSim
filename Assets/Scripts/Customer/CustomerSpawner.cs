@@ -58,7 +58,7 @@ namespace HairRemovalSim.Customer
         
         [Header("Attraction Level Settings (Python-based)")]
         [Tooltip("Current base attraction level (starts at 50, increases with good reviews)")]
-        [SerializeField] private float _currentAttractionLevel = 50f;
+        [SerializeField] private float _currentAttractionLevel = 30f;
         
         [Tooltip("Facility boost from items like air purifier (0 to 0.3)")]
         [SerializeField] private float _facilityBoost = 0f;

@@ -622,13 +622,13 @@ namespace HairRemovalSim.Treatment
                     
                     int currentPartPixels = CountWhitePixelsForPart(part);
                     int removedPartPixels = initialPartPixels - currentPartPixels;
-                    float partPercentage = Mathf.Clamp((float)removedPartPixels / initialPartPixels * 100f + completionBuffer, 0f, 100f);
+                    float partPercentage = Mathf.Clamp((float)removedPartPixels / initialPartPixels * 100f, 0f, 100f);// + completionBuffer, 0f, 100f);
                     
                     var threshold = 99f;
                     if(part.partName.Contains("Armpit"))
                     {
-                        Debug.Log(partPercentage);
-                        threshold = 91.4f;
+                        threshold = 97.5f;
+                   
                     }
                     // Round up to 100% when reaching 99.5% or higher
                     if (partPercentage >= threshold)
@@ -800,54 +800,77 @@ namespace HairRemovalSim.Treatment
             Texture hairGrowthTex = targetMaterials[matIndex].GetTexture("_HairGrowthMask");
             if (hairGrowthTex == null) return 0;
             
-            // Ensure cached textures exist
-            if (cachedMaskTex == null)
-            {
-                cachedMaskTex = new Texture2D(PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE, TextureFormat.ARGB32, false);
-            }
-            if (cachedHairGrowthTex == null)
-            {
-                cachedHairGrowthTex = new Texture2D(PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE, TextureFormat.ARGB32, false);
-            }
+            // Use higher resolution for small parts like Armpit
+            bool isSmallPart = part.partName.Contains("Armpit");
+            int sampleSize = isSmallPart ? 128 : PIXEL_COUNT_SIZE;
             
-            RenderTexture smallMaskRT = RenderTexture.GetTemporary(PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE, 0, RenderTextureFormat.ARGB32);
+            // Create temporary textures for this resolution
+            Texture2D tempMaskTex = new Texture2D(sampleSize, sampleSize, TextureFormat.ARGB32, false);
+            Texture2D tempHairTex = new Texture2D(sampleSize, sampleSize, TextureFormat.ARGB32, false);
+            
+            RenderTexture smallMaskRT = RenderTexture.GetTemporary(sampleSize, sampleSize, 0, RenderTextureFormat.ARGB32);
             Graphics.Blit(mask, smallMaskRT);
             RenderTexture.active = smallMaskRT;
-            cachedMaskTex.ReadPixels(new Rect(0, 0, PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE), 0, 0);
-            cachedMaskTex.Apply();
+            tempMaskTex.ReadPixels(new Rect(0, 0, sampleSize, sampleSize), 0, 0);
+            tempMaskTex.Apply();
             
-            RenderTexture smallHairRT = RenderTexture.GetTemporary(PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE, 0, RenderTextureFormat.ARGB32);
+            RenderTexture smallHairRT = RenderTexture.GetTemporary(sampleSize, sampleSize, 0, RenderTextureFormat.ARGB32);
             Graphics.Blit(hairGrowthTex, smallHairRT);
             RenderTexture.active = smallHairRT;
-            cachedHairGrowthTex.ReadPixels(new Rect(0, 0, PIXEL_COUNT_SIZE, PIXEL_COUNT_SIZE), 0, 0);
-            cachedHairGrowthTex.Apply();
+            tempHairTex.ReadPixels(new Rect(0, 0, sampleSize, sampleSize), 0, 0);
+            tempHairTex.Apply();
             RenderTexture.active = null;
             
-            cachedMaskPixels = cachedMaskTex.GetPixels32();
-            cachedHairPixels = cachedHairGrowthTex.GetPixels32();
+            Color32[] maskPixels = tempMaskTex.GetPixels32();
+            Color32[] hairPixels = tempHairTex.GetPixels32();
             
-            int pixelCount = cachedMaskPixels.Length;
+            int pixelCount = maskPixels.Length;
             
-            for (int i = 0; i < pixelCount; i++)
+            // For small parts, use UV containment for accuracy; otherwise use cached bitmap
+            if (isSmallPart)
             {
-                // Using byte comparison (0-255) instead of float (0-1)
-                byte hairR = cachedHairPixels[i].r;
-                byte maskR = cachedMaskPixels[i].r;
-                
-                if (hairR <= 25 || maskR <= 127) continue;
-                
-                int x = i % PIXEL_COUNT_SIZE;
-                int y = i / PIXEL_COUNT_SIZE;
-                
-                // Use cached bitmap lookup for performance
-                if (part.ContainsPixel(x, y, PIXEL_COUNT_SIZE))
+                for (int i = 0; i < pixelCount; i++)
                 {
-                    partPixels++;
+                    byte hairR = hairPixels[i].r;
+                    byte maskR = maskPixels[i].r;
+                    
+                    if (hairR <= 25 || maskR <= 127) continue;
+                    
+                    int x = i % sampleSize;
+                    int y = i / sampleSize;
+                    
+                    // Convert to UV coordinates and check containment directly
+                    Vector2 uv = new Vector2((float)x / sampleSize, (float)y / sampleSize);
+                    if (part.ContainsUV(uv))
+                    {
+                        partPixels++;
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < pixelCount; i++)
+                {
+                    byte hairR = hairPixels[i].r;
+                    byte maskR = maskPixels[i].r;
+                    
+                    if (hairR <= 25 || maskR <= 127) continue;
+                    
+                    int x = i % sampleSize;
+                    int y = i / sampleSize;
+                    
+                    // Use cached bitmap lookup for performance
+                    if (part.ContainsPixel(x, y, sampleSize))
+                    {
+                        partPixels++;
+                    }
                 }
             }
             
             RenderTexture.ReleaseTemporary(smallMaskRT);
             RenderTexture.ReleaseTemporary(smallHairRT);
+            DestroyImmediate(tempMaskTex);
+            DestroyImmediate(tempHairTex);
             
             return partPixels;
         }

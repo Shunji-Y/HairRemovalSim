@@ -85,7 +85,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _HairGrowthMask:
-        m_Texture: {fileID: 2800000, guid: d586f698ac7fdb846aebc12cc43365ef, type: 3}
+        m_Texture: {fileID: 2800000, guid: 311b1de2d32b5c941a54a50137e0089f, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MNAOMap:
@@ -97,7 +97,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_Abs:
-        m_Texture: {fileID: 2800000, guid: 57fa2bc88f9d3ca4e9748c5f0f701c1c, type: 3}
+        m_Texture: {fileID: 2800000, guid: e54eec15922c3b642ae37e3885438849, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_Back:
@@ -113,7 +113,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_LeftArmpit:
-        m_Texture: {fileID: 2800000, guid: fd92d2f5c8e359b4887acb2f8f656e0c, type: 3}
+        m_Texture: {fileID: 2800000, guid: f9cf66aafbec20c468f60a7f39907c89, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_LeftCalf:
@@ -133,7 +133,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_RightArmpit:
-        m_Texture: {fileID: 2800000, guid: b8e474ed31886cf4096d10ed113abfcd, type: 3}
+        m_Texture: {fileID: 2800000, guid: fd41075a9adef23478f3d0edcc06aebf, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_RightCalf:

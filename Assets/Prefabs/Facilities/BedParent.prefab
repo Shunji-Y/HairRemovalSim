@@ -536,7 +536,7 @@ MonoBehaviour:
   standUpPoint: {fileID: 4164346271593780924}
   arrivalPoint: {fileID: 6061477847035231076}
   staffPoint: {fileID: 8885177738717328621}
-  isVipOnly: 0
+  isVipOnly: 1
   leftDoor: {fileID: 3641436918977608483}
   rightDoor: {fileID: 5080429329646292250}
   laserBody: {fileID: 6032429600268016281}
@@ -2578,7 +2578,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a960afc0dd42bfb4c8e23e4c65f8daa6, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -1.06
+      value: -0.634
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a960afc0dd42bfb4c8e23e4c65f8daa6, type: 3}
       propertyPath: m_LocalPosition.y
@@ -2586,11 +2586,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a960afc0dd42bfb4c8e23e4c65f8daa6, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -2.561
+      value: -2.591
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a960afc0dd42bfb4c8e23e4c65f8daa6, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.983465
+      value: 0.8452293
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a960afc0dd42bfb4c8e23e4c65f8daa6, type: 3}
       propertyPath: m_LocalRotation.x
@@ -2598,7 +2598,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a960afc0dd42bfb4c8e23e4c65f8daa6, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.18109854
+      value: -0.53440386
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a960afc0dd42bfb4c8e23e4c65f8daa6, type: 3}
       propertyPath: m_LocalRotation.z
@@ -2610,7 +2610,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a960afc0dd42bfb4c8e23e4c65f8daa6, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: -20.868
+      value: -64.607
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a960afc0dd42bfb4c8e23e4c65f8daa6, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -3143,8 +3143,8 @@ MonoBehaviour:
   faceSlotTransform: {fileID: 5989203436664341209}
   bodySlotTransform: {fileID: 2692581755882080322}
   initialFaceItem: {fileID: 11400000, guid: a350710964637f44992a34eb431531a0, type: 2}
-  initialBodyItem: {fileID: 0}
-  spawnInitialItems: 1
+  initialBodyItem: {fileID: 11400000, guid: e8e605c4bc84ab547ad03e0657ad3d9a, type: 2}
+  spawnInitialItems: 0
 --- !u!65 &1477993980087930011
 BoxCollider:
   m_ObjectHideFlags: 0
