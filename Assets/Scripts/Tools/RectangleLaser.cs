@@ -3,6 +3,7 @@ using HairRemovalSim.Interaction;
 using HairRemovalSim.Player;
 using HairRemovalSim.Core;
 using HairRemovalSim.Treatment;
+using HairRemovalSim.UI;
 
 namespace HairRemovalSim.Tools
 {
@@ -229,6 +230,9 @@ namespace HairRemovalSim.Tools
                             interactionController.MoveToolToDecalPivot();
                         }
                         
+                        // Update crosshair completion slider based on detected body part
+                        UpdateCrosshairSlider(customerController, treatmentController, uvRect.center, subMeshIndex);
+                        
                         return;
                     }
                 }
@@ -243,6 +247,9 @@ namespace HairRemovalSim.Tools
                     controller.HideDecal();
                 }
             }
+            
+            // Hide crosshair slider when not hovering body part
+            CrosshairCompletionSlider.Instance?.Hide();
             
             // Return tool to hand when not hovering
             if (followDecalPosition && interactionController != null)
@@ -604,6 +611,7 @@ namespace HairRemovalSim.Tools
         public void Equip()
         {
             isEquipped = true;
+            SoundManager.Instance.PlaySFX("sfx_drop");
         }
 
         public override void Unequip()
@@ -630,6 +638,55 @@ namespace HairRemovalSim.Tools
                 }
             }
             return false;
+        }
+        
+        /// <summary>
+        /// Update the crosshair completion slider based on which target part the UV is over
+        /// </summary>
+        private void UpdateCrosshairSlider(HairRemovalSim.Customer.CustomerController customer, HairTreatmentController treatmentController, Vector2 uv, int subMeshIndex)
+        {
+            if (CrosshairCompletionSlider.Instance == null) return;
+            if (customer == null || customer.bodyPartsDatabase == null)
+            {
+                CrosshairCompletionSlider.Instance.Hide();
+                return;
+            }
+            
+            // Get target part names from treatment controller
+            var targetPartNames = treatmentController.GetTargetPartNames();
+            if (targetPartNames == null || targetPartNames.Count == 0)
+            {
+                CrosshairCompletionSlider.Instance.Hide();
+                return;
+            }
+            
+            // Normalize UV to 0-1 range (mesh UVs may extend beyond 0-1)
+            Vector2 normalizedUV = new Vector2(
+                Mathf.Repeat(uv.x, 1.0f),
+                Mathf.Repeat(uv.y, 1.0f)
+            );
+            
+            // Check if UV is in any target part (must match materialIndex since each submesh has own UV space)
+            foreach (var partName in targetPartNames)
+            {
+                var partDef = customer.bodyPartsDatabase.GetPartByName(partName);
+                if (partDef == null) continue;
+                
+                // Only check parts that match the current submesh (each submesh has its own UV space)
+                if (partDef.materialIndex != subMeshIndex) continue;
+                
+                // Check if normalized UV is in this part's region
+                if (partDef.ContainsUV(normalizedUV))
+                {
+                    // Get completion percentage for this part
+                    float completion = treatmentController.GetPartCompletion(partName);
+                    CrosshairCompletionSlider.Instance.Show(partName, completion);
+                    return;
+                }
+            }
+            
+            // UV is not in any target part
+            CrosshairCompletionSlider.Instance.Hide();
         }
     }
 }

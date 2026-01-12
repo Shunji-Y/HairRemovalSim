@@ -35,6 +35,10 @@ namespace HairRemovalSim.UI
         private static GameObject dragIcon;
         private Canvas rootCanvas;
         
+        // Static drag events for highlight system
+        public static event System.Action OnExtraDragStarted;
+        public static event System.Action OnExtraDragEnded;
+        
         public string ItemId => itemId;
         public int Quantity => quantity;
         public bool IsEmpty => string.IsNullOrEmpty(itemId) || quantity <= 0;
@@ -162,8 +166,11 @@ namespace HairRemovalSim.UI
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (IsEmpty) return;
-            
+            SoundManager.Instance?.PlaySFX("sfx_drag");
+
             DragSource = this;
+            
+            // Play drag sound
             
             // Create drag icon
             dragIcon = new GameObject("DragIcon");
@@ -177,12 +184,15 @@ namespace HairRemovalSim.UI
             rt.sizeDelta = new Vector2(60, 60);
             
             iconImage.color = new Color(1, 1, 1, 0.5f);
+            
+            // Fire drag started event for highlight
+            OnExtraDragStarted?.Invoke();
         }
         
         public void OnDrag(PointerEventData eventData)
         {
             if (dragIcon == null) return;
-            
+
             Vector2 pos;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 rootCanvas.transform as RectTransform,
@@ -200,13 +210,17 @@ namespace HairRemovalSim.UI
                 Destroy(dragIcon);
                 dragIcon = null;
             }
-            
+                        SoundManager.Instance?.PlaySFX("sfx_drop");
+
             if (DragSource == this)
             {
                 iconImage.color = Color.white;
             }
             
             DragSource = null;
+            
+            // Fire drag ended event
+            OnExtraDragEnded?.Invoke();
         }
         
         #endregion
@@ -215,6 +229,9 @@ namespace HairRemovalSim.UI
         
         public void OnDrop(PointerEventData eventData)
         {
+            // Play drop sound
+            SoundManager.Instance?.PlaySFX("sfx_drop");
+            
             // Handle drop from another ExtraItemSlotUI
             var sameTypeSource = eventData.pointerDrag?.GetComponent<ExtraItemSlotUI>();
             if (sameTypeSource != null && sameTypeSource != this && !sameTypeSource.IsEmpty)
@@ -228,18 +245,37 @@ namespace HairRemovalSim.UI
             string dropItemId = source.ItemId;
             int qty = source.Quantity;
             
-            // If this slot is empty or has same item, merge
+            // If this slot is empty or has same item, merge with maxStack limit
             if (IsEmpty || itemId == dropItemId)
             {
-                itemId = dropItemId;
-                quantity += qty;
+                var itemData = ItemDataRegistry.Instance?.GetItem(dropItemId);
+                int maxStack = itemData?.maxStackOnShelf ?? 99;
                 
-                source.itemId = null;
-                source.quantity = 0;
-                source.RefreshDisplay();
+                int currentQty = IsEmpty ? 0 : quantity;
+                int space = maxStack - currentQty;
+                int toMove = Mathf.Min(qty, space);
                 
-                RefreshDisplay();
-                Debug.Log($"[ExtraItemSlotUI] Moved {qty}x {dropItemId} from another slot");
+                if (toMove > 0)
+                {
+                    itemId = dropItemId;
+                    quantity = currentQty + toMove;
+                    
+                    // Leave excess in source
+                    int remaining = qty - toMove;
+                    if (remaining > 0)
+                    {
+                        source.quantity = remaining;
+                    }
+                    else
+                    {
+                        source.itemId = null;
+                        source.quantity = 0;
+                    }
+                    source.RefreshDisplay();
+                    
+                    RefreshDisplay();
+                    Debug.Log($"[ExtraItemSlotUI] Moved {toMove}x {dropItemId} (max: {maxStack}, remaining: {remaining})");
+                }
             }
             // If different item, swap
             else

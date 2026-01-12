@@ -93,6 +93,13 @@ namespace HairRemovalSim.UI
         {
             if (!IsOpen) return;
             
+            //// Play click sound on click
+            //if (UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame ||
+            //    UnityEngine.InputSystem.Mouse.current.rightButton.wasPressedThisFrame)
+            //{
+            //    SoundManager.Instance?.PlaySFX("sfx_click");
+            //}
+            
             // Close on ESC (cancel, not complete)
             if (UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame ||
                 UnityEngine.InputSystem.Mouse.current.rightButton.wasPressedThisFrame)
@@ -121,6 +128,12 @@ namespace HairRemovalSim.UI
             var data = customer.data;
 
             crosshair.SetActive(false);
+            
+            // Play sound if not conflicting with tutorial
+            if (TutorialManager.Instance == null || !TutorialManager.Instance.IsShowingTutorial)
+            {
+                SoundManager.Instance?.PlaySFX("sfx_drop");
+            }
 
             // Pause waiting timer - gauge stays visible until confirm
             customer.PauseWaiting();

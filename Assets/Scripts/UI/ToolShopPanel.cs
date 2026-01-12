@@ -528,6 +528,7 @@ namespace HairRemovalSim.UI
                         Debug.Log("[ToolShopPanel] Failed to place item (not enough money or already owned)");
                     }
                 }
+                SoundManager.Instance.PlaySFX("money_plus");
                 CloseConfirmDialog();
                 RefreshCards();
                 return;

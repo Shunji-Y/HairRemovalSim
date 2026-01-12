@@ -187,6 +187,8 @@ namespace HairRemovalSim.UI
                 TutorialManager.Instance.TriggerEvent("ReceptionFirst");
 
                 OpenReceptionUI();
+
+
             }
             else
             {
@@ -209,7 +211,9 @@ namespace HairRemovalSim.UI
         
         public string GetInteractionPrompt()
         {
-            return currentCustomerAtReception != null ? "Speak to Customer" : "Reception Desk";
+            return currentCustomerAtReception != null 
+                ? Core.LocalizationManager.Instance?.Get("prompt.speak_to_customer") ?? "Speak to Customer"
+                : Core.LocalizationManager.Instance?.Get("prompt.reception_desk") ?? "Reception Desk";
         }
 
         private void OpenReceptionUI()

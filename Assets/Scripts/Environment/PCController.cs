@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using HairRemovalSim.Player;
 using HairRemovalSim.Interaction;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.Environment
 {
@@ -22,6 +23,8 @@ namespace HairRemovalSim.Environment
         [SerializeField] private GameObject crosshair; // Crosshair UI to hide
         
         private bool isInUse = false;
+        private bool isTransitioning = false; // Prevent interaction during camera transition
+        private Coroutine cameraTransitionCoroutine;
         private PlayerController playerController;
         private Camera mainCamera;
         private Vector3 originalCameraPosition;
@@ -59,7 +62,8 @@ namespace HairRemovalSim.Environment
         
         public void OnInteract(InteractionController interactor)
         {
-            if (isInUse) return;
+            // Prevent interaction during camera transition or when already in use
+            if (isInUse || isTransitioning) return;
             
             playerController = interactor.GetComponent<PlayerController>();
             if (playerController == null) return;
@@ -69,7 +73,7 @@ namespace HairRemovalSim.Environment
         
         public string GetInteractionPrompt()
         {
-            return isInUse ? "" : "Use PC";
+            return (isInUse || isTransitioning) ? "" : Core.LocalizationManager.Instance?.Get("prompt.use_pc") ?? "Use PC";
         }
         
         public void OnHoverEnter() { }
@@ -97,7 +101,12 @@ namespace HairRemovalSim.Environment
                 // Move camera to PC view position with FOV change
                 if (cameraLockPosition != null)
                 {
-                    StartCoroutine(TransitionCamera(cameraLockPosition.position, cameraLockPosition.rotation, pcFOV));
+                    // Stop any existing camera transition
+                    if (cameraTransitionCoroutine != null)
+                    {
+                        StopCoroutine(cameraTransitionCoroutine);
+                    }
+                    cameraTransitionCoroutine = StartCoroutine(TransitionCamera(cameraLockPosition.position, cameraLockPosition.rotation, pcFOV));
                 }
             }
             
@@ -116,6 +125,8 @@ namespace HairRemovalSim.Environment
             {
                 uiManager.ShowDesktop();
             }
+
+            SoundManager.Instance.PlaySFX("sfx_click");
             
             Debug.Log("[PCController] Entered PC mode");
         }
@@ -129,7 +140,12 @@ namespace HairRemovalSim.Environment
             // Restore camera with original FOV
             if (mainCamera != null)
             {
-                StartCoroutine(TransitionCamera(originalCameraPosition, originalCameraRotation, normalFOV, true));
+                // Stop any existing camera transition
+                if (cameraTransitionCoroutine != null)
+                {
+                    StopCoroutine(cameraTransitionCoroutine);
+                }
+                cameraTransitionCoroutine = StartCoroutine(TransitionCamera(originalCameraPosition, originalCameraRotation, normalFOV, true));
             }
             
             // Show crosshair
@@ -160,6 +176,8 @@ namespace HairRemovalSim.Environment
         private System.Collections.IEnumerator TransitionCamera(Vector3 targetPos, Quaternion targetRot, float targetFOV, bool restoreParent = false)
         {
             if (mainCamera == null) yield break;
+            
+            isTransitioning = true;
             
             // Detach from parent during transition
             if (!restoreParent)
@@ -194,6 +212,9 @@ namespace HairRemovalSim.Environment
             {
                 mainCamera.transform.SetParent(originalCameraParent);
             }
+            
+            isTransitioning = false;
+            cameraTransitionCoroutine = null;
         }
     }
 }

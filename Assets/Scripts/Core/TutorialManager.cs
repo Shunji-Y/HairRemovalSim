@@ -37,6 +37,12 @@ namespace HairRemovalSim.Core
     {
         public static TutorialManager Instance { get; private set; }
         
+        /// <summary>
+        /// True while a tutorial is being shown (for sound conflict prevention)
+        /// </summary>
+        public bool IsShowingTutorial { get; private set; }
+        private Coroutine tutorialSoundCooldown;
+        
         [Header("Tutorial Definitions")]
         [SerializeField] private List<TutorialDefinition> tutorials = new List<TutorialDefinition>();
         
@@ -416,6 +422,14 @@ namespace HairRemovalSim.Core
         {
             if (MessageBoxManager.Instance == null) return;
             
+            // Set flag for sound conflict prevention
+            IsShowingTutorial = true;
+            if (tutorialSoundCooldown != null)
+            {
+                StopCoroutine(tutorialSoundCooldown);
+            }
+            tutorialSoundCooldown = StartCoroutine(ResetTutorialSoundFlag());
+            
             // Get localized message, fallback to direct message
             string message = tutorial.fallbackMessage;
             if (!string.IsNullOrEmpty(tutorial.messageKey) && LocalizationManager.Instance != null)
@@ -435,6 +449,13 @@ namespace HairRemovalSim.Core
             
             MessageBoxManager.Instance.ShowMessage(data);
             Debug.Log($"[TutorialManager] Showing tutorial: {tutorial.id}");
+        }
+        
+        private System.Collections.IEnumerator ResetTutorialSoundFlag()
+        {
+            yield return new WaitForSeconds(0.5f);
+            IsShowingTutorial = false;
+            tutorialSoundCooldown = null;
         }
     }
 }

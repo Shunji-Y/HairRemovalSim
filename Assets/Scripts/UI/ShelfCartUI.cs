@@ -21,6 +21,10 @@ namespace HairRemovalSim.UI
         [SerializeField] private ShelfSlotUI faceLaserSlotUI;
         [SerializeField] private ShelfSlotUI bodyLaserSlotUI;
         
+        [Header("Shaver Slot")]
+        [SerializeField] private GameObject shaverSlotPrefab;
+        private ShelfSlotUI generatedShaverSlot;
+        
         // Linked shelf and bed
         private TreatmentShelf linkedShelf;
         private BedController linkedBed;
@@ -28,6 +32,8 @@ namespace HairRemovalSim.UI
         
         public TreatmentShelf LinkedShelf => linkedShelf;
         public BedController LinkedBed => linkedBed;
+
+        public TMP_Text bedText;
         
         public void Initialize(TreatmentShelf shelf, string cartName)
         {
@@ -37,6 +43,8 @@ namespace HairRemovalSim.UI
             {
                 titleText.text = cartName;
             }
+
+
             
             CreateSlotUIs();
         }
@@ -53,9 +61,15 @@ namespace HairRemovalSim.UI
             {
                 titleText.text = cartName;
             }
-            
+
+            if (bedText != null)
+            {
+                bedText.text = LocalizationManager.Instance.Get("ui.bed") + $"{bed.bedNum}";
+            }
+
             CreateSlotUIs();
             InitializeLaserSlots();
+            InitializeShaverSlot();
         }
         
         private void CreateSlotUIs()
@@ -68,12 +82,25 @@ namespace HairRemovalSim.UI
                 Destroy(child.gameObject);
             }
             slotUIs.Clear();
+            generatedShaverSlot = null;
             
             // Create slot UIs for each shelf slot (rowCount x columnCount)
             for (int row = 0; row < linkedShelf.rowCount; row++)
             {
                 for (int col = 0; col < linkedShelf.columnCount; col++)
                 {
+                    // At [0,0], create shaver slot if prefab is assigned
+                    if (row == 0 && col == 0 && shaverSlotPrefab != null)
+                    {
+                        var shaverObj = Instantiate(shaverSlotPrefab, slotGridParent);
+                        generatedShaverSlot = shaverObj.GetComponent<ShelfSlotUI>();
+                        if (generatedShaverSlot != null)
+                        {
+                            slotUIs.Add(generatedShaverSlot);
+                        }
+                        continue;
+                    }
+                    
                     var slotObj = Instantiate(shelfSlotPrefab, slotGridParent);
                     var slotUI = slotObj.GetComponent<ShelfSlotUI>();
                     if (slotUI != null)
@@ -100,6 +127,15 @@ namespace HairRemovalSim.UI
             }
         }
         
+        private void InitializeShaverSlot()
+        {
+            if (generatedShaverSlot != null && linkedShelf != null)
+            {
+                // Shaver slot uses row 0, col 0 of the shelf
+                generatedShaverSlot.InitializeAsShaverSlot(linkedShelf);
+            }
+        }
+        
         public void RefreshFromShelf()
         {
             foreach (var slot in slotUIs)
@@ -112,6 +148,11 @@ namespace HairRemovalSim.UI
         {
             faceLaserSlotUI?.RefreshFromLaserBody();
             bodyLaserSlotUI?.RefreshFromLaserBody();
+        }
+        
+        public void RefreshShaverSlot()
+        {
+            generatedShaverSlot?.RefreshFromShelf();
         }
     }
 }

@@ -3,6 +3,7 @@ using HairRemovalSim.Customer;
 using System.Collections;
 using HairRemovalSim.Core;
 using NUnit.Framework.Interfaces;
+using TMPro;
 
 namespace HairRemovalSim.Environment
 {
@@ -72,7 +73,10 @@ namespace HairRemovalSim.Environment
         [Header("Bed Lighting")]
         [Tooltip("Light that turns on at 17:00 and off in the morning")]
         public Light bedLight;
-        
+
+        [SerializeField] private TMP_Text bedNumText;
+        public int bedNum;
+
         /// <summary>
         /// Get the linked StaffTreatmentHandler (if any staff is assigned to this bed)
         /// </summary>
@@ -125,6 +129,9 @@ namespace HairRemovalSim.Environment
             {
                 bedLight.enabled = false;
             }
+
+            bedNum= ShopManager.Instance.Beds.IndexOf(this)+1;
+            bedNumText.text = $"{bedNum}";
         }
         
         private void OnDestroy()

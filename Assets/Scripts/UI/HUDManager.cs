@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 using HairRemovalSim.Core;
 
@@ -10,7 +11,11 @@ namespace HairRemovalSim.UI
         public TextMeshProUGUI moneyText;
         public TextMeshProUGUI timeText;
         public TextMeshProUGUI dayText;
+        public GameObject interactBackground;
         public TextMeshProUGUI interactionPromptText;
+        public GameObject placementDescriptionRoot;
+        public TextMeshProUGUI placementNameText;
+        public TextMeshProUGUI placementDescriptionText;
         public TreatmentPanel treatmentPanel;
 
         public TextMeshProUGUI timeTextForPC;
@@ -34,10 +39,19 @@ namespace HairRemovalSim.UI
 
         public void ShowInteractionPrompt(string prompt)
         {
-            if (interactionPromptText != null)
+            if (interactionPromptText != null && !string.IsNullOrEmpty(prompt))
             {
+                // Set text first
                 interactionPromptText.text = prompt;
-                interactionPromptText.gameObject.SetActive(true);
+                
+                // Show background
+                if (interactBackground != null)
+                {
+                    interactBackground.SetActive(true);
+                    
+                    // Force ContentSizeFitter to recalculate
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(interactBackground.GetComponent<RectTransform>());
+                }
             }
         }
 
@@ -45,7 +59,41 @@ namespace HairRemovalSim.UI
         {
             if (interactionPromptText != null)
             {
-                interactionPromptText.gameObject.SetActive(false);
+                interactBackground.SetActive(false);
+            }
+        }
+        
+        /// <summary>
+        /// Show description for placement objects (water server, decorations, etc.)
+        /// </summary>
+        public void ShowPlacementDescription(string name, string description)
+        {
+            // Show the root panel
+            if (placementDescriptionRoot != null)
+            {
+                placementDescriptionRoot.SetActive(true);
+            }
+            
+            if (placementNameText != null)
+            {
+                placementNameText.text = name;
+            }
+            
+            if (placementDescriptionText != null)
+            {
+                placementDescriptionText.text = description;
+            }
+        }
+        
+        /// <summary>
+        /// Hide placement object description
+        /// </summary>
+        public void HidePlacementDescription()
+        {
+            // Hide the root panel (includes background)
+            if (placementDescriptionRoot != null)
+            {
+                placementDescriptionRoot.SetActive(false);
             }
         }
 

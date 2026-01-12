@@ -317,7 +317,7 @@ namespace HairRemovalSim.Customer
         }
 
         /// <summary>
-        /// Initialize additional budget based on customer's wealth level
+        /// Initialize additional budget based on customer's rank data
         /// </summary>
         private void InitializeAdditionalBudget()
         {
@@ -327,18 +327,28 @@ namespace HairRemovalSim.Customer
                 return;
             }
             
-            // Budget ranges per wealth level
-            (int min, int max) range = data.wealth switch
+            // Use CustomerRankData budget range if available
+            if (data.rankData != null)
             {
-                WealthLevel.Poorest => (15, 45),
-                WealthLevel.Poor => (20, 80),
-                WealthLevel.Normal => (60, 160),
-                WealthLevel.Rich => (150, 350),
-                WealthLevel.Richest => (300, 700),
-                _ => (15, 45)
-            };
-            
-            additionalBudget = Random.Range(range.min, range.max + 1);
+                additionalBudget = data.rankData.GetRandomBudget();
+                Debug.Log($"[Customer] {data.customerName} budget from rank: {additionalBudget} (range: {data.rankData.budgetMin}-{data.rankData.budgetMax})");
+            }
+            else
+            {
+                // Fallback: Budget ranges per wealth level (legacy)
+                (int min, int max) range = data.wealth switch
+                {
+                    WealthLevel.Poorest => (15, 23),
+                    WealthLevel.Poor => (20, 35),
+                    WealthLevel.Normal => (40, 60),
+                    WealthLevel.Rich => (80, 120),
+                    WealthLevel.Richest => (150, 250),
+                    _ => (15, 23)
+                };
+                
+                additionalBudget = Random.Range(range.min, range.max + 1);
+                Debug.Log($"[Customer] {data.customerName} budget from fallback: {additionalBudget} (wealth: {data.wealth})");
+            }
         }
         
         /// <summary>
@@ -2674,7 +2684,9 @@ namespace HairRemovalSim.Customer
         public void OnHoverExit() { }
         public string GetInteractionPrompt()
         {
-            return currentState == CustomerState.Waiting ? "Call Customer" : "";
+            return currentState == CustomerState.Waiting 
+                ? Core.LocalizationManager.Instance?.Get("prompt.call_customer") ?? "Call Customer"
+                : "";
         }
 
         private void Update()

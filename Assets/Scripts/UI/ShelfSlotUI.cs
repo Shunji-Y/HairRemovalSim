@@ -12,7 +12,7 @@ namespace HairRemovalSim.UI
     /// </summary>
     public class ShelfSlotUI : MonoBehaviour, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler
     {
-        public enum SlotMode { Shelf, FaceLaser, BodyLaser }
+        public enum SlotMode { Shaver, Shelf, FaceLaser, BodyLaser }
         
         [Header("UI References")]
         [SerializeField] private Image backgroundImage;
@@ -54,6 +54,72 @@ namespace HairRemovalSim.UI
         public bool IsEmpty => string.IsNullOrEmpty(currentItemId) || currentQuantity <= 0;
         public bool IsLaserSlot => slotMode == SlotMode.FaceLaser || slotMode == SlotMode.BodyLaser;
         
+        // Drag highlight
+        [Header("Drag Highlight")]
+        [SerializeField] private Color dragHighlightColor = new Color(0.4f, 1f, 0.4f, 1f);
+        private bool isDragHighlighted = false;
+        
+        private void OnEnable()
+        {
+            WarehouseSlotUI.OnWarehouseDragStarted += OnWarehouseDragStarted;
+            WarehouseSlotUI.OnWarehouseDragEnded += OnWarehouseDragEnded;
+        }
+        
+        private void OnDisable()
+        {
+            WarehouseSlotUI.OnWarehouseDragStarted -= OnWarehouseDragStarted;
+            WarehouseSlotUI.OnWarehouseDragEnded -= OnWarehouseDragEnded;
+        }
+        
+        private void OnWarehouseDragStarted(ItemData itemData)
+        {
+            if (itemData == null) return;
+            
+            bool shouldHighlight = false;
+            
+            switch (slotMode)
+            {
+                case SlotMode.Shaver:
+                    // Highlight if item is a shaver
+                    shouldHighlight = itemData.toolType == TreatmentToolType.Shaver;
+                    break;
+                case SlotMode.Shelf:
+                    // Highlight if item is treatment item (gels, creams - Shelf or Consumable category)
+                    shouldHighlight = itemData.category == ItemCategory.Shelf || 
+                                      itemData.category == ItemCategory.Consumable;
+                    break;
+                case SlotMode.FaceLaser:
+                    // Highlight if item is a face laser
+                    shouldHighlight = itemData.toolType == TreatmentToolType.Laser && 
+                                      itemData.targetArea == ToolTargetArea.Face;
+                    break;
+                case SlotMode.BodyLaser:
+                    // Highlight if item is a body laser
+                    shouldHighlight = itemData.toolType == TreatmentToolType.Laser && 
+                                      itemData.targetArea == ToolTargetArea.Body;
+                    break;
+            }
+            
+            if (shouldHighlight)
+            {
+                SetDragHighlight(true);
+            }
+        }
+        
+        private void OnWarehouseDragEnded()
+        {
+            SetDragHighlight(false);
+        }
+        
+        public void SetDragHighlight(bool active)
+        {
+            isDragHighlighted = active;
+            if (backgroundImage != null)
+            {
+                backgroundImage.color = active ? dragHighlightColor : normalColor;
+            }
+        }
+        
         private void Awake()
         {
             rootCanvas = GetComponentInParent<Canvas>();
@@ -83,6 +149,19 @@ namespace HairRemovalSim.UI
             linkedBed = bed;
             linkedShelf = null;
             RefreshFromLaserBody();
+        }
+        
+        /// <summary>
+        /// Initialize as a shaver slot (uses shelf row 0, col 0)
+        /// </summary>
+        public void InitializeAsShaverSlot(TreatmentShelf shelf)
+        {
+            slotMode = SlotMode.Shaver;
+            linkedShelf = shelf;
+            linkedBed = null;
+            row = 0;
+            col = 0;
+            RefreshFromShelf();
         }
         
         /// <summary>
@@ -170,8 +249,11 @@ namespace HairRemovalSim.UI
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (IsEmpty) return;
-            
+            SoundManager.Instance?.PlaySFX("sfx_drag");
+
             dragSource = this;
+            
+            // Play drag sound
             
             // Create drag icon
             dragIcon = new GameObject("DragIcon");
@@ -190,7 +272,7 @@ namespace HairRemovalSim.UI
         public void OnDrag(PointerEventData eventData)
         {
             if (dragIcon == null) return;
-            
+
             Vector2 pos;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 rootCanvas.transform as RectTransform,
@@ -205,6 +287,8 @@ namespace HairRemovalSim.UI
         {
             if (dragIcon != null)
             {
+                SoundManager.Instance?.PlaySFX("sfx_drop");
+
                 Destroy(dragIcon);
                 dragIcon = null;
             }
@@ -219,6 +303,8 @@ namespace HairRemovalSim.UI
         
         public void OnDrop(PointerEventData eventData)
         {
+            SoundManager.Instance?.PlaySFX("sfx_drop");
+
             // Handle laser slot mode
             if (IsLaserSlot)
             {
@@ -352,26 +438,35 @@ namespace HairRemovalSim.UI
             var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
             if (itemData == null) return;
             
-            // Check if this item can be placed on shelf
-            if (!itemData.CanPlaceOnShelf)
-            {
-                Debug.Log($"[ShelfSlotUI] {itemData.name} cannot be placed on treatment shelf");
-                return;
-            }
-            
             // Slot [0,0] is shaver-only, and shaver can only be at [0,0]
             bool isSlotZero = (row == 0 && col == 0);
             bool isShaver = (itemData.toolType == TreatmentToolType.Shaver);
             
-            if (isSlotZero && !isShaver)
+            // Handle shaver placement first (shaver may have CanPlaceOnShelf = false)
+            if (isShaver)
             {
-                Debug.Log($"[ShelfSlotUI] Slot [0,0] is shaver-only. Cannot place {itemData.toolType}");
-                return;
+                if (!isSlotZero)
+                {
+                    Debug.Log($"[ShelfSlotUI] Shaver can only be placed at slot [0,0], not [{row},{col}]");
+                    return;
+                }
+                // Shaver goes to slot [0,0] - skip CanPlaceOnShelf check
             }
-            if (isShaver && !isSlotZero)
+            else
             {
-                Debug.Log($"[ShelfSlotUI] Shaver can only be placed at slot [0,0], not [{row},{col}]");
-                return;
+                // Non-shaver items: check if can be placed on shelf
+                if (!itemData.CanPlaceOnShelf)
+                {
+                    Debug.Log($"[ShelfSlotUI] {itemData.name} cannot be placed on treatment shelf");
+                    return;
+                }
+                
+                // Non-shaver cannot be placed at slot [0,0]
+                if (isSlotZero)
+                {
+                    Debug.Log($"[ShelfSlotUI] Slot [0,0] is shaver-only. Cannot place {itemData.toolType}");
+                    return;
+                }
             }
             
             int maxOnShelf = itemData.maxStackOnShelf;
@@ -554,7 +649,8 @@ namespace HairRemovalSim.UI
         {
             if (backgroundImage != null)
             {
-                backgroundImage.color = normalColor;
+                // If drag highlighting is active, return to drag highlight color instead of normal
+                backgroundImage.color = isDragHighlighted ? dragHighlightColor : normalColor;
             }
             
             // Hide item detail

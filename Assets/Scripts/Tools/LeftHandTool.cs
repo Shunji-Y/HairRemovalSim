@@ -1,5 +1,6 @@
 using UnityEngine;
 using HairRemovalSim.Player;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.Tools
 {
@@ -29,8 +30,10 @@ namespace HairRemovalSim.Tools
             interactionController = controller;
             isEquipped = true;
             OnToolBroken += HandleToolBroken;
+            SoundManager.Instance.PlaySFX("sfx_drop");
+
         }
-        
+
         /// <summary>
         /// Called when tool is unequipped
         /// </summary>

@@ -150,41 +150,11 @@ namespace HairRemovalSim.Store
             }
             
             // Adjust grid height for ScrollView
-            AdjustGridHeight(itemContainer);
         }
         
         /// <summary>
         /// Adjust RectTransform height based on GridLayoutGroup settings and row count
-        /// </summary>
-        private void AdjustGridHeight(Transform gridParent)
-        {
-            var gridLayout = gridParent.GetComponent<GridLayoutGroup>();
-            var rectTransform = gridParent.GetComponent<RectTransform>();
-            
-            if (gridLayout == null || rectTransform == null) return;
-            
-            int childCount = gridParent.childCount;
-            if (childCount == 0) return;
-            
-            // Calculate columns based on container width
-            float containerWidth = rectTransform.rect.width;
-            float cellWidth = gridLayout.cellSize.x;
-            float spacingX = gridLayout.spacing.x;
-            float paddingLR = gridLayout.padding.left + gridLayout.padding.right;
-            
-            int columns = Mathf.Max(1, Mathf.FloorToInt((containerWidth - paddingLR + spacingX) / (cellWidth + spacingX)));
-            int rows = Mathf.CeilToInt((float)childCount / columns);
-            
-            float cellHeight = gridLayout.cellSize.y;
-            float spacingY = gridLayout.spacing.y;
-            float paddingTop = gridLayout.padding.top;
-            float paddingBottom = gridLayout.padding.bottom;
-            
-            float totalHeight = paddingTop + paddingBottom + (rows * cellHeight) + (Mathf.Max(0, rows - 1) * spacingY);
-            
-            rectTransform.sizeDelta = new Vector2(rectTransform.sizeDelta.x, totalHeight);
-        }
-        
+
         #region Item Detail Display
         
         /// <summary>
@@ -531,7 +501,9 @@ namespace HairRemovalSim.Store
                         Debug.Log($"[StorePanel] Order placed! Total: ${totalCost} - Items will be delivered next day");
                     }
                 }
-                
+
+                SoundManager.Instance.PlaySFX("money_plus");
+
                 ClearCart();
             }
         }

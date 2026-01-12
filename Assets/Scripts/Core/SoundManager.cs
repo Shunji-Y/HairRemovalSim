@@ -14,15 +14,18 @@ namespace HairRemovalSim.Core
         
         [Header("Audio Sources")]
         [SerializeField] private AudioSource musicSource;
+        [SerializeField] private AudioSource ambientSource;
         [SerializeField] private int sfxPoolSize = 10;
         
         [Header("Volume Settings")]
         [Range(0f, 1f)] public float masterVolume = 1f;
         [Range(0f, 1f)] public float sfxVolume = 1f;
         [Range(0f, 1f)] public float musicVolume = 1f;
+        [Range(0f, 1f)] public float ambientVolume = 0.5f;
         
         private List<AudioSource> sfxPool = new List<AudioSource>();
         private Dictionary<string, SoundLibrary.SoundEntry> soundLookup = new Dictionary<string, SoundLibrary.SoundEntry>();
+        private Coroutine ambientFadeCoroutine;
         
         protected override void Awake()
         {
@@ -158,6 +161,112 @@ namespace HairRemovalSim.Core
                 musicSource.Stop();
             }
         }
+        
+        #region Ambient Sound
+        
+        /// <summary>
+        /// Play ambient sound by ID
+        /// </summary>
+        public void PlayAmbient(string ambientId, bool loop = true)
+        {
+            if (ambientSource == null)
+            {
+                GameObject ambientObj = new GameObject("Ambient_Source");
+                ambientObj.transform.SetParent(transform);
+                ambientSource = ambientObj.AddComponent<AudioSource>();
+            }
+            
+            if (soundLookup.TryGetValue(ambientId, out var entry))
+            {
+                ambientSource.clip = entry.clip;
+                ambientSource.loop = loop;
+                ambientSource.volume = masterVolume * ambientVolume * entry.volume;
+                ambientSource.Play();
+                Debug.Log($"[SoundManager] Playing ambient: {ambientId}");
+            }
+            else
+            {
+                Debug.LogWarning($"[SoundManager] Ambient not found: {ambientId}");
+            }
+        }
+        
+        /// <summary>
+        /// Play ambient sound from AudioClip directly
+        /// </summary>
+        public void PlayAmbient(AudioClip clip, bool loop = true)
+        {
+            if (clip == null) return;
+            
+            if (ambientSource == null)
+            {
+                GameObject ambientObj = new GameObject("Ambient_Source");
+                ambientObj.transform.SetParent(transform);
+                ambientSource = ambientObj.AddComponent<AudioSource>();
+            }
+            
+            ambientSource.clip = clip;
+            ambientSource.loop = loop;
+            ambientSource.volume = masterVolume * ambientVolume;
+            ambientSource.Play();
+        }
+        
+        /// <summary>
+        /// Stop ambient sound
+        /// </summary>
+        public void StopAmbient()
+        {
+            if (ambientSource != null)
+            {
+                ambientSource.Stop();
+            }
+        }
+        
+        /// <summary>
+        /// Fade ambient volume to target over duration
+        /// </summary>
+        public void FadeAmbientVolume(float targetVolume, float duration)
+        {
+            if (ambientSource == null) return;
+            
+            if (ambientFadeCoroutine != null)
+            {
+                StopCoroutine(ambientFadeCoroutine);
+            }
+            
+            ambientFadeCoroutine = StartCoroutine(FadeAmbientCoroutine(targetVolume, duration));
+        }
+        
+        private System.Collections.IEnumerator FadeAmbientCoroutine(float targetVolume, float duration)
+        {
+            float startVolume = ambientSource.volume;
+            float targetActualVolume = masterVolume * targetVolume;
+            float elapsed = 0f;
+            
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                ambientSource.volume = Mathf.Lerp(startVolume, targetActualVolume, elapsed / duration);
+                yield return null;
+            }
+            
+            ambientSource.volume = targetActualVolume;
+            ambientVolume = targetVolume;
+            ambientFadeCoroutine = null;
+        }
+        
+        /// <summary>
+        /// Set ambient volume immediately
+        /// </summary>
+        public void SetAmbientVolume(float volume)
+        {
+            ambientVolume = Mathf.Clamp01(volume);
+            if (ambientSource != null)
+            {
+                ambientSource.volume = masterVolume * ambientVolume;
+            }
+        }
+        
+        #endregion
         
         // Dictionary to track looping SFX by ID (stores both sources for crossfade)
         private Dictionary<string, CrossfadeLoopData> loopingSFX = new Dictionary<string, CrossfadeLoopData>();
@@ -324,6 +433,11 @@ namespace HairRemovalSim.Core
             if (musicSource != null)
             {
                 musicSource.volume = masterVolume * musicVolume;
+            }
+            
+            if (ambientSource != null)
+            {
+                ambientSource.volume = masterVolume * ambientVolume;
             }
         }
         

@@ -39,6 +39,46 @@ namespace HairRemovalSim.UI
         public int SyncSlotIndex => syncSlotIndex;
         public int StationIndex => stationIndex;
         
+        // Drag highlight
+        [Header("Drag Highlight")]
+        [SerializeField] private Color dragHighlightColor = new Color(0.4f, 1f, 0.4f, 1f);
+        private bool isDragHighlighted = false;
+        
+        private void OnEnable()
+        {
+            WarehouseSlotUI.OnWarehouseDragStarted += OnWarehouseDragStarted;
+            WarehouseSlotUI.OnWarehouseDragEnded += OnWarehouseDragEnded;
+        }
+        
+        private void OnDisable()
+        {
+            WarehouseSlotUI.OnWarehouseDragStarted -= OnWarehouseDragStarted;
+            WarehouseSlotUI.OnWarehouseDragEnded -= OnWarehouseDragEnded;
+        }
+        
+        private void OnWarehouseDragStarted(ItemData itemData)
+        {
+            // Highlight if dragged item is for reception (category check)
+            if (itemData != null && itemData.category == ItemCategory.Reception)
+            {
+                SetDragHighlight(true);
+            }
+        }
+        
+        private void OnWarehouseDragEnded()
+        {
+            SetDragHighlight(false);
+        }
+        
+        public void SetDragHighlight(bool active)
+        {
+            isDragHighlighted = active;
+            if (backgroundImage != null)
+            {
+                backgroundImage.color = active ? dragHighlightColor : normalColor;
+            }
+        }
+        
         private void Start()
         {
             RefreshDisplay();
@@ -88,6 +128,9 @@ namespace HairRemovalSim.UI
         
         public void OnDrop(PointerEventData eventData)
         {
+            // Play drop sound
+            SoundManager.Instance?.PlaySFX("sfx_drop");
+            
             // Check for drop from same type (ReceptionStockSlotUI)
             var sameTypeSource = eventData.pointerDrag?.GetComponent<ReceptionStockSlotUI>();
             if (sameTypeSource != null && sameTypeSource != this && !sameTypeSource.IsEmpty)
@@ -271,7 +314,7 @@ namespace HairRemovalSim.UI
         public void OnPointerExit(PointerEventData eventData)
         {
             if (backgroundImage != null)
-                backgroundImage.color = normalColor;
+                backgroundImage.color = isDragHighlighted ? dragHighlightColor : normalColor;
             
             // Hide item detail
             if (WarehousePanel.Instance != null)
@@ -336,7 +379,8 @@ namespace HairRemovalSim.UI
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (IsEmpty) return;
-            
+            SoundManager.Instance?.PlaySFX("sfx_drag");
+
             if (rootCanvas == null)
                 rootCanvas = GetComponentInParent<Canvas>();
             
@@ -377,7 +421,10 @@ namespace HairRemovalSim.UI
                 Destroy(dragIcon);
                 dragIcon = null;
             }
-            
+
+            SoundManager.Instance?.PlaySFX("sfx_drop");
+
+
             iconImage.color = Color.white;
             
             // Check if dropped on warehouse slot

@@ -10,12 +10,9 @@ namespace HairRemovalSim.Environment
     /// </summary>
     public class WarehouseInteractable : MonoBehaviour, IInteractable
     {
-        [Header("Settings")]
-        [SerializeField] private string interactionPrompt = "[E] Open Warehouse";
-        
         public string GetInteractionPrompt()
         {
-            return interactionPrompt;
+            return Core.LocalizationManager.Instance?.Get("prompt.open_warehouse") ?? "Open Warehouse";
         }
         
         public void OnHoverEnter()

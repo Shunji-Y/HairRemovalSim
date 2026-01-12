@@ -63,6 +63,12 @@ namespace HairRemovalSim.Environment
         {
             if (!isActive) return;
             
+            // Play click sound on left click
+            if (Mouse.current.leftButton.wasPressedThisFrame ||Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                SoundManager.Instance?.PlaySFX("sfx_click");
+            }
+
             // Right-click to go back
             if (rightClickToGoBack && Mouse.current.rightButton.wasPressedThisFrame)
             {
@@ -132,6 +138,7 @@ namespace HairRemovalSim.Environment
                     return (day == 1 && isNight) || day >= 2;
                     
                 case AppType.Loan:
+                    return day >= 3;
                 case AppType.Ads:
                     // Day 2 or later
                     return day >= 2;

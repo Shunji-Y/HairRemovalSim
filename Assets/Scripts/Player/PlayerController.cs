@@ -1,4 +1,5 @@
 using HairRemovalSim.UI;
+using HairRemovalSim.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -44,6 +45,7 @@ namespace HairRemovalSim.Player
         private float xRotation = 0f;
         private bool canMove = true;
         private float currentSpeed = 0f; // Current movement speed
+        private bool isPlayingFootsteps = false; // Footstep sound state
         
         // Crosshair position in viewport space (0-1)
         private Vector2 crosshairPosition = new Vector2(0.5f, 0.5f);
@@ -474,6 +476,19 @@ namespace HairRemovalSim.Player
             
             // Normalize movement direction and apply current speed
             Vector3 move = moveDirection.normalized * currentSpeed;
+            
+            // Footstep sound
+            bool isMoving = currentSpeed > 0.1f && characterController.isGrounded;
+            if (isMoving && !isPlayingFootsteps)
+            {
+                SoundManager.Instance?.PlayLoopSFX("sfx_footstep");
+                isPlayingFootsteps = true;
+            }
+            else if (!isMoving && isPlayingFootsteps)
+            {
+                SoundManager.Instance?.StopLoopSFX("sfx_footstep");
+                isPlayingFootsteps = false;
+            }
             
             // Gravity
             if (characterController.isGrounded && verticalVelocity < 0)

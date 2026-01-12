@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 using HairRemovalSim.Core;
 using HairRemovalSim.Player;
 using HairRemovalSim.Customer;
+using HairRemovalSim.UI;
 using System.Collections.Generic;
 
 namespace HairRemovalSim.Treatment
@@ -187,6 +188,9 @@ namespace HairRemovalSim.Treatment
                         TutorialManager.Instance.TriggerEvent("FirstTreatmentEnd");
 
                         Debug.Log($"[TreatmentManager] Treatment complete for {session.Customer.data.customerName}! All parts done. Customer will now go to reception.");
+                        
+                        // Hide crosshair completion slider
+                        CrosshairCompletionSlider.Instance?.Hide();
                         
                         // Trigger customer to leave bed and go to reception
                         // Note: Review is submitted in PaymentPanel.OnConfirmPayment, not here

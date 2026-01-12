@@ -113,6 +113,8 @@ namespace HairRemovalSim.Core
                     TutorialManager.Instance?.TryShowTutorial("tut_ad_open");
                 }
             }
+
+            SoundManager.Instance.PlayAmbient("bgm_city");
         }
 
         public void OpenShop()

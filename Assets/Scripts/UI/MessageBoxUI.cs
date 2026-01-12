@@ -25,11 +25,13 @@ namespace HairRemovalSim.UI
         private bool isPersistent;
         private string dismissAction;
         private MessageType messageType;
+        private float spawnTime;
         
         public string MessageId => messageId;
         public bool IsPersistent => isPersistent;
         public string DismissAction => dismissAction;
         public MessageType MessageType => messageType;
+        public float SpawnTime => spawnTime;
         
         private void Awake()
         {
@@ -52,6 +54,7 @@ namespace HairRemovalSim.UI
             messageId = id;
             isPersistent = persistent;
             messageType = type;
+            spawnTime = Time.time; // Record spawn time for auto-hide
             
             // Time display
             if (timeText != null)

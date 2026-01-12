@@ -209,7 +209,7 @@ namespace HairRemovalSim.Store
                 storePanel.AddToCart(itemData, selectedQuantity);
                 
                 // Reset quantity after adding to cart
-                selectedQuantity = 1;
+               // selectedQuantity = 1;
                 RefreshUI();
             }
             else

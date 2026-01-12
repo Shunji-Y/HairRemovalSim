@@ -83,50 +83,22 @@ namespace HairRemovalSim.Environment
         
         public string GetInteractionPrompt()
         {
-            var player = FindObjectOfType<InteractionController>();
-            if (player == null) return null;
-            
-            bool hasItem = !IsSlotEmpty();
-            var slotHandType = GetSlotHandType();
-            
-            if (hasItem)
+            // Only show localized item name if slot has item
+            if (!IsSlotEmpty())
             {
                 var slotData = shelf.GetSlotData(row, col);
-                string itemName = slotData?.itemId ?? "Item";
-                
-                // Check if player can pick up with correct hand
-                if (slotHandType == ToolBase.HandType.RightHand)
+                if (slotData != null && !string.IsNullOrEmpty(slotData.itemId))
                 {
-                    if (player.currentTool == null)
-                        return $"[E] Take {itemName}";
-                    else if (GetToolHandType(player.currentTool) == ToolBase.HandType.RightHand)
+                    var itemData = Core.ItemDataRegistry.Instance?.GetItem(slotData.itemId);
+                    if (itemData != null && !string.IsNullOrEmpty(itemData.nameKey))
                     {
-                        if (CanStackInSlot(player.currentTool))
-                            return $"[E] Add {player.currentTool.toolName}";
-                        else
-                            return $"[E] Swap {itemName}";
+                        return Core.LocalizationManager.Instance?.Get(itemData.nameKey) ?? itemData.name;
                     }
+                    return itemData?.name ?? slotData.itemId;
                 }
-                else if (slotHandType == ToolBase.HandType.LeftHand)
-                {
-                    if (player.leftHandTool == null)
-                        return $"[E] Take {itemName}";
-                    else if (CanStackInSlot(player.leftHandTool))
-                        return $"[E] Add {player.leftHandTool.toolName}";
-                    else
-                        return $"[E] Swap {itemName}";
-                }
-                return null; // Can't interact (hand full with different type)
-            }
-            else
-            {
-                // Empty slot - check if player can place
-                if (player.currentTool != null)
-                    return $"[E] Place {player.currentTool.toolName}";
-                if (player.leftHandTool != null)
-                    return $"[E] Place {player.leftHandTool.toolName}";
             }
             
+            // Empty slot - show nothing
             return null;
         }
         

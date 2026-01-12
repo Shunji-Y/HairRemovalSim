@@ -4,6 +4,7 @@ using TMPro;
 using HairRemovalSim.Treatment;
 using HairRemovalSim.Customer;
 using System.Collections.Generic;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.UI
 {
@@ -135,7 +136,8 @@ namespace HairRemovalSim.UI
             
             if (nameText != null)
             {
-                nameText.text = displayName;
+                var dName = LocalizationManager.Instance.Get("part." + displayName);
+                nameText.text = dName;
             }
             
             if (slider != null)

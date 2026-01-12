@@ -135,6 +135,10 @@ namespace HairRemovalSim.UI
         
         public void OnPointerClick(PointerEventData eventData)
         {
+            if (!isRequested) return;
+            
+                
+            
             // Toggle selection
             SetSelected(!isSelected);
         }

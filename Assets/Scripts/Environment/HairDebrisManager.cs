@@ -33,8 +33,8 @@ namespace HairRemovalSim.Environment
         [SerializeField] private int poolSize = 20;
         
         [Header("Daily Limit")]
-        [Tooltip("Maximum debris that can spawn per day")]
-        [SerializeField] private int maxSpawnPerDay = 10;
+        [Tooltip("Maximum debris that can spawn per bed per day")]
+        [SerializeField] private int maxSpawnPerBed = 5;
         
         [Header("Floor Detection")]
         [Tooltip("Layer mask for floor only (to avoid spawning on curtains etc)")]
@@ -48,7 +48,7 @@ namespace HairRemovalSim.Environment
         private List<HairDebrisDecal> activeDebris = new List<HairDebrisDecal>();
         private int totalSpawnedEver = 0;
         private int cleanedEver = 0;
-        private int spawnedToday = 0; // Reset each day
+        private Dictionary<Vector3, int> spawnedPerBed = new Dictionary<Vector3, int>(); // Track per-bed spawns
         private bool iconsVisible = true;
         
         // Events
@@ -126,8 +126,20 @@ namespace HairRemovalSim.Environment
         {
             if (debrisPrefab == null) return;
             
-            // Check daily limit
-            if (spawnedToday >= maxSpawnPerDay) return;
+            // Round bed position to avoid floating point key issues
+            Vector3 bedKey = new Vector3(
+                Mathf.Round(bedPosition.x),
+                Mathf.Round(bedPosition.y),
+                Mathf.Round(bedPosition.z)
+            );
+            
+            // Check per-bed limit
+            if (!spawnedPerBed.ContainsKey(bedKey))
+            {
+                spawnedPerBed[bedKey] = 0;
+            }
+            
+            if (spawnedPerBed[bedKey] >= maxSpawnPerBed) return;
             
             // Random chance to spawn
             if (Random.value > spawnChance) return;
@@ -165,9 +177,11 @@ namespace HairRemovalSim.Environment
             
             activeDebris.Add(debrisComponent);
             totalSpawnedEver++;
-            spawnedToday++;
+            spawnedPerBed[bedKey]++;
             
-            Debug.Log($"[HairDebrisManager] Spawned debris at {spawnPos}, today: {spawnedToday}/{maxSpawnPerDay}, total: {activeDebris.Count}");
+            int totalToday = 0;
+            foreach (var count in spawnedPerBed.Values) totalToday += count;
+            Debug.Log($"[HairDebrisManager] Spawned debris at bed {bedKey}, bed count: {spawnedPerBed[bedKey]}/{maxSpawnPerBed}, today total: {totalToday}");
         }
         
         /// <summary>
@@ -210,7 +224,15 @@ namespace HairRemovalSim.Environment
             
             activeDebris.Add(debrisComponent);
             totalSpawnedEver++;
-            spawnedToday++;
+            
+            // Track for per-bed (force spawn uses exact position as key)
+            Vector3 bedKey = new Vector3(
+                Mathf.Round(bedPosition.x),
+                Mathf.Round(bedPosition.y),
+                Mathf.Round(bedPosition.z)
+            );
+            if (!spawnedPerBed.ContainsKey(bedKey)) spawnedPerBed[bedKey] = 0;
+            spawnedPerBed[bedKey]++;
         }
         
         /// <summary>
@@ -277,11 +299,13 @@ namespace HairRemovalSim.Environment
         }
         
         /// <summary>
-        /// Get spawned today count
+        /// Get spawned today count (sum of all beds)
         /// </summary>
         public int GetSpawnedToday()
         {
-            return spawnedToday;
+            int total = 0;
+            foreach (var count in spawnedPerBed.Values) total += count;
+            return total;
         }
         
         /// <summary>
@@ -315,8 +339,8 @@ namespace HairRemovalSim.Environment
         /// </summary>
         public void OnNewDayStart()
         {
-            // Reset daily spawn counter
-            spawnedToday = 0;
+            // Reset per-bed spawn counters
+            spawnedPerBed.Clear();
             
             // Hide icons during business hours
             SetIconsVisible(false);
@@ -341,7 +365,7 @@ namespace HairRemovalSim.Environment
             activeDebris.Clear();
             totalSpawnedEver = 0;
             cleanedEver = 0;
-            spawnedToday = 0;
+            spawnedPerBed.Clear();
             
             OnCleaningProgressChanged?.Invoke(1f);
             

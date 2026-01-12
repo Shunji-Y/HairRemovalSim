@@ -84,7 +84,17 @@ namespace HairRemovalSim.Environment
         
         public string GetInteractionPrompt()
         {
-            return isCleaned ? "" : "Clean hair";
+            if (isCleaned) return "";
+            
+            // Only show prompt if player has vacuum equipped
+            var interactor = FindObjectOfType<Player.InteractionController>();
+            var currentTool = interactor?.CurrentTool;
+            if (currentTool?.itemData?.toolType != Core.TreatmentToolType.Vacuum)
+            {
+                return "";
+            }
+            
+            return Core.LocalizationManager.Instance?.Get("prompt.clean_hair") ?? "Clean hair";
         }
         
         public bool CanInteract(InteractionController interactor)

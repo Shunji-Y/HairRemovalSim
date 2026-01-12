@@ -159,6 +159,8 @@ namespace HairRemovalSim.UI
                 MessageBoxManager.Instance.DismissMessage("wait_cashier");
                 TutorialManager.Instance.TriggerEvent("CashierFirst");
                 ProcessPayment();
+
+
             }
             else
             {
@@ -178,7 +180,9 @@ namespace HairRemovalSim.UI
             if (outline != null) outline.enabled = false;
         }
         
-        public string GetInteractionPrompt() => customerAtRegister != null ? "Collect Payment" : "Cash Register";
+        public string GetInteractionPrompt() => customerAtRegister != null 
+            ? Core.LocalizationManager.Instance?.Get("prompt.collect_payment") ?? "Collect Payment"
+            : Core.LocalizationManager.Instance?.Get("prompt.cash_register") ?? "Cash Register";
 
         private void ProcessPayment()
         {

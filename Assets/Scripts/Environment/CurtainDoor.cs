@@ -2,6 +2,7 @@ using UnityEngine;
 using HairRemovalSim.Interaction;
 using HairRemovalSim.Player;
 using System.Collections;
+using HairRemovalSim.Core;
 
 namespace HairRemovalSim.Environment
 {
@@ -74,6 +75,7 @@ namespace HairRemovalSim.Environment
         {
             if (isOpen || isAnimating) return;
             StartCoroutine(AnimateDoor(true));
+            SoundManager.Instance.PlaySFX("sfx_open_curtain");
         }
         
         /// <summary>
@@ -83,8 +85,10 @@ namespace HairRemovalSim.Environment
         {
             if (!isOpen || isAnimating) return;
             StartCoroutine(AnimateDoor(false));
+            SoundManager.Instance.PlaySFX("sfx_close_curtain");
+
         }
-        
+
         /// <summary>
         /// Force door to open/closed state instantly (no animation)
         /// </summary>
@@ -168,7 +172,9 @@ namespace HairRemovalSim.Environment
             {
                 return ""; // No prompt during treatment
             }
-            return isOpen ? "Close Curtain" : "Open Curtain";
+            return isOpen 
+                ? Core.LocalizationManager.Instance?.Get("prompt.close_curtain") ?? "Close Curtain"
+                : Core.LocalizationManager.Instance?.Get("prompt.open_curtain") ?? "Open Curtain";
         }
     }
 }

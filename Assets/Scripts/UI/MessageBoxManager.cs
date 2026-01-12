@@ -137,21 +137,21 @@ namespace HairRemovalSim.UI
         {
             if (!isVisible) return;
             
-            // Always count down timer for non-persistent messages
-            hideTimer -= Time.deltaTime;
-            if (hideTimer <= 0f)
+            // Check each message's individual expiration
+            float currentTime = Time.time;
+            for (int i = activeMessages.Count - 1; i >= 0; i--)
             {
-                // Remove all non-persistent messages
-                for (int i = activeMessages.Count - 1; i >= 0; i--)
-                {
-                    if (!activeMessages[i].IsPersistent)
-                    {
-                        ReturnToPool(activeMessages[i]);
-                    }
-                }
+                var msg = activeMessages[i];
+                if (msg == null) continue;
                 
-                // Reset timer for next batch
-                hideTimer = autoHideDelay;
+                // Skip persistent messages
+                if (msg.IsPersistent) continue;
+                
+                // Check if this message has expired
+                if (currentTime - msg.SpawnTime >= autoHideDelay)
+                {
+                    ReturnToPool(msg);
+                }
             }
         }
         
@@ -371,12 +371,9 @@ namespace HairRemovalSim.UI
                 panel.SetActive(true);
             }
             
-            // Only reset timer if panel was not already visible
-            // This prevents persistent messages from resetting the timer for non-persistent ones
-            if (!isVisible)
-            {
-                hideTimer = autoHideDelay;
-            }
+            // Always reset timer when a new message is shown
+            // This ensures every message gets the full display duration
+            hideTimer = autoHideDelay;
             isVisible = true;
         }
         

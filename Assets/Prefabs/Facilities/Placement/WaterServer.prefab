@@ -47,6 +47,14 @@ PrefabInstance:
       value: SM_WaterCooler_01 (2)
       objectReference: {fileID: 0}
     - target: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_TagString
+      value: Interactable
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 16
       objectReference: {fileID: 0}
@@ -107,6 +115,10 @@ PrefabInstance:
       value: 0.0020864196
       objectReference: {fileID: 0}
     - target: {fileID: 1031338438, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338438, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 16
       objectReference: {fileID: 0}
@@ -115,12 +127,24 @@ PrefabInstance:
       value: -0.102
       objectReference: {fileID: 0}
     - target: {fileID: 1031338442, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338442, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 16
       objectReference: {fileID: 0}
     - target: {fileID: 1031338446, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338446, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338450, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 1031338450, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
@@ -134,11 +158,37 @@ PrefabInstance:
       propertyPath: m_Extents.z
       value: 0.00001
       objectReference: {fileID: 0}
+    - target: {fileID: 4655498456747724674, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_IsTrigger
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6084405172740182772}
   m_SourcePrefab: {fileID: 100100000, guid: abc00000000005975774429687084394, type: 3}
+--- !u!1 &2423729571307554048 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
+  m_PrefabInstance: {fileID: 2423729571218947266}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6084405172740182772
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2423729571307554048}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.WaterServer
+  showInteractionPrompt: 0
 --- !u!4 &2423729571307554049 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1031338435, guid: abc00000000005975774429687084394, type: 3}
@@ -155,6 +205,14 @@ PrefabInstance:
     - target: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_Name
       value: SM_WaterCooler_01
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_TagString
+      value: Interactable
       objectReference: {fileID: 0}
     - target: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
@@ -213,6 +271,10 @@ PrefabInstance:
       value: 0.007919753
       objectReference: {fileID: 0}
     - target: {fileID: 1031338438, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338438, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 16
       objectReference: {fileID: 0}
@@ -221,12 +283,24 @@ PrefabInstance:
       value: -0.094
       objectReference: {fileID: 0}
     - target: {fileID: 1031338442, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338442, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 16
       objectReference: {fileID: 0}
     - target: {fileID: 1031338446, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338446, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338450, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 1031338450, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
@@ -240,16 +314,42 @@ PrefabInstance:
       propertyPath: m_Extents.z
       value: 0.00001
       objectReference: {fileID: 0}
+    - target: {fileID: 4655498456747724674, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_IsTrigger
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5941041803040288464}
   m_SourcePrefab: {fileID: 100100000, guid: abc00000000005975774429687084394, type: 3}
 --- !u!4 &7033221470434466346 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1031338435, guid: abc00000000005975774429687084394, type: 3}
   m_PrefabInstance: {fileID: 7033221470077412329}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &7033221470434466347 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
+  m_PrefabInstance: {fileID: 7033221470077412329}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5941041803040288464
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7033221470434466347}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.WaterServer
+  showInteractionPrompt: 0
 --- !u!1001 &9108417881828043221
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -261,6 +361,14 @@ PrefabInstance:
     - target: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_Name
       value: SM_WaterCooler_01 (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_TagString
+      value: Interactable
       objectReference: {fileID: 0}
     - target: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
@@ -323,6 +431,10 @@ PrefabInstance:
       value: 0.0012299382
       objectReference: {fileID: 0}
     - target: {fileID: 1031338438, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338438, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 16
       objectReference: {fileID: 0}
@@ -331,12 +443,24 @@ PrefabInstance:
       value: -0.094
       objectReference: {fileID: 0}
     - target: {fileID: 1031338442, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338442, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 16
       objectReference: {fileID: 0}
     - target: {fileID: 1031338446, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338446, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 1031338450, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_Layer
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 1031338450, guid: abc00000000005975774429687084394, type: 3}
       propertyPath: m_StaticEditorFlags
@@ -350,13 +474,39 @@ PrefabInstance:
       propertyPath: m_Extents.z
       value: 0.00001
       objectReference: {fileID: 0}
+    - target: {fileID: 4655498456747724674, guid: abc00000000005975774429687084394, type: 3}
+      propertyPath: m_IsTrigger
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 604479414114600134}
   m_SourcePrefab: {fileID: 100100000, guid: abc00000000005975774429687084394, type: 3}
 --- !u!4 &9108417882048811030 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1031338435, guid: abc00000000005975774429687084394, type: 3}
   m_PrefabInstance: {fileID: 9108417881828043221}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &9108417882048811031 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1031338434, guid: abc00000000005975774429687084394, type: 3}
+  m_PrefabInstance: {fileID: 9108417881828043221}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &604479414114600134
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9108417882048811031}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.WaterServer
+  showInteractionPrompt: 0

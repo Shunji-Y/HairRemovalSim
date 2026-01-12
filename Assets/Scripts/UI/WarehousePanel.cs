@@ -71,6 +71,13 @@ namespace HairRemovalSim.UI
         {
             if (!IsOpen) return;
             
+            // Play click sound on click
+            //if (UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame ||
+            //    UnityEngine.InputSystem.Mouse.current.rightButton.wasPressedThisFrame)
+            //{
+            //    SoundManager.Instance?.PlaySFX("sfx_click");
+            //}
+            
             // Close on ESC or right-click (Input System)
             if (UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame ||
                 UnityEngine.InputSystem.Mouse.current.rightButton.wasPressedThisFrame)
@@ -286,6 +293,12 @@ namespace HairRemovalSim.UI
         public void Show()
         {
             if (panel != null) panel.SetActive(true);
+            
+            // Play sound if not conflicting with tutorial
+            if (Core.TutorialManager.Instance == null || !Core.TutorialManager.Instance.IsShowingTutorial)
+            {
+                Core.SoundManager.Instance?.PlaySFX("sfx_drop");
+            }
             
             // Hide "New!!" indicator when player opens warehouse
             if (WarehouseManager.Instance != null)

@@ -37,6 +37,42 @@ namespace HairRemovalSim.UI
         // Event when item is cleared (dragged back to slot)
         public System.Action OnItemCleared;
         
+        // Drag highlight
+        [Header("Drag Highlight")]
+        [SerializeField] private Color dragHighlightColor = new Color(0.4f, 1f, 0.4f, 1f);
+        private bool isDragHighlighted = false;
+        
+        private void OnEnable()
+        {
+            ExtraItemSlotUI.OnExtraDragStarted += OnExtraDragStarted;
+            ExtraItemSlotUI.OnExtraDragEnded += OnExtraDragEnded;
+        }
+        
+        private void OnDisable()
+        {
+            ExtraItemSlotUI.OnExtraDragStarted -= OnExtraDragStarted;
+            ExtraItemSlotUI.OnExtraDragEnded -= OnExtraDragEnded;
+        }
+        
+        private void OnExtraDragStarted()
+        {
+            SetDragHighlight(true);
+        }
+        
+        private void OnExtraDragEnded()
+        {
+            SetDragHighlight(false);
+        }
+        
+        public void SetDragHighlight(bool active)
+        {
+            isDragHighlighted = active;
+            if (backgroundImage != null)
+            {
+                backgroundImage.color = active ? dragHighlightColor : normalColor;
+            }
+        }
+        
         private void Awake()
         {
             rootCanvas = GetComponentInParent<Canvas>();
@@ -44,6 +80,9 @@ namespace HairRemovalSim.UI
         
         public void OnDrop(PointerEventData eventData)
         {
+            // Play drop sound
+            SoundManager.Instance?.PlaySFX("sfx_drop");
+            
             var source = ExtraItemSlotUI.DragSource;
             if (source == null || source.IsEmpty) return;
             
@@ -112,7 +151,10 @@ namespace HairRemovalSim.UI
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (!HasItem) return;
-            
+            SoundManager.Instance?.PlaySFX("sfx_drag");
+
+            // Play drag sound
+
             var itemData = ItemDataRegistry.Instance?.GetItem(currentItemId);
 
             if (itemData == null || itemData.icon == null) return;
@@ -136,7 +178,7 @@ namespace HairRemovalSim.UI
         public void OnDrag(PointerEventData eventData)
         {
             if (dragIcon == null) return;
-            
+
             Vector2 pos;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 rootCanvas.transform as RectTransform,
@@ -154,7 +196,8 @@ namespace HairRemovalSim.UI
                 Destroy(dragIcon);
                 dragIcon = null;
             }
-            
+                        SoundManager.Instance?.PlaySFX("sfx_drop");
+
             iconImage.color = Color.white;
             
             if (!HasItem) return;

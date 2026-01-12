@@ -33,6 +33,11 @@ namespace HairRemovalSim.UI
         private static GameObject dragIcon;
         private Canvas rootCanvas;
         
+        // Static drag events for highlight system
+        public static event System.Action<ItemData> OnWarehouseDragStarted;
+        public static event System.Action OnWarehouseDragEnded;
+        public static ItemData DragItemData { get; private set; }
+        
         public int SlotIndex => slotIndex;
         public string ItemId => currentItemId;
         public int Quantity => currentQuantity;
@@ -127,8 +132,11 @@ namespace HairRemovalSim.UI
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (IsEmpty) return;
-            
+            SoundManager.Instance?.PlaySFX("sfx_drag");
+
             dragSource = this;
+            
+            // Play drag sound
             
             // Create drag icon
             dragIcon = new GameObject("DragIcon");
@@ -145,12 +153,16 @@ namespace HairRemovalSim.UI
             
             // Make original semi-transparent
             iconImage.color = new Color(1, 1, 1, 0.5f);
+            
+            // Fire drag started event for highlight system
+            DragItemData = ItemDataRegistry.Instance?.GetItem(currentItemId);
+            OnWarehouseDragStarted?.Invoke(DragItemData);
         }
         
         public void OnDrag(PointerEventData eventData)
         {
             if (dragIcon == null) return;
-            
+
             Vector2 pos;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 rootCanvas.transform as RectTransform,
@@ -163,18 +175,25 @@ namespace HairRemovalSim.UI
         
         public void OnEndDrag(PointerEventData eventData)
         {
+
             if (dragIcon != null)
             {
                 Destroy(dragIcon);
                 dragIcon = null;
+                SoundManager.Instance?.PlaySFX("sfx_drop");
+
             }
-            
+
             if (dragSource == this)
             {
                 iconImage.color = Color.white;
             }
             
             dragSource = null;
+            
+            // Fire drag ended event for highlight system
+            DragItemData = null;
+            OnWarehouseDragEnded?.Invoke();
         }
         
         public void OnDrop(PointerEventData eventData)
@@ -185,7 +204,8 @@ namespace HairRemovalSim.UI
                 HandleWarehouseDrop(dragSource);
                 return;
             }
-            
+            SoundManager.Instance?.PlaySFX("sfx_drop");
+
             // Handle drop from ShelfSlotUI (including laser slots)
             var shelfSource = eventData.pointerDrag?.GetComponent<ShelfSlotUI>();
             if (shelfSource != null && !shelfSource.IsEmpty)

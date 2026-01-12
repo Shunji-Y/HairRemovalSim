@@ -23,6 +23,13 @@ namespace HairRemovalSim.UI
             textComponent = GetComponent<TMP_Text>();
         }
         
+        private void Start()
+        {
+            // Update text in Start to ensure LocalizationManager is initialized
+            // OnEnable may fire before LocalizationManager.Instance is ready
+            UpdateText();
+        }
+        
         private void OnEnable()
         {
             UpdateText();

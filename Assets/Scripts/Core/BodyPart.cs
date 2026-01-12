@@ -180,7 +180,8 @@ namespace HairRemovalSim.Core
 
         public string GetInteractionPrompt()
         {
-            return $"Start Treatment on {partName}";
+            string template = Core.LocalizationManager.Instance?.Get("prompt.start_treatment") ?? "Start Treatment on {0}";
+            return string.Format(template, partName);
         }
 
         // Legacy methods

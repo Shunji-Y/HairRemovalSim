@@ -121,6 +121,13 @@ namespace HairRemovalSim.UI
         {
             if (!IsOpen) return;
             
+            // Play click sound on click
+            //if (UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame ||
+            //    UnityEngine.InputSystem.Mouse.current.rightButton.wasPressedThisFrame)
+            //{
+            //    SoundManager.Instance?.PlaySFX("sfx_click");
+            //}
+            
             // Close on ESC or right-click (cancel, not confirm)
             if (UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame ||
                 UnityEngine.InputSystem.Mouse.current.rightButton.wasPressedThisFrame)
@@ -148,6 +155,9 @@ namespace HairRemovalSim.UI
             
             if (panel != null) panel.SetActive(true);
             crosshair.SetActive(false);
+            
+            // Play sound if not conflicting with tutorial
+
 
             // Reset selections
             ResetSelections();
@@ -201,6 +211,11 @@ namespace HairRemovalSim.UI
                         break;
                     }
                 }
+            }
+
+            if (TutorialManager.Instance == null || !TutorialManager.Instance.IsShowingTutorial)
+            {
+                SoundManager.Instance?.PlaySFX("sfx_drop");
             }
         }
         
@@ -315,7 +330,11 @@ namespace HairRemovalSim.UI
             var data = currentCustomer.data;
 
             if (targetText != null)
-                targetText.text = LocalizationManager.Instance.Get("plan.requested_part")+"\n" + CustomerPlanHelper.GetRequiredPartsDisplay(data.requestPlan);
+            {
+                var planText = CustomerPlanHelper.GetRequiredPartsDisplay(data.requestPlan);
+                
+                targetText.text = LocalizationManager.Instance.Get("plan.requested_part") + $"<color=green>{planText}";
+            }
             
             if (toleranceText != null)
                 toleranceText.text =LocalizationManager.Instance.Get("ui.tolerance") +" :\n" + LocalizationManager.Instance.Get("ui.tolerance_level_" +data.painToleranceLevel.ToString());
@@ -497,6 +516,8 @@ namespace HairRemovalSim.UI
             data.confirmedPrice = basePlanPrice + (upsellSucceeded ? upsellPrice : 0);
 
             TutorialManager.Instance.CompleteByAction("ReceptionFirst");
+
+            SoundManager.Instance.PlaySFX("sfx_click");
 
 
             Debug.Log($"[ReceptionPanel] Confirmed - Parts: {selectedParts}, Price: ${data.confirmedPrice} (upsell: {upsellSucceeded})");
@@ -750,7 +771,9 @@ namespace HairRemovalSim.UI
             selectedParts = ConvertSelectionToBodyParts(selectedDetailedParts);
             
             Debug.Log($"[ReceptionPanel] Toggle changed: {toggle.PartName} = {isSelected}, selectedParts = {selectedParts}");
-            
+
+            SoundManager.Instance.PlaySFX("sfx_click");
+
             RecalculatePrice();
         }
         

@@ -36,6 +36,11 @@ namespace HairRemovalSim.UI
         private Canvas canvas;
         private RectTransform canvasRect;
         
+        // Static drag events for highlight system
+        public static event System.Action OnCheckoutDragStarted;
+        public static event System.Action OnCheckoutDragEnded;
+        public static CheckoutItemSlotUI DragSource { get; private set; }
+        
         public string ItemId => itemId;
         public int Quantity => quantity;
         public bool IsEmpty => string.IsNullOrEmpty(itemId) || quantity <= 0;
@@ -171,7 +176,8 @@ namespace HairRemovalSim.UI
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (IsEmpty) return;
-            
+            SoundManager.Instance?.PlaySFX("sfx_drag");
+
             // Create drag icon
             var itemData = ItemDataRegistry.Instance?.GetItem(itemId);
             if (itemData == null || itemData.icon == null) return;
@@ -185,12 +191,19 @@ namespace HairRemovalSim.UI
             
             var rt = dragIcon.GetComponent<RectTransform>();
             rt.sizeDelta = new Vector2(50, 50);
+            
+            // Set drag source and fire event
+            DragSource = this;
+            
+            // Play drag sound
+    
+            
+            OnCheckoutDragStarted?.Invoke();
         }
         
         public void OnDrag(PointerEventData eventData)
         {
             if (dragIcon == null) return;
-            
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 canvasRect, eventData.position, canvas.worldCamera, out Vector2 pos);
             dragIcon.GetComponent<RectTransform>().anchoredPosition = pos;
@@ -202,6 +215,11 @@ namespace HairRemovalSim.UI
             {
                 Destroy(dragIcon);
             }
+                        SoundManager.Instance?.PlaySFX("sfx_drop");
+
+            // Clear drag source and fire event
+            DragSource = null;
+            OnCheckoutDragEnded?.Invoke();
             
             // Note: PaymentItemDropTarget.OnDrop handles the item addition with proper slot index
             // We don't call OnItemAdded here to avoid duplicate calls
@@ -233,7 +251,10 @@ namespace HairRemovalSim.UI
         
         public void OnDrop(PointerEventData eventData)
         {
-            // Handle drop from another CheckoutItemSlotUI
+            // Play drop sound
+            SoundManager.Instance?.PlaySFX("sfx_drop");
+            
+             // Handle drop from another CheckoutItemSlotUI
             var sameTypeSource = eventData.pointerDrag?.GetComponent<CheckoutItemSlotUI>();
             if (sameTypeSource != null && sameTypeSource != this && !sameTypeSource.IsEmpty)
             {
@@ -246,18 +267,38 @@ namespace HairRemovalSim.UI
             string dropItemId = source.ItemId;
             int qty = source.Quantity;
             
-            // If this slot is empty or has same item, merge
+            // If this slot is empty or has same item, merge with maxStack limit
             if (IsEmpty || itemId == dropItemId)
             {
-                itemId = dropItemId;
-                quantity += qty;
+                var itemData = ItemDataRegistry.Instance?.GetItem(dropItemId);
+                int maxStack = itemData?.maxStackOnShelf ?? 99;
                 
-                source.itemId = null;
-                source.quantity = 0;
-                source.RefreshDisplay();
+                int currentQty = IsEmpty ? 0 : quantity;
+                int space = maxStack - currentQty;
+                int toMove = Mathf.Min(qty, space);
                 
-                RefreshDisplay();
-                Debug.Log($"[CheckoutItemSlotUI] Moved {qty}x {dropItemId} from another slot");
+                if (toMove > 0)
+                {
+                    itemId = dropItemId;
+                    quantity = currentQty + toMove;
+                    
+                    // Leave excess in source
+                    int remaining = qty - toMove;
+                    if (remaining > 0)
+                    {
+                        source.itemId = dropItemId;
+                        source.quantity = remaining;
+                    }
+                    else
+                    {
+                        source.itemId = null;
+                        source.quantity = 0;
+                    }
+                    source.RefreshDisplay();
+                    
+                    RefreshDisplay();
+                    Debug.Log($"[CheckoutItemSlotUI] Moved {toMove}x {dropItemId} (max: {maxStack}, remaining: {remaining})");
+                }
             }
             // If different item, swap
             else

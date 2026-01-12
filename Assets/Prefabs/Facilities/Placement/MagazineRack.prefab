@@ -92,13 +92,59 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1912944485265289742}
+    - targetCorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7266791987171150956}
   m_SourcePrefab: {fileID: 100100000, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
 --- !u!4 &37673694437825519 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
   m_PrefabInstance: {fileID: 508732468001160196}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &5988588134344544979 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+  m_PrefabInstance: {fileID: 508732468001160196}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1912944485265289742
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5988588134344544979}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.41861498, y: 0.98099136, z: 0.8703005}
+  m_Center: {x: -0.000000059604645, y: 0.32300466, z: 0.00000008940697}
+--- !u!114 &7266791987171150956
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5988588134344544979}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.CoffeeMachine
+  showInteractionPrompt: 0
 --- !u!1001 &1371018708860349711
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -154,13 +200,59 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5725732048775963864}
+    - targetCorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 856406601409084135}
   m_SourcePrefab: {fileID: 100100000, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
 --- !u!4 &1480680685494880996 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
   m_PrefabInstance: {fileID: 1371018708860349711}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &5121166817747420120 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+  m_PrefabInstance: {fileID: 1371018708860349711}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &5725732048775963864
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5121166817747420120}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.41861507, y: 0.98099136, z: 0.87030065}
+  m_Center: {x: -0.00000005960466, y: 0.32300466, z: 0.0000010430813}
+--- !u!114 &856406601409084135
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5121166817747420120}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.CoffeeMachine
+  showInteractionPrompt: 0
 --- !u!1001 &5642126182019341432
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -216,8 +308,54 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1214937565456043870}
+    - targetCorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4876527973503175798}
   m_SourcePrefab: {fileID: 100100000, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+--- !u!1 &1898275526123123375 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+  m_PrefabInstance: {fileID: 5642126182019341432}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1214937565456043870
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1898275526123123375}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.41861507, y: 0.98099136, z: 0.87030065}
+  m_Center: {x: -0.00000021979214, y: 0.32300466, z: 0.0000010430813}
+--- !u!114 &4876527973503175798
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1898275526123123375}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.CoffeeMachine
+  showInteractionPrompt: 0
 --- !u!4 &5316044866529852307 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
@@ -278,8 +416,54 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6208353689754902375}
+    - targetCorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7856383676893888105}
   m_SourcePrefab: {fileID: 100100000, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+--- !u!1 &1949613056841496943 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+  m_PrefabInstance: {fileID: 5700069390164383672}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &6208353689754902375
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1949613056841496943}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.41861498, y: 0.98099136, z: 0.8703005}
+  m_Center: {x: -0.000000059604645, y: 0.32300466, z: 0.00000008940697}
+--- !u!114 &7856383676893888105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1949613056841496943}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.CoffeeMachine
+  showInteractionPrompt: 0
 --- !u!4 &5228696302240280659 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
@@ -340,8 +524,54 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4388828479048555267}
+    - targetCorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1766373180451642966}
   m_SourcePrefab: {fileID: 100100000, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+--- !u!1 &1055890622473793822 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+  m_PrefabInstance: {fileID: 6535737613794680777}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &4388828479048555267
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1055890622473793822}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.41861498, y: 0.98099136, z: 0.8703005}
+  m_Center: {x: -0.000000059604645, y: 0.32300466, z: 0.0000005662441}
+--- !u!114 &1766373180451642966
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1055890622473793822}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.CoffeeMachine
+  showInteractionPrompt: 0
 --- !u!4 &6717439653078202402 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
@@ -402,8 +632,54 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5281806052648249803}
+    - targetCorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1652564399874906152}
   m_SourcePrefab: {fileID: 100100000, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+--- !u!1 &3378169097588843360 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -3164662375717310761, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}
+  m_PrefabInstance: {fileID: 8860118354194550199}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &5281806052648249803
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3378169097588843360}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.41861498, y: 0.98099136, z: 0.8703005}
+  m_Center: {x: 0.0000004172325, y: 0.32300466, z: 0.00000008940697}
+--- !u!114 &1652564399874906152
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3378169097588843360}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.CoffeeMachine
+  showInteractionPrompt: 0
 --- !u!4 &9043175061511613020 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1144d9857173ff14faf0d8158e4ecf84, type: 3}

@@ -384,6 +384,7 @@ MonoBehaviour:
   normalColor: {r: 0.28235295, g: 0.24705882, b: 0.24705882, a: 0.78039217}
   highlightColor: {r: 0.8, g: 1, b: 0.8, a: 1}
   syncSlotIndex: 4
+  dragHighlightColor: {r: 0.4, g: 1, b: 0.4, a: 1}
 --- !u!114 &7884437771139833059
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -571,6 +572,7 @@ MonoBehaviour:
   normalColor: {r: 0.28235295, g: 0.24705882, b: 0.24705882, a: 0.78039217}
   highlightColor: {r: 0.8, g: 1, b: 0.8, a: 1}
   syncSlotIndex: 3
+  dragHighlightColor: {r: 0.4, g: 1, b: 0.4, a: 1}
 --- !u!114 &490625141804949951
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -965,6 +967,7 @@ MonoBehaviour:
   normalColor: {r: 0.28235295, g: 0.24705882, b: 0.24705882, a: 0.78039217}
   highlightColor: {r: 0.8, g: 1, b: 0.8, a: 1}
   syncSlotIndex: 2
+  dragHighlightColor: {r: 0.4, g: 1, b: 0.4, a: 1}
 --- !u!114 &7652206755187570736
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1289,6 +1292,7 @@ MonoBehaviour:
   normalColor: {r: 0.28235295, g: 0.24705882, b: 0.24705882, a: 0.78039217}
   highlightColor: {r: 0.8, g: 1, b: 0.8, a: 1}
   syncSlotIndex: 1
+  dragHighlightColor: {r: 0.4, g: 1, b: 0.4, a: 1}
 --- !u!114 &8418227270766695459
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1827,6 +1831,7 @@ MonoBehaviour:
   normalColor: {r: 0.28235295, g: 0.24705882, b: 0.24705882, a: 0.78039217}
   highlightColor: {r: 0.8, g: 1, b: 0.8, a: 1}
   syncSlotIndex: 5
+  dragHighlightColor: {r: 0.4, g: 1, b: 0.4, a: 1}
 --- !u!114 &2365681511093043215
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1853,6 +1858,7 @@ GameObject:
   - component: {fileID: 191543074805346987}
   - component: {fileID: 7241086946425123057}
   - component: {fileID: 4391391182041515548}
+  - component: {fileID: 4633638256646084830}
   m_Layer: 0
   m_Name: Text (TMP)
   m_TagString: Untagged
@@ -1979,6 +1985,19 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &4633638256646084830
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6839785272050725361}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b2b78dcd564a4584da26bd9ec64b52bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  localizationKey: ui.reception_stock
 --- !u!1 &7116636335231672588
 GameObject:
   m_ObjectHideFlags: 0
@@ -2151,6 +2170,7 @@ MonoBehaviour:
   normalColor: {r: 0.28235295, g: 0.24705882, b: 0.24705882, a: 0.78039217}
   highlightColor: {r: 0.8, g: 1, b: 0.8, a: 1}
   syncSlotIndex: 6
+  dragHighlightColor: {r: 0.4, g: 1, b: 0.4, a: 1}
 --- !u!114 &5704246886238700760
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2400,6 +2420,7 @@ MonoBehaviour:
   normalColor: {r: 0.28235295, g: 0.24705882, b: 0.24705882, a: 0.78039217}
   highlightColor: {r: 0.8, g: 1, b: 0.8, a: 1}
   syncSlotIndex: 7
+  dragHighlightColor: {r: 0.4, g: 1, b: 0.4, a: 1}
 --- !u!114 &865285990550689722
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2512,6 +2533,7 @@ MonoBehaviour:
   normalColor: {r: 0.28235295, g: 0.24705882, b: 0.24705882, a: 0.78039217}
   highlightColor: {r: 0.8, g: 1, b: 0.8, a: 1}
   syncSlotIndex: 0
+  dragHighlightColor: {r: 0.4, g: 1, b: 0.4, a: 1}
 --- !u!114 &6773759677603022451
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -249,15 +249,17 @@ namespace HairRemovalSim.Environment
         public string GetInteractionPrompt()
         {
             var slotItem = laserBody?.GetItem(slotType);
-            string slotName = slotType == ToolTargetArea.Face ? "Face" : "Body";
             
             if (slotItem != null)
             {
-                return $"Equip {slotItem.name}";
+                string template = Core.LocalizationManager.Instance?.Get("prompt.equip") ?? "Equip {0}";
+                return string.Format(template, LocalizationManager.Instance.Get(slotItem.nameKey));
             }
             else
             {
-                return $"Place laser ({slotName})";
+                return slotType == ToolTargetArea.Face
+                    ? Core.LocalizationManager.Instance?.Get("prompt.place_laser_face") ?? "Place laser (Face)"
+                    : Core.LocalizationManager.Instance?.Get("prompt.place_laser_body") ?? "Place laser (Body)";
             }
         }
         

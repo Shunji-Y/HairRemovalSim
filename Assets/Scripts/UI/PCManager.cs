@@ -35,7 +35,7 @@ namespace HairRemovalSim.UI
 
         public void OnHoverEnter() { }
         public void OnHoverExit() { }
-        public string GetInteractionPrompt() => "Use PC";
+        public string GetInteractionPrompt() => Core.LocalizationManager.Instance?.Get("prompt.use_pc") ?? "Use PC";
 
         private void OpenPC()
         {

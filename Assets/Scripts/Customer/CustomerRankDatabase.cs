@@ -99,23 +99,46 @@ namespace HairRemovalSim.Core
         public CustomerRankData GetRandomUnlockedRank(int starLevel, int grade)
         {
             var unlockedRanks = GetUnlockedRanks(starLevel, grade);
-            if (unlockedRanks.Count == 0) return null;
+            if (unlockedRanks.Count == 0) 
+            {
+                Debug.LogWarning($"[CustomerRankDatabase] No unlocked ranks for Star:{starLevel}, Grade:{grade}");
+                return null;
+            }
             
-            // Group by tier and pick tier first (weighted towards higher)
-            var byTier = unlockedRanks.GroupBy(r => r.tier).ToList();
-            
-            // Simple approach: pick random from all unlocked within highest unlocked tier
-            // This gives preference to higher-paying customers when available
+            // Get ranks from highest unlocked tier
             CustomerTier highestTier = GetHighestUnlockedTier(grade);
             var tierRanks = GetUnlockedRanksInTier(highestTier, starLevel, grade);
             
-            if (tierRanks.Count > 0)
+            if (tierRanks.Count == 0)
             {
-                return tierRanks[Random.Range(0, tierRanks.Count)];
+                tierRanks = unlockedRanks;
             }
             
-            // Fallback to any unlocked rank
-            return unlockedRanks[Random.Range(0, unlockedRanks.Count)];
+            // Weighted selection: higher requiredStarLevel = higher weight
+            // Weight = requiredStarLevel^2 (so ★3 has 9 weight, ★1 has 1 weight)
+            // This ensures newer ranks appear more often while older ranks still have chances
+            float totalWeight = 0f;
+            foreach (var rank in tierRanks)
+            {
+                totalWeight += rank.requiredStarLevel * rank.requiredStarLevel;
+            }
+            
+            float roll = Random.Range(0f, totalWeight);
+            float cumulative = 0f;
+            
+            CustomerRankData selected = tierRanks[tierRanks.Count - 1]; // Fallback to last
+            foreach (var rank in tierRanks)
+            {
+                cumulative += rank.requiredStarLevel * rank.requiredStarLevel;
+                if (roll <= cumulative)
+                {
+                    selected = rank;
+                    break;
+                }
+            }
+            
+            Debug.Log($"[CustomerRankDatabase] Star:{starLevel}, Grade:{grade} -> Selected: {selected.rankName} (★{selected.requiredStarLevel}) from {tierRanks.Count} ranks");
+            return selected;
         }
         
         /// <summary>

@@ -128,7 +128,8 @@ namespace HairRemovalSim.Tools
 
         public virtual string GetInteractionPrompt()
         {
-            return $"Equip {toolName}";
+            string template = Core.LocalizationManager.Instance?.Get("prompt.equip") ?? "Equip {0}";
+            return string.Format(template, toolName);
         }
     }
 }

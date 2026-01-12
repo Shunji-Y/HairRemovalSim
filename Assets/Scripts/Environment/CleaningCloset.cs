@@ -183,20 +183,20 @@ namespace HairRemovalSim.Environment
             // Check if player has vacuum
             if (lastInteractor?.CurrentTool?.itemData?.toolType == TreatmentToolType.Vacuum)
             {
-                return "Return vacuum";
+                return Core.LocalizationManager.Instance?.Get("prompt.return_vacuum") ?? "Return vacuum";
             }
             
             if (!isDoorOpen)
             {
-                return "Open closet";
+                return Core.LocalizationManager.Instance?.Get("prompt.open_closet") ?? "Open closet";
             }
             
             if (!isVacuumTaken)
             {
-                return "Take vacuum";
+                return Core.LocalizationManager.Instance?.Get("prompt.take_vacuum") ?? "Take vacuum";
             }
             
-            return "Close closet";
+            return Core.LocalizationManager.Instance?.Get("prompt.close_closet") ?? "Close closet";
         }
         
         public bool CanInteract(InteractionController interactor)

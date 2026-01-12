@@ -70,7 +70,13 @@ namespace HairRemovalSim.UI
             {
                 Core.TutorialManager.Instance?.TryShowTutorial("tut_pain_gauge");
             }
-            
+
+            if (actualFill >= 1f)
+            {
+                Core.TutorialManager.Instance?.TryShowTutorial("tut_pain_gauge_max");
+
+            }
+
             // Smooth fill animation
             if (fillImage != null)
             {

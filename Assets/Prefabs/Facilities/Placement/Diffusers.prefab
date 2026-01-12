@@ -106,13 +106,59 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1308536579892290383}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3247030594704891638}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4334990929682376262}
   m_SourcePrefab: {fileID: 100100000, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
 --- !u!4 &430543958301506731 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
   m_PrefabInstance: {fileID: 176520061618297664}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1058990082170562065 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+  m_PrefabInstance: {fileID: 176520061618297664}
+  m_PrefabAsset: {fileID: 0}
+--- !u!135 &3247030594704891638
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1058990082170562065}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.1832877
+  m_Center: {x: 0, y: 0.033506077, z: 0}
+--- !u!114 &4334990929682376262
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1058990082170562065}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.AromaDiffuser
+  showInteractionPrompt: 0
 --- !u!1001 &354815301721516839
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -179,13 +225,59 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5745453989562557791}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2964615352227216973}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8552955634765519841}
   m_SourcePrefab: {fileID: 100100000, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
 --- !u!4 &244944658193878220 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
   m_PrefabInstance: {fileID: 354815301721516839}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &589381607227840118 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+  m_PrefabInstance: {fileID: 354815301721516839}
+  m_PrefabAsset: {fileID: 0}
+--- !u!135 &2964615352227216973
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 589381607227840118}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.1832877
+  m_Center: {x: 0, y: 0.033506077, z: 0}
+--- !u!114 &8552955634765519841
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 589381607227840118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.AromaDiffuser
+  showInteractionPrompt: 0
 --- !u!1001 &460147929977464649
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -252,13 +344,59 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2101627001121125804}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4923054825309450145}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8241332196573298614}
   m_SourcePrefab: {fileID: 100100000, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
 --- !u!4 &137499872362053794 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
   m_PrefabInstance: {fileID: 460147929977464649}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &766649649380268568 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+  m_PrefabInstance: {fileID: 460147929977464649}
+  m_PrefabAsset: {fileID: 0}
+--- !u!135 &4923054825309450145
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 766649649380268568}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.1832877
+  m_Center: {x: 0, y: 0.033506077, z: 0}
+--- !u!114 &8241332196573298614
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 766649649380268568}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.AromaDiffuser
+  showInteractionPrompt: 0
 --- !u!1001 &728126269584535407
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -497,8 +635,54 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8205510592386342768}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8308593220823125740}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6763181566732722639}
   m_SourcePrefab: {fileID: 100100000, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+--- !u!1 &118797448837376759 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+  m_PrefabInstance: {fileID: 965851110011148198}
+  m_PrefabAsset: {fileID: 0}
+--- !u!135 &8308593220823125740
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 118797448837376759}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.1832877
+  m_Center: {x: 0, y: 0.033506077, z: 0}
+--- !u!114 &6763181566732722639
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 118797448837376759}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.AromaDiffuser
+  showInteractionPrompt: 0
 --- !u!4 &787528548647497805 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
@@ -914,8 +1098,54 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8275315573752782861}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8417057698445703903}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8438036356555221018}
   m_SourcePrefab: {fileID: 100100000, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+--- !u!1 &1253206909399041735 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+  m_PrefabInstance: {fileID: 2136149722099268502}
+  m_PrefabAsset: {fileID: 0}
+--- !u!135 &8417057698445703903
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1253206909399041735}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.18328774
+  m_Center: {x: 0, y: 0.033506077, z: 0}
+--- !u!114 &8438036356555221018
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1253206909399041735}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.AromaDiffuser
+  showInteractionPrompt: 0
 --- !u!4 &1886895714693012605 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
@@ -987,13 +1217,59 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1280621715063177845}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6274890758578770182}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7221261204145572638}
   m_SourcePrefab: {fileID: 100100000, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
 --- !u!4 &3968240061597249937 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
   m_PrefabInstance: {fileID: 3501755636575049338}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &4348742086880275243 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+  m_PrefabInstance: {fileID: 3501755636575049338}
+  m_PrefabAsset: {fileID: 0}
+--- !u!135 &6274890758578770182
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4348742086880275243}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.1832877
+  m_Center: {x: 0, y: 0.033506077, z: 0}
+--- !u!114 &7221261204145572638
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4348742086880275243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.AromaDiffuser
+  showInteractionPrompt: 0
 --- !u!1001 &4807747316791084412
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1060,13 +1336,59 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
       insertIndex: -1
       addedObject: {fileID: 723803677245201963}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 555217331459977249}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4956700764073051147}
   m_SourcePrefab: {fileID: 100100000, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
 --- !u!4 &4986106884346274455 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
   m_PrefabInstance: {fileID: 4807747316791084412}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &5654803040623310893 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+  m_PrefabInstance: {fileID: 4807747316791084412}
+  m_PrefabAsset: {fileID: 0}
+--- !u!135 &555217331459977249
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5654803040623310893}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.1832877
+  m_Center: {x: 0, y: 0.033506077, z: 0}
+--- !u!114 &4956700764073051147
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5654803040623310893}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.AromaDiffuser
+  showInteractionPrompt: 0
 --- !u!1001 &5446930012434553394
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1133,8 +1455,54 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
       insertIndex: -1
       addedObject: {fileID: 736683448078959962}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9082650540880735698}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6692707487766031308}
   m_SourcePrefab: {fileID: 100100000, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+--- !u!1 &5140305015660767075 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+  m_PrefabInstance: {fileID: 5446930012434553394}
+  m_PrefabAsset: {fileID: 0}
+--- !u!135 &9082650540880735698
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5140305015660767075}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.1832877
+  m_Center: {x: 0, y: 0.033506077, z: 0}
+--- !u!114 &6692707487766031308
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5140305015660767075}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.AromaDiffuser
+  showInteractionPrompt: 0
 --- !u!4 &5484777973077655001 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
@@ -1464,8 +1832,54 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1116234097165179418}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7167206468031870229}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5405580520206757987}
   m_SourcePrefab: {fileID: 100100000, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+--- !u!1 &8635551541260376731 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 57e03e1e29c432d4586f143205b24152, type: 3}
+  m_PrefabInstance: {fileID: 8869502527203960778}
+  m_PrefabAsset: {fileID: 0}
+--- !u!135 &7167206468031870229
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8635551541260376731}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.1832877
+  m_Center: {x: 0, y: 0.033506077, z: 0}
+--- !u!114 &5405580520206757987
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8635551541260376731}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb69be645b2679e428a9505c07d0da0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameKey: item.AromaDiffuser
+  showInteractionPrompt: 0
 --- !u!4 &8979180344948719649 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 57e03e1e29c432d4586f143205b24152, type: 3}

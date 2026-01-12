@@ -28,6 +28,7 @@ namespace HairRemovalSim.UI
         [SerializeField] private TMP_Text customersText;
         [SerializeField] private TMP_Text angryCustomersText;
         [SerializeField] private TMP_Text debrisText;
+        [SerializeField] private TMP_Text starLevelText;
         [SerializeField] private TMP_Text reviewText;
         [SerializeField] private TMP_Text averageReviewText;
         [SerializeField] private TMP_Text pendingOrdersText;
@@ -559,6 +560,13 @@ namespace HairRemovalSim.UI
                 debrisText.text = $"{remaining}";
             }
             
+            //Star level
+            if(starLevelText  != null)
+            {
+                int score = ShopManager.Instance?.StarRating ?? 0;
+                starLevelText.text = $"{score}";
+            }
+
             // Review
             if (reviewText != null && ShopManager.Instance != null)
             {
@@ -744,6 +752,7 @@ namespace HairRemovalSim.UI
         private void OnNextDayClicked()
         {
             StartCoroutine(NextDayRoutine());
+            SoundManager.Instance.PlaySFX("sfx_click");
         }
 
         private System.Collections.IEnumerator NextDayRoutine()
@@ -751,6 +760,7 @@ namespace HairRemovalSim.UI
             // 1. Bring fade overlay to front and ensure it's active
             if (fadeCanvasGroup != null)
             {
+
                 fadeCanvasGroup.gameObject.SetActive(true);
                 fadeCanvasGroup.transform.SetAsLastSibling(); // Cover the panel
                 

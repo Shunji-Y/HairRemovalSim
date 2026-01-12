@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using HairRemovalSim.UI;
 
 namespace HairRemovalSim.Core
 {
@@ -383,6 +384,8 @@ namespace HairRemovalSim.Core
             hasNewItems = true;
             if (newIndicatorText != null)
             {
+                var message = LocalizationManager.Instance.Get("msg.item_arrived");
+                MessageBoxManager.Instance.ShowDirectMessage(message,MessageType.Warning);
                 newIndicatorText.gameObject.SetActive(true);
             }
             Debug.Log("[WarehouseManager] New items delivered! Showing indicator.");

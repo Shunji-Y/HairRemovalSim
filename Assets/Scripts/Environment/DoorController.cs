@@ -95,9 +95,12 @@ namespace HairRemovalSim.Environment
 
                 // Open the door
                 OpenDoor();
+                SoundManager.Instance.PlaySFX("sfx_open_door");
             }
             else if (GameManager.Instance.CurrentState == GameManager.GameState.Night)
             {
+                if (UI.DailySummaryPanel.Instance.IsShowing) return;
+
                 // Dismiss day end message when going home
                 MessageBoxManager.Instance?.DismissMessage("msg_day_end");
                 
@@ -181,7 +184,10 @@ namespace HairRemovalSim.Environment
                 doorTransform.localRotation = Quaternion.Slerp(startRotation, targetRotation, t);
                 yield return null;
             }
-            
+
+            if(!isDoorOpen)
+                SoundManager.Instance.PlaySFX("sfx_close_door");
+
             doorTransform.localRotation = targetRotation;
             doorAnimationCoroutine = null;
         }
@@ -231,11 +237,11 @@ namespace HairRemovalSim.Environment
         {
             if (GameManager.Instance.CurrentState == GameManager.GameState.Preparation)
             {
-                return "Open Shop";
+                return Core.LocalizationManager.Instance?.Get("prompt.open_shop") ?? "Open Shop";
             }
             else if (GameManager.Instance.CurrentState == GameManager.GameState.Night)
             {
-                return "Go Home (Next Day)";
+                return Core.LocalizationManager.Instance?.Get("prompt.go_home") ?? "Go Home (Next Day)";
             }
             return "";
         }

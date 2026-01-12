@@ -161,6 +161,9 @@ namespace HairRemovalSim.Player
                 {
                    // Debug.Log("Input: Interact (Object Interaction)");
                     currentInteractable.OnInteract(this);
+                    
+                    // Hide prompt after interaction
+                    HUDManager.Instance?.HideInteractionPrompt();
                     return; // Consume input
                 }
             }
